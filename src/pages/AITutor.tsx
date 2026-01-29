@@ -1,13 +1,13 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, User, Info, Zap } from "lucide-react";
+import { Bot, Send, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
-import { Link } from "react-router-dom";
+
 import { useAITutor } from "@/hooks/useAITutor";
 import ReactMarkdown from "react-markdown";
 
-const MAX_FREE_MESSAGES = 10;
+
 
 const suggestedQuestions = [
   "Explain recursion in programming",
@@ -19,10 +19,7 @@ const suggestedQuestions = [
 export default function AITutor() {
   const { messages, isLoading, sendMessage } = useAITutor();
   const [input, setInput] = useState("");
-  const [messageCount, setMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  const remainingMessages = MAX_FREE_MESSAGES - messageCount;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -34,14 +31,8 @@ export default function AITutor() {
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
-    
-    if (remainingMessages <= 0) {
-      return;
-    }
-
     const messageToSend = input.trim();
     setInput("");
-    setMessageCount((prev) => prev + 1);
     await sendMessage(messageToSend);
   };
 
@@ -64,23 +55,6 @@ export default function AITutor() {
             </div>
           </div>
           
-          {/* Credits Display */}
-          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${
-            remainingMessages <= 3 ? "bg-destructive/10 text-destructive" : "bg-secondary"
-          }`}>
-            <Zap className="w-4 h-4" />
-            <span className="text-sm font-medium">{remainingMessages} messages left</span>
-          </div>
-        </div>
-
-        {/* Info Banner */}
-        <div className="flex items-start gap-3 p-4 bg-secondary/50 rounded-xl border border-border mb-4">
-          <Info className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-muted-foreground">
-            <span className="text-accent font-medium">AI helps you learn.</span>{" "}
-            <span className="text-primary font-medium">Mentors help you improve.</span>{" "}
-            Use me to understand concepts, then book a mentor for personalized feedback on your work.
-          </p>
         </div>
 
         {/* Chat Area */}
@@ -158,20 +132,6 @@ export default function AITutor() {
             </div>
           )}
 
-          {/* Limit Reached Banner */}
-          {remainingMessages <= 0 && (
-            <div className="p-4 bg-destructive/10 border-t border-destructive/20">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-destructive">Free messages used up</p>
-                  <p className="text-sm text-muted-foreground">Sign up to continue learning</p>
-                </div>
-                <Button variant="hero" size="sm" asChild>
-                  <Link to="/signup">Get More</Link>
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Input */}
           <div className="p-4 border-t border-border">
@@ -180,15 +140,15 @@ export default function AITutor() {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSend()}
-                placeholder={remainingMessages > 0 ? "Ask anything..." : "Sign up to continue..."}
+                placeholder="Ask anything..."
                 className="flex-1"
-                disabled={isLoading || remainingMessages <= 0}
+                disabled={isLoading}
               />
               <Button 
                 variant="hero" 
                 size="icon"
                 onClick={handleSend}
-                disabled={!input.trim() || isLoading || remainingMessages <= 0}
+                disabled={!input.trim() || isLoading}
               >
                 <Send className="w-4 h-4" />
               </Button>
