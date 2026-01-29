@@ -1,11 +1,10 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, User, ClipboardList } from "lucide-react";
+import { Bot, Send, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAITutor } from "@/hooks/useAITutor";
 import ReactMarkdown from "react-markdown";
-import { SurveyModal } from "@/components/survey/SurveyModal";
 
 
 const suggestedQuestions = [
@@ -18,7 +17,6 @@ const suggestedQuestions = [
 export default function AITutor() {
   const { messages, isLoading, sendMessage } = useAITutor();
   const [input, setInput] = useState("");
-  const [surveyOpen, setSurveyOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -54,19 +52,7 @@ export default function AITutor() {
               <p className="text-sm text-muted-foreground">Your 24/7 learning companion</p>
             </div>
           </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setSurveyOpen(true)}
-            className="gap-2"
-          >
-            <ClipboardList className="w-4 h-4" />
-            Take Survey
-          </Button>
         </div>
-
-        <SurveyModal open={surveyOpen} onOpenChange={setSurveyOpen} />
 
         {/* Chat Area */}
         <div className="flex-1 bg-card border border-border rounded-2xl flex flex-col overflow-hidden">
