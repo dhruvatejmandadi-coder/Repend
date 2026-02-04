@@ -40,7 +40,7 @@ export function Footer() {
 
           {/* Copyright */}
           <p className="text-sm text-muted-foreground">
-            © 2025 MentorAI. All rights reserved.
+            © 2026 MentorAI. All rights reserved.
           </p>
         </div>
       </div>
