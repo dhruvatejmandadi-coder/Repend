@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Mentors from "./pages/Mentors";
 import AITutor from "./pages/AITutor";
 import Dashboard from "./pages/Dashboard";
+import Community from "./pages/Community";
 import ProgressPage from "./pages/ProgressPage";
 import Profile from "./pages/Profile";
 import Waitlist from "./pages/Waitlist";
@@ -29,6 +30,7 @@ const App = () => (
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/mentors" element={<Mentors />} />
             <Route path="/ai-tutor" element={<AITutor />} />
+            <Route path="/community" element={<Community />} />
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/waitlist" element={<Waitlist />} />
