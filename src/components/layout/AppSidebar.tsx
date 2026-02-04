@@ -4,7 +4,8 @@ import {
   Users,
   TrendingUp,
   LogOut,
-  User
+  User,
+  MessageSquare
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -26,6 +27,7 @@ const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "AI Tutor", url: "/ai-tutor", icon: Bot },
   { title: "Mentors", url: "/mentors", icon: Users },
+  { title: "Community", url: "/community", icon: MessageSquare },
 ];
 
 const learnItems = [
