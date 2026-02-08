@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Sparkles, Users, Star, CheckCircle } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 export function Hero() {
   return <section className="relative min-h-[90vh] flex items-center justify-center pt-20 overflow-hidden">
@@ -51,23 +51,6 @@ export function Hero() {
             </Button>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10 text-muted-foreground animate-fade-in" style={{
-          animationDelay: '0.5s'
-        }}>
-            <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              
-            </div>
-            <div className="flex items-center gap-2">
-              <Star className="w-5 h-5 text-amber-500" />
-              <span className="text-sm font-medium">​</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="w-5 h-5 text-accent" />
-              <span className="text-sm font-medium">​</span>
-            </div>
-          </div>
         </div>
       </div>
     </section>;

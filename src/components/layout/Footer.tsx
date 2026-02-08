@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Twitter, Linkedin, Github } from "lucide-react";
+import { Sparkles, Twitter, Linkedin, Youtube, Instagram } from "lucide-react";
 
 export function Footer() {
   return (
@@ -61,7 +61,10 @@ export function Footer() {
                 <Linkedin className="w-5 h-5 text-white" />
               </a>
               <a href="#" className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                <Github className="w-5 h-5 text-white" />
+                <Youtube className="w-5 h-5 text-white" />
+              </a>
+              <a href="#" className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
+                <Instagram className="w-5 h-5 text-white" />
               </a>
             </div>
           </div>
