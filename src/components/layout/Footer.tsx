@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Twitter, Linkedin, Youtube, Instagram } from "lucide-react";
+import { Sparkles, Youtube, Instagram } from "lucide-react";
 
 export function Footer() {
   return (
@@ -54,12 +54,6 @@ export function Footer() {
           <div>
             <h4 className="font-semibold text-white mb-4">Connect</h4>
             <div className="flex items-center gap-3">
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                <Twitter className="w-5 h-5 text-white" />
-              </a>
-              <a href="#" className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
-                <Linkedin className="w-5 h-5 text-white" />
-              </a>
               <a href="#" className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors">
                 <Youtube className="w-5 h-5 text-white" />
               </a>
