@@ -28,7 +28,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
 
   const saved = loadProfile();
-  const [fullName, setFullName] = useState(saved?.fullName || user?.user_metadata?.full_name || "");
+  const [fullName, setFullName] = useState(saved?.fullName || user?.user_metadata?.full_name || user?.user_metadata?.name || "");
   const [role, setRole] = useState<"learner" | "mentor">(saved?.role || (user?.user_metadata?.role as "learner" | "mentor") || "learner");
   const [bio, setBio] = useState(saved?.bio || "");
 
