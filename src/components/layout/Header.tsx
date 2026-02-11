@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sparkles, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
+import rependLogo from "@/assets/repend-logo.png";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -24,13 +25,12 @@ export function Header() {
       <div className="container mx-auto px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-xl gradient-primary flex items-center justify-center shadow-md">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-display font-bold text-xl text-foreground">
-              Repend
-            </span>
+          <Link to="/" className="flex items-center pl-2 sm:pl-4">
+            <img 
+              src={rependLogo} 
+              alt="Repend" 
+              className="h-8 sm:h-9 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Nav */}

@@ -24,7 +24,7 @@ export function ValueProp() {
           {/* Content */}
           <div>
             <span className="inline-block text-sm font-semibold text-primary uppercase tracking-wider mb-3">
-              The MentorAI Advantage
+              The Repend Advantage
             </span>
             <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-foreground">
               Why learn with{" "}
