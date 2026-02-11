@@ -106,7 +106,7 @@ export function ProfileSetupModal({ open, onComplete }: ProfileSetupModalProps) 
         </div>
 
         <Button variant="hero" className="w-full" onClick={handleSave} disabled={saving || !fullName.trim()}>
-          {saving ? "Saving..." : "Continue"}
+          {saving ? "Saving..." : "Done"}
         </Button>
       </DialogContent>
     </Dialog>
