@@ -1,11 +1,10 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bot, Send, User } from "lucide-react";
+import { Bot, Send, User, Trash2 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useAITutor } from "@/hooks/useAITutor";
 import ReactMarkdown from "react-markdown";
-
 
 const suggestedQuestions = [
   "Explain recursion in programming",
@@ -15,7 +14,7 @@ const suggestedQuestions = [
 ];
 
 export default function AITutor() {
-  const { messages, isLoading, sendMessage } = useAITutor();
+  const { messages, isLoading, sendMessage, clearMessages } = useAITutor();
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -52,6 +51,12 @@ export default function AITutor() {
               <p className="text-sm text-muted-foreground">Your 24/7 learning companion</p>
             </div>
           </div>
+          {messages.length > 1 && (
+            <Button variant="ghost" size="sm" onClick={clearMessages} className="text-muted-foreground hover:text-destructive">
+              <Trash2 className="w-4 h-4 mr-1" />
+              Clear Chat
+            </Button>
+          )}
         </div>
 
         {/* Chat Area */}
@@ -61,22 +66,18 @@ export default function AITutor() {
             {messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex gap-3 ${
-                  message.role === "user" ? "justify-end" : ""
-                }`}
+                className={`flex gap-3 ${message.role === "user" ? "justify-end" : ""}`}
               >
                 {message.role === "assistant" && (
                   <div className="w-8 h-8 rounded-lg gradient-accent flex items-center justify-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-accent-foreground" />
                   </div>
                 )}
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 ${
-                    message.role === "user"
-                      ? "gradient-primary text-primary-foreground"
-                      : "bg-secondary"
-                  }`}
-                >
+                <div className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  message.role === "user"
+                    ? "gradient-primary text-primary-foreground"
+                    : "bg-secondary"
+                }`}>
                   {message.role === "assistant" ? (
                     <div className="prose prose-sm dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-background/50 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-background/50 prose-pre:border prose-pre:border-border prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground">
                       <ReactMarkdown>{message.content}</ReactMarkdown>
@@ -128,7 +129,6 @@ export default function AITutor() {
               </div>
             </div>
           )}
-
 
           {/* Input */}
           <div className="p-4 border-t border-border">

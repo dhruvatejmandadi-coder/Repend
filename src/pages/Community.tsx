@@ -7,6 +7,7 @@ import { CreatePostModal } from "@/components/community/CreatePostModal";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { usePoints } from "@/hooks/usePoints";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -25,6 +26,7 @@ export default function Community() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addCommunityPoints } = usePoints();
 
   const handleCreatePost = () => {
     if (!user) {
@@ -48,6 +50,7 @@ export default function Community() {
       created_at: "Just now",
     };
     setPosts((prev) => [newPost, ...prev]);
+    addCommunityPoints();
   };
 
   return (

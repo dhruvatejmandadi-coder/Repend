@@ -1,18 +1,33 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { TrendingUp, Flame, Target, Trophy, Calendar, BookOpen, ClipboardCheck } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { TrendingUp, Flame, Target, Trophy, Calendar, BookOpen, ClipboardCheck, Star } from "lucide-react";
+import { usePoints } from "@/hooks/usePoints";
+
+const ACHIEVEMENTS_ALL = [
+  { id: "first_challenge", name: "First Steps", description: "Complete your first challenge", icon: "🏆" },
+  { id: "five_challenges", name: "On a Roll", description: "Complete 5 challenges", icon: "🔥" },
+  { id: "hundred_points", name: "Century", description: "Earn 100 points", icon: "💯" },
+  { id: "five_hundred_points", name: "High Scorer", description: "Earn 500 points", icon: "⭐" },
+  { id: "three_day_streak", name: "Consistent", description: "3-day streak", icon: "📅" },
+  { id: "seven_day_streak", name: "Dedicated", description: "7-day streak", icon: "🌟" },
+];
+
 export default function ProgressPage() {
-  return <DashboardLayout>
+  const { totalPoints, streak, completedChallenges, achievements } = usePoints();
+
+  const nextPointsMilestone = totalPoints < 100 ? 100 : totalPoints < 500 ? 500 : totalPoints < 1000 ? 1000 : 5000;
+  const pointsProgress = Math.min((totalPoints / nextPointsMilestone) * 100, 100);
+
+  return (
+    <DashboardLayout>
       <div className="p-6 space-y-6">
-        {/* Header */}
         <div>
           <h1 className="font-display text-2xl font-bold">Your Progress</h1>
-          <p className="text-muted-foreground mt-1">
-            Track your learning journey and achievements
-          </p>
+          <p className="text-muted-foreground mt-1">Track your learning journey and achievements</p>
         </div>
 
-        {/* Stats Grid - Empty Placeholders */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-3">
@@ -20,19 +35,8 @@ export default function ProgressPage() {
                 <Flame className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-muted-foreground">--</p>
+                <p className="text-2xl font-bold">{streak}</p>
                 <p className="text-xs text-muted-foreground">Day Streak</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-blue-500" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-muted-foreground">--</p>
-                <p className="text-xs text-muted-foreground">Total Time</p>
               </div>
             </CardContent>
           </Card>
@@ -42,76 +46,123 @@ export default function ProgressPage() {
                 <ClipboardCheck className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-muted-foreground">--</p>
-                <p className="text-xs text-muted-foreground">Points Earned</p>
+                <p className="text-2xl font-bold">{totalPoints}</p>
+                <p className="text-xs text-muted-foreground">Points</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{completedChallenges.length}</p>
+                <p className="text-xs text-muted-foreground">Challenges</p>
               </div>
             </CardContent>
           </Card>
           <Card className="bg-card border-border">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-green-500" />
+                <Star className="w-5 h-5 text-green-500" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-muted-foreground">--</p>
-                <p className="text-xs text-muted-foreground">Your Interests</p>
+                <p className="text-2xl font-bold">{achievements.length}</p>
+                <p className="text-xs text-muted-foreground">Badges</p>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-6">
-          {/* Weekly Activity Placeholder */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-primary" />
-                Weekly Activity
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-40 flex items-center justify-center">
-                <p className="text-muted-foreground text-sm">
-                  Activity tracking coming soon
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Points Progress */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              Points Progress
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">{totalPoints} points</span>
+              <span className="text-muted-foreground">Next: {nextPointsMilestone}</span>
+            </div>
+            <Progress value={pointsProgress} className="h-3" />
+            <p className="text-xs text-muted-foreground">
+              {nextPointsMilestone - totalPoints} points until next milestone
+            </p>
+          </CardContent>
+        </Card>
 
-          {/* Achievements Placeholder */}
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Trophy className="w-5 h-5 text-amber-500" />
-                Achievements
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="h-40 flex items-center justify-center">
-                <p className="text-muted-foreground text-sm">
-                  Earn badges as you learn
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Achievements */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-amber-500" />
+              Achievements
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {ACHIEVEMENTS_ALL.map((badge) => {
+                const unlocked = achievements.some((a) => a.id === badge.id);
+                return (
+                  <div
+                    key={badge.id}
+                    className={`p-4 rounded-xl border text-center transition-all ${
+                      unlocked
+                        ? "border-primary/30 bg-primary/5"
+                        : "border-border bg-secondary/30 opacity-50"
+                    }`}
+                  >
+                    <span className="text-3xl">{badge.icon}</span>
+                    <p className="font-semibold text-sm mt-2">{badge.name}</p>
+                    <p className="text-xs text-muted-foreground">{badge.description}</p>
+                    {unlocked && (
+                      <p className="text-xs text-primary mt-1 font-medium">✓ Unlocked</p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
 
-        {/* Skill Progress Placeholder */}
+        {/* How to Earn */}
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
               <Target className="w-5 h-5 text-accent" />
-              Skill Levels
+              How to Earn Points
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-32 flex items-center justify-center">
-              <p className="text-muted-foreground text-sm">
-                Complete tests and courses to track your skill levels
-              </p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <span className="text-sm">Complete a challenge</span>
+                <span className="text-sm font-bold text-primary">+50 pts</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <span className="text-sm">Complete daily challenge</span>
+                <span className="text-sm font-bold text-primary">+100 pts</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <span className="text-sm">Create a community post</span>
+                <span className="text-sm font-bold text-primary">+25 pts</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <span className="text-sm">AI tutor session</span>
+                <span className="text-sm font-bold text-primary">+15 pts</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                <span className="text-sm">Daily streak bonus</span>
+                <span className="text-sm font-bold text-primary">+20 pts/day</span>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>;
+    </DashboardLayout>
+  );
 }

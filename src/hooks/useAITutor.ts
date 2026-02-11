@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 
 type Message = {
@@ -8,17 +8,45 @@ type Message = {
 };
 
 const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-tutor`;
+const STORAGE_KEY = "repend_ai_tutor_messages";
+
+const welcomeMessage: Message = {
+  id: "welcome",
+  role: "assistant",
+  content: "Hey! I'm your AI tutor. I can help you learn about coding, school subjects, creative skills, professional development, and much more. What would you like to explore today?",
+};
+
+function loadMessages(): Message[] {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as Message[];
+      if (parsed.length > 0) return parsed;
+    }
+  } catch { /* ignore */ }
+  return [welcomeMessage];
+}
+
+function saveMessages(messages: Message[]) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  } catch { /* ignore */ }
+}
 
 export function useAITutor() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hey! I'm your AI tutor. I can help you learn about coding, school subjects, creative skills, professional development, and much more. What would you like to explore today?",
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>(loadMessages);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+
+  // Save messages whenever they change
+  useEffect(() => {
+    saveMessages(messages);
+  }, [messages]);
+
+  const clearMessages = useCallback(() => {
+    setMessages([welcomeMessage]);
+    localStorage.removeItem(STORAGE_KEY);
+  }, []);
 
   const sendMessage = useCallback(async (input: string) => {
     if (!input.trim() || isLoading) return;
@@ -125,12 +153,11 @@ export function useAITutor() {
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to get response",
       });
-      // Remove the user message if we failed
       setMessages((prev) => prev.filter((m) => m.id !== userMessage.id));
     } finally {
       setIsLoading(false);
     }
   }, [messages, isLoading, toast]);
 
-  return { messages, isLoading, sendMessage };
+  return { messages, isLoading, sendMessage, clearMessages };
 }

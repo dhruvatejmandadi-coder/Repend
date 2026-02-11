@@ -6,27 +6,42 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/hooks/useAuth";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
-import { User, Mail, BookOpen, GraduationCap, Save } from "lucide-react";
+import { usePoints } from "@/hooks/usePoints";
+import { User, Mail, BookOpen, GraduationCap, Save, Trophy, Flame } from "lucide-react";
+
+const PROFILE_KEY = "repend_profile";
+
+function loadProfile() {
+  try {
+    const stored = localStorage.getItem(PROFILE_KEY);
+    if (stored) return JSON.parse(stored);
+  } catch { /* ignore */ }
+  return null;
+}
 
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { totalPoints, streak, achievements } = usePoints();
   const [loading, setLoading] = useState(false);
-  const [fullName, setFullName] = useState(user?.user_metadata?.full_name || "");
-  const [role, setRole] = useState<"learner" | "mentor">((user?.user_metadata?.role as "learner" | "mentor") || "learner");
-  const [bio, setBio] = useState("");
+
+  const saved = loadProfile();
+  const [fullName, setFullName] = useState(saved?.fullName || user?.user_metadata?.full_name || "");
+  const [role, setRole] = useState<"learner" | "mentor">(saved?.role || (user?.user_metadata?.role as "learner" | "mentor") || "learner");
+  const [bio, setBio] = useState(saved?.bio || "");
 
   const getInitials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
 
   const handleSave = () => {
     setLoading(true);
+    localStorage.setItem(PROFILE_KEY, JSON.stringify({ fullName, role, bio }));
     setTimeout(() => {
       setLoading(false);
       toast({ title: "Profile updated", description: "Your changes have been saved." });
-    }, 500);
+    }, 300);
   };
 
   return (
@@ -35,6 +50,43 @@ export default function Profile() {
         <div>
           <h1 className="font-display text-2xl font-bold">Your Profile</h1>
           <p className="text-muted-foreground mt-1">Manage your account settings</p>
+        </div>
+
+        {/* Points Summary */}
+        <div className="grid grid-cols-3 gap-3">
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{totalPoints}</p>
+                <p className="text-xs text-muted-foreground">Points</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center">
+                <Flame className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <p className="text-xl font-bold">{streak}</p>
+                <p className="text-xs text-muted-foreground">Day Streak</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="bg-card border-border">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
+                <span className="text-lg">🏅</span>
+              </div>
+              <div>
+                <p className="text-xl font-bold">{achievements.length}</p>
+                <p className="text-xs text-muted-foreground">Badges</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <Card className="bg-card border-border">
@@ -83,6 +135,7 @@ export default function Profile() {
                   rows={3}
                   maxLength={500}
                 />
+                <p className="text-xs text-muted-foreground text-right">{bio.length}/500</p>
               </div>
 
               <div className="space-y-2">
