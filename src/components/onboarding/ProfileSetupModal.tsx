@@ -38,8 +38,8 @@ export function ProfileSetupModal({ open, onComplete }: ProfileSetupModalProps) 
 
   return (
     <Dialog open={open} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-[480px] [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
-        <DialogHeader className="text-center">
+      <DialogContent className="sm:max-w-[480px] max-h-[90vh] overflow-hidden flex flex-col [&>button]:hidden" onPointerDownOutside={(e) => e.preventDefault()}>
+        <DialogHeader className="text-center flex-shrink-0">
           <div className="mx-auto w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-2">
             <User className="w-7 h-7 text-primary" />
           </div>
@@ -47,7 +47,7 @@ export function ProfileSetupModal({ open, onComplete }: ProfileSetupModalProps) 
           <DialogDescription>Tell us a bit about yourself to get started.</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
+        <div className="space-y-4 py-2 flex-1 overflow-y-auto">
           <div className="space-y-2">
             <Label htmlFor="setup-email">Email</Label>
             <Input id="setup-email" value={user?.email || ""} disabled className="bg-secondary/50" />
@@ -70,7 +70,7 @@ export function ProfileSetupModal({ open, onComplete }: ProfileSetupModalProps) 
               value={bio}
               onChange={(e) => setBio(e.target.value)}
               placeholder="Tell us a bit about yourself..."
-              rows={3}
+              rows={2}
               maxLength={500}
             />
             <p className="text-xs text-muted-foreground text-right">{bio.length}/500</p>
@@ -82,32 +82,34 @@ export function ProfileSetupModal({ open, onComplete }: ProfileSetupModalProps) 
               <button
                 type="button"
                 onClick={() => setRole("learner")}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                className={`p-3 rounded-xl border-2 text-left transition-all ${
                   role === "learner" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                 }`}
               >
-                <BookOpen className={`w-5 h-5 mb-2 ${role === "learner" ? "text-primary" : "text-muted-foreground"}`} />
+                <BookOpen className={`w-5 h-5 mb-1 ${role === "learner" ? "text-primary" : "text-muted-foreground"}`} />
                 <p className="font-semibold text-sm">Learner</p>
-                <p className="text-xs text-muted-foreground">I want to learn new skills</p>
+                <p className="text-xs text-muted-foreground">I want to learn</p>
               </button>
               <button
                 type="button"
                 onClick={() => setRole("mentor")}
-                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                className={`p-3 rounded-xl border-2 text-left transition-all ${
                   role === "mentor" ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                 }`}
               >
-                <GraduationCap className={`w-5 h-5 mb-2 ${role === "mentor" ? "text-primary" : "text-muted-foreground"}`} />
+                <GraduationCap className={`w-5 h-5 mb-1 ${role === "mentor" ? "text-primary" : "text-muted-foreground"}`} />
                 <p className="font-semibold text-sm">Mentor</p>
-                <p className="text-xs text-muted-foreground">I want to teach others</p>
+                <p className="text-xs text-muted-foreground">I want to teach</p>
               </button>
             </div>
           </div>
         </div>
 
-        <Button variant="hero" className="w-full" onClick={handleSave} disabled={saving || !fullName.trim()}>
-          {saving ? "Saving..." : "Done"}
-        </Button>
+        <div className="flex-shrink-0 pt-4 border-t border-border">
+          <Button variant="hero" className="w-full" onClick={handleSave} disabled={saving || !fullName.trim()}>
+            {saving ? "Saving..." : "Done"}
+          </Button>
+        </div>
       </DialogContent>
     </Dialog>
   );
