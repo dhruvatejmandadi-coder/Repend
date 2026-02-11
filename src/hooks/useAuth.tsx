@@ -30,9 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
 
-      if (event === "SIGNED_IN" && session?.user) {
+      // Only trigger onboarding for genuinely new sign-ins, not page reloads
+      if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user) {
+        const created = new Date(session.user.created_at).getTime();
+        const now = Date.now();
+        const isRecentSignup = now - created < 60000; // within 1 minute
         const onboarded = localStorage.getItem(`${ONBOARDED_KEY}_${session.user.id}`);
-        if (!onboarded) {
+        if (!onboarded && isRecentSignup) {
           setIsNewUser(true);
         }
       }
