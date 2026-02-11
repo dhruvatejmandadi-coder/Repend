@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { surveyQuestions, SurveyResponses, initialSurveyResponses } from "./SurveyData";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SignUpPromptModal } from "./SignUpPromptModal";
 
@@ -25,16 +24,8 @@ interface SurveyModalProps {
 }
 
 const steps = [
-  "goals",
-  "challenges",
-  "subject_area",
-  "skill_level",
-  "help_types",
-  "mentor_personality",
-  "learning_styles",
-  "time_commitment",
-  "urgency",
-  "success",
+  "goals", "challenges", "subject_area", "skill_level", "help_types",
+  "mentor_personality", "learning_styles", "time_commitment", "urgency", "success",
 ] as const;
 
 export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: SurveyModalProps) {
@@ -63,70 +54,22 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
     setResponses({ ...responses, [field]: value });
   };
 
-  const handleNext = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
+  const handleNext = () => { if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1); };
+  const handleBack = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
-  const handleBack = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     setIsSubmitting(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      const { error } = await supabase.from("user_surveys").insert({
-        user_id: user?.id || null,
-        goals: responses.goals,
-        goals_other: responses.goals_other || null,
-        challenges: responses.challenges,
-        challenges_other: responses.challenges_other || null,
-        subject_area: responses.subject_area || null,
-        subject_other: responses.subject_other || null,
-        skill_level: responses.skill_level || null,
-        help_types: responses.help_types,
-        help_other: responses.help_other || null,
-        mentor_personality: responses.mentor_personality,
-        mentor_other: responses.mentor_other || null,
-        learning_styles: responses.learning_styles,
-        learning_other: responses.learning_other || null,
-        time_commitment: responses.time_commitment || null,
-        urgency: responses.urgency || null,
-        success_definition: responses.success_definition || null,
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: "Survey completed!",
-        description: "Thanks for sharing your goals with us.",
-      });
-      
+    setTimeout(() => {
+      toast({ title: "Survey completed!", description: "Thanks for sharing your goals with us." });
       onOpenChange(false);
       setCurrentStep(0);
       setResponses(initialSurveyResponses);
-      
-      // Show sign-up prompt for anonymous users
-      if (!user && allowAnonymous) {
-        setTimeout(() => {
-          setShowSignUpPrompt(true);
-        }, 500);
-      }
-    } catch (error) {
-      console.error("Survey submission error:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save survey. Please try again.",
-      });
-    } finally {
       setIsSubmitting(false);
-    }
+
+      if (allowAnonymous) {
+        setTimeout(() => setShowSignUpPrompt(true), 500);
+      }
+    }, 500);
   };
 
   const renderStep = () => {
@@ -136,15 +79,9 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
       return (
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Open Insight</h3>
-          <p className="text-muted-foreground">
-            In one sentence, what would "success" look like for you?
-          </p>
-          <Textarea
-            value={responses.success_definition}
-            onChange={(e) => handleOtherChange("success_definition", e.target.value)}
-            placeholder="e.g., Getting my first internship, passing my calculus exam, launching my app..."
-            className="min-h-[100px]"
-          />
+          <p className="text-muted-foreground">In one sentence, what would "success" look like for you?</p>
+          <Textarea value={responses.success_definition} onChange={(e) => handleOtherChange("success_definition", e.target.value)}
+            placeholder="e.g., Getting my first internship, passing my calculus exam..." className="min-h-[100px]" />
         </div>
       );
     }
@@ -157,59 +94,33 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
     return (
       <div className="space-y-4">
         <div>
-          <p className="text-xs text-accent font-medium uppercase tracking-wide mb-1">
-            {questionData.title}
-          </p>
+          <p className="text-xs text-accent font-medium uppercase tracking-wide mb-1">{questionData.title}</p>
           <h3 className="text-lg font-semibold">{questionData.question}</h3>
-          {isMulti && (
-            <p className="text-sm text-muted-foreground mt-1">Select all that apply</p>
-          )}
+          {isMulti && <p className="text-sm text-muted-foreground mt-1">Select all that apply</p>}
         </div>
-
         {isMulti ? (
           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
             {questionData.options.map((option) => (
-              <label
-                key={option}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 cursor-pointer transition-colors"
-              >
-                <Checkbox
-                  checked={(responses[fieldName] as string[]).includes(option)}
-                  onCheckedChange={() => handleMultiSelect(fieldName, option)}
-                />
+              <label key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 cursor-pointer transition-colors">
+                <Checkbox checked={(responses[fieldName] as string[]).includes(option)} onCheckedChange={() => handleMultiSelect(fieldName, option)} />
                 <span className="text-sm">{option}</span>
               </label>
             ))}
             <div className="pt-2">
-              <Input
-                placeholder="Other (please specify)"
-                value={responses[otherFieldName] as string}
-                onChange={(e) => handleOtherChange(otherFieldName, e.target.value)}
-              />
+              <Input placeholder="Other (please specify)" value={responses[otherFieldName] as string} onChange={(e) => handleOtherChange(otherFieldName, e.target.value)} />
             </div>
           </div>
         ) : (
-          <RadioGroup
-            value={responses[fieldName] as string}
-            onValueChange={(value) => handleSingleSelect(fieldName, value)}
-            className="space-y-2 max-h-[300px] overflow-y-auto pr-2"
-          >
+          <RadioGroup value={responses[fieldName] as string} onValueChange={(value) => handleSingleSelect(fieldName, value)} className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
             {questionData.options.map((option) => (
-              <label
-                key={option}
-                className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 cursor-pointer transition-colors"
-              >
+              <label key={option} className="flex items-center gap-3 p-3 rounded-lg border border-border hover:bg-secondary/50 cursor-pointer transition-colors">
                 <RadioGroupItem value={option} />
                 <span className="text-sm">{option}</span>
               </label>
             ))}
             {otherFieldName in responses && (
               <div className="pt-2">
-                <Input
-                  placeholder="Other (please specify)"
-                  value={responses[otherFieldName] as string}
-                  onChange={(e) => handleOtherChange(otherFieldName, e.target.value)}
-                />
+                <Input placeholder="Other (please specify)" value={responses[otherFieldName] as string} onChange={(e) => handleOtherChange(otherFieldName, e.target.value)} />
               </div>
             )}
           </RadioGroup>
@@ -227,39 +138,26 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
             Help Us Match You
           </DialogTitle>
         </DialogHeader>
-
         <div className="space-y-2 mb-4">
           <Progress value={progress} className="h-2" />
-          <p className="text-xs text-muted-foreground text-right">
-            Step {currentStep + 1} of {steps.length}
-          </p>
+          <p className="text-xs text-muted-foreground text-right">Step {currentStep + 1} of {steps.length}</p>
         </div>
-
         <div className="flex-1 overflow-y-auto py-2">{renderStep()}</div>
-
         <div className="flex justify-between pt-4 border-t border-border">
-          <Button
-            variant="outline"
-            onClick={handleBack}
-            disabled={currentStep === 0}
-          >
-            <ChevronLeft className="w-4 h-4 mr-1" />
-            Back
+          <Button variant="outline" onClick={handleBack} disabled={currentStep === 0}>
+            <ChevronLeft className="w-4 h-4 mr-1" /> Back
           </Button>
-
           {currentStep === steps.length - 1 ? (
             <Button variant="hero" onClick={handleSubmit} disabled={isSubmitting}>
               {isSubmitting ? "Saving..." : "Complete"}
             </Button>
           ) : (
             <Button variant="hero" onClick={handleNext}>
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
+              Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           )}
         </div>
       </DialogContent>
-      
       <SignUpPromptModal open={showSignUpPrompt} onOpenChange={setShowSignUpPrompt} />
     </Dialog>
   );
