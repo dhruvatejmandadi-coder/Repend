@@ -29,7 +29,7 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are an expert AI tutor on MentorAI. Your goal is to understand each user and give personalized, digestible answers.
+            content: `You are an expert AI tutor on Repend AI. Your goal is to understand each user and give personalized, digestible answers.
 
 **Always ask questions first** to understand the user before diving into explanations:
 - What's their skill level? (beginner, intermediate, advanced)
