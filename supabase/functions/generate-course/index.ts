@@ -62,8 +62,8 @@ Return ONLY valid JSON with this exact structure:
       "lesson_content": "Detailed lesson in markdown (3-5 paragraphs with examples, code if relevant)",
       "youtube_query": "YouTube search query to find a relevant tutorial video",
       "youtube_title": "Suggested video title",
-      "lab_title": "Hands-on lab/assignment title",
-      "lab_description": "Detailed lab instructions in markdown (what to build/do, step by step)",
+      "lab_type": "simulation OR decision OR classification",
+      "lab_data": { ... structured lab object depending on lab_type ... },
       "quiz": [
         {
           "question": "Quiz question text",
@@ -75,12 +75,58 @@ Return ONLY valid JSON with this exact structure:
   ]
 }
 
-Each module should have:
-- Rich lesson content with markdown formatting, code blocks if relevant
-- A YouTube search query for finding related tutorial videos
-- A practical lab/assignment
-- 2-3 quiz questions with 4 options each
+INTERACTIVE LAB TYPES - Choose the BEST type for each module's topic:
 
+1. "simulation" - lab_data structure:
+{
+  "title": "Lab title",
+  "description": "What students will learn",
+  "equation_label": "The relationship being modeled",
+  "equation_template": "X + Y -> Output",
+  "output_label": "What the output represents",
+  "parameters": [
+    { "name": "Parameter Name", "icon": "emoji", "unit": "unit label", "min": 0, "max": 100, "default": 50, "description": "What this controls" }
+  ],
+  "thresholds": [
+    { "label": "High Result", "min_percent": 80, "message": "Explanation of high output" },
+    { "label": "Medium Result", "min_percent": 50, "message": "Explanation of medium output" },
+    { "label": "Low Result", "min_percent": 0, "message": "Explanation of low output" }
+  ]
+}
+Best for: economics, chemistry, physics, resource management, any topic with adjustable variables.
+
+2. "decision" - lab_data structure:
+{
+  "title": "Lab title",
+  "description": "Context for the decision scenarios",
+  "scenarios": [
+    {
+      "title": "Scenario title",
+      "description": "Detailed scenario description",
+      "emoji": "relevant emoji",
+      "choices": [
+        { "text": "Choice description", "consequence": "What happens", "impact": "positive OR negative OR neutral" }
+      ]
+    }
+  ],
+  "summary_prompt": "Reflection prompt after all decisions"
+}
+Best for: history, ethics, social studies, business, any topic with moral/strategic dilemmas.
+
+3. "classification" - lab_data structure:
+{
+  "title": "Lab title",
+  "description": "Instructions for classification",
+  "categories": [
+    { "name": "Category Name", "emoji": "emoji", "description": "What belongs here" }
+  ],
+  "items": [
+    { "name": "Item to classify", "correct_category": "Category Name", "hint": "Optional hint" }
+  ]
+}
+Best for: biology (taxonomy), language (parts of speech), science (element types), any topic with categorization.
+
+Each module MUST have a creative, educational interactive lab. Be creative with the parameters and scenarios!
 Make the course progressive - start with basics, build to advanced.`
           },
           { role: "user", content: `Create a comprehensive course on: ${topic}` }
@@ -105,8 +151,8 @@ Make the course progressive - start with basics, build to advanced.`
                         lesson_content: { type: "string" },
                         youtube_query: { type: "string" },
                         youtube_title: { type: "string" },
-                        lab_title: { type: "string" },
-                        lab_description: { type: "string" },
+                        lab_type: { type: "string", enum: ["simulation", "decision", "classification"] },
+                        lab_data: { type: "object" },
                         quiz: {
                           type: "array",
                           items: {
@@ -120,7 +166,7 @@ Make the course progressive - start with basics, build to advanced.`
                           }
                         }
                       },
-                      required: ["title", "lesson_content", "youtube_query", "youtube_title", "lab_title", "lab_description", "quiz"]
+                      required: ["title", "lesson_content", "youtube_query", "youtube_title", "lab_type", "lab_data", "quiz"]
                     }
                   }
                 },
@@ -177,8 +223,10 @@ Make the course progressive - start with basics, build to advanced.`
       lesson_content: mod.lesson_content,
       youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query)}`,
       youtube_title: mod.youtube_title,
-      lab_title: mod.lab_title,
-      lab_description: mod.lab_description,
+      lab_title: mod.lab_data?.title || mod.title + " Lab",
+      lab_description: null,
+      lab_type: mod.lab_type,
+      lab_data: mod.lab_data,
       quiz: mod.quiz,
     }));
 

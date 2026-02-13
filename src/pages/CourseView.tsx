@@ -26,6 +26,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import ReactMarkdown from "react-markdown";
+import InteractiveLab from "@/components/labs/InteractiveLab";
 
 type Module = {
   id: string;
@@ -36,6 +37,8 @@ type Module = {
   youtube_title: string | null;
   lab_title: string | null;
   lab_description: string | null;
+  lab_type: string | null;
+  lab_data: any;
   quiz: any[];
   completed: boolean;
 };
@@ -218,17 +221,12 @@ export default function CourseView() {
 
               {/* Lab */}
               {activeContent === "lab" && (
-                <Card>
-                  <CardContent className="p-6">
-                    <div className="flex items-center gap-2 mb-4">
-                      <FlaskConical className="w-5 h-5 text-primary" />
-                      <h3 className="font-display font-bold text-lg">{mod.lab_title}</h3>
-                    </div>
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border">
-                      <ReactMarkdown>{mod.lab_description || ""}</ReactMarkdown>
-                    </div>
-                  </CardContent>
-                </Card>
+                <InteractiveLab
+                  labType={mod.lab_type}
+                  labData={mod.lab_data}
+                  labTitle={mod.lab_title}
+                  labDescription={mod.lab_description}
+                />
               )}
 
               {/* Quiz */}

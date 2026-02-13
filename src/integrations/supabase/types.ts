@@ -150,8 +150,10 @@ export type Database = {
           course_id: string
           created_at: string
           id: string
+          lab_data: Json | null
           lab_description: string | null
           lab_title: string | null
+          lab_type: string | null
           lesson_content: string
           module_order: number
           quiz: Json | null
@@ -164,8 +166,10 @@ export type Database = {
           course_id: string
           created_at?: string
           id?: string
+          lab_data?: Json | null
           lab_description?: string | null
           lab_title?: string | null
+          lab_type?: string | null
           lesson_content: string
           module_order: number
           quiz?: Json | null
@@ -178,8 +182,10 @@ export type Database = {
           course_id?: string
           created_at?: string
           id?: string
+          lab_data?: Json | null
           lab_description?: string | null
           lab_title?: string | null
+          lab_type?: string | null
           lesson_content?: string
           module_order?: number
           quiz?: Json | null
