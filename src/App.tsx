@@ -6,7 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import Index from "./pages/Index";
-import Mentors from "./pages/Mentors";
+import Courses from "./pages/Courses";
+import CourseView from "./pages/CourseView";
 import AITutor from "./pages/AITutor";
 import Dashboard from "./pages/Dashboard";
 import Community from "./pages/Community";
@@ -31,7 +32,8 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/mentors" element={<Mentors />} />
+            <Route path="/courses" element={<Courses />} />
+            <Route path="/courses/:id" element={<CourseView />} />
             <Route path="/ai-tutor" element={<AITutor />} />
             <Route path="/community" element={<Community />} />
             <Route path="/challenges" element={<Challenges />} />

@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   Bot, 
   TrendingUp,
-  Users,
+  BookOpen,
   ArrowRight,
   Sparkles,
   Rocket
@@ -115,17 +115,17 @@ export default function Dashboard() {
           <Card className="bg-card border-border hover:border-primary/30 transition-colors">
             <CardHeader className="pb-2">
               <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center mb-2">
-                <Users className="w-5 h-5 text-accent" />
+                <BookOpen className="w-5 h-5 text-accent" />
               </div>
-              <CardTitle className="text-lg">Find Mentors</CardTitle>
+              <CardTitle className="text-lg">AI Courses</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-muted-foreground mb-4">
-                Connect with expert mentors in any skill area.
+                Generate personalized courses on any topic with AI.
               </p>
               <Button variant="outline" size="sm" className="w-full" asChild>
-                <Link to="/mentors">
-                  Browse Mentors
+                <Link to="/courses">
+                  Create Course
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </Button>

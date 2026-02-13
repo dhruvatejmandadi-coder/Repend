@@ -5,7 +5,8 @@ import {
   LogOut,
   User,
   MessageSquare,
-  Trophy
+  Trophy,
+  BookOpen
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -25,6 +26,7 @@ import { useAuth } from "@/hooks/useAuth";
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Courses", url: "/courses", icon: BookOpen },
   { title: "Challenges", url: "/challenges", icon: Trophy },
   { title: "AI Tutor", url: "/ai-tutor", icon: Bot },
   { title: "Community", url: "/community", icon: MessageSquare },

@@ -144,6 +144,92 @@ export type Database = {
         }
         Relationships: []
       }
+      course_modules: {
+        Row: {
+          completed: boolean
+          course_id: string
+          created_at: string
+          id: string
+          lab_description: string | null
+          lab_title: string | null
+          lesson_content: string
+          module_order: number
+          quiz: Json | null
+          title: string
+          youtube_title: string | null
+          youtube_url: string | null
+        }
+        Insert: {
+          completed?: boolean
+          course_id: string
+          created_at?: string
+          id?: string
+          lab_description?: string | null
+          lab_title?: string | null
+          lesson_content: string
+          module_order: number
+          quiz?: Json | null
+          title: string
+          youtube_title?: string | null
+          youtube_url?: string | null
+        }
+        Update: {
+          completed?: boolean
+          course_id?: string
+          created_at?: string
+          id?: string
+          lab_description?: string | null
+          lab_title?: string | null
+          lesson_content?: string
+          module_order?: number
+          quiz?: Json | null
+          title?: string
+          youtube_title?: string | null
+          youtube_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_modules_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      courses: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+          title: string
+          topic: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title: string
+          topic: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          title?: string
+          topic?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
