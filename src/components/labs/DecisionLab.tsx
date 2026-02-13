@@ -26,12 +26,17 @@ type DecisionData = {
 };
 
 export default function DecisionLab({ data }: { data: DecisionData }) {
+  const scenarios = data?.scenarios ?? [];
   const [currentScenario, setCurrentScenario] = useState(0);
   const [decisions, setDecisions] = useState<{ scenario: string; choice: string; impact: string }[]>([]);
   const [selectedChoice, setSelectedChoice] = useState<Choice | null>(null);
   const [completed, setCompleted] = useState(false);
 
-  const scenario = data.scenarios[currentScenario];
+  const scenario = scenarios[currentScenario];
+
+  if (!scenarios.length) {
+    return <Card><CardContent className="p-6 text-muted-foreground text-sm">No decision data available.</CardContent></Card>;
+  }
 
   const handleChoice = (choice: Choice) => {
     setSelectedChoice(choice);
@@ -39,9 +44,9 @@ export default function DecisionLab({ data }: { data: DecisionData }) {
   };
 
   const handleNext = () => {
-    if (selectedChoice?.next_scenario !== undefined && selectedChoice.next_scenario < data.scenarios.length) {
+    if (selectedChoice?.next_scenario !== undefined && selectedChoice.next_scenario < scenarios.length) {
       setCurrentScenario(selectedChoice.next_scenario);
-    } else if (currentScenario + 1 < data.scenarios.length) {
+    } else if (currentScenario + 1 < scenarios.length) {
       setCurrentScenario(currentScenario + 1);
     } else {
       setCompleted(true);
@@ -94,7 +99,7 @@ export default function DecisionLab({ data }: { data: DecisionData }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <Badge variant="secondary">Scenario {currentScenario + 1} of {data.scenarios.length}</Badge>
+        <Badge variant="secondary">Scenario {currentScenario + 1} of {scenarios.length}</Badge>
       </div>
 
       <Card>
@@ -146,7 +151,7 @@ export default function DecisionLab({ data }: { data: DecisionData }) {
 
       {selectedChoice && (
         <Button variant="hero" onClick={handleNext}>
-          {currentScenario + 1 < data.scenarios.length ? (
+          {currentScenario + 1 < scenarios.length ? (
             <><ArrowRight className="w-4 h-4 mr-1" /> Next Scenario</>
           ) : (
             <>See Results</>

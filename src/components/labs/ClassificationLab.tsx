@@ -24,22 +24,24 @@ type ClassificationData = {
 };
 
 export default function ClassificationLab({ data }: { data: ClassificationData }) {
+  const items = data?.items ?? [];
+  const categories = data?.categories ?? [];
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [currentItem, setCurrentItem] = useState(0);
   const [submitted, setSubmitted] = useState(false);
 
-  const item = data.items[currentItem];
-  const allAssigned = Object.keys(assignments).length === data.items.length;
+  const item = items[currentItem];
+  const allAssigned = Object.keys(assignments).length === items.length;
 
   const assignToCategory = (category: string) => {
     setAssignments((prev) => ({ ...prev, [item.name]: category }));
-    if (currentItem + 1 < data.items.length) {
+    if (currentItem + 1 < items.length) {
       setCurrentItem(currentItem + 1);
     }
   };
 
   const score = submitted
-    ? data.items.filter((it) => assignments[it.name] === it.correct_category).length
+    ? items.filter((it) => assignments[it.name] === it.correct_category).length
     : 0;
 
   const reset = () => {
@@ -48,22 +50,26 @@ export default function ClassificationLab({ data }: { data: ClassificationData }
     setSubmitted(false);
   };
 
+  if (!items.length || !categories.length) {
+    return <Card><CardContent className="p-6 text-muted-foreground text-sm">No classification data available.</CardContent></Card>;
+  }
+
   if (submitted) {
     return (
       <div className="space-y-4">
         <Card className="border-primary/20">
           <CardContent className="p-6">
             <h3 className="font-display font-bold text-lg mb-2">
-              Results: {score}/{data.items.length} correct
+              Results: {score}/{items.length} correct
             </h3>
             <div className="w-full bg-secondary rounded-full h-3 mb-4">
               <div
                 className="bg-primary h-3 rounded-full transition-all"
-                style={{ width: `${(score / data.items.length) * 100}%` }}
+                style={{ width: `${(score / items.length) * 100}%` }}
               />
             </div>
             <div className="space-y-2">
-              {data.items.map((it) => {
+              {items.map((it) => {
                 const isCorrect = assignments[it.name] === it.correct_category;
                 return (
                   <div key={it.name} className={`flex items-center justify-between p-3 rounded-lg text-sm ${isCorrect ? "bg-green-500/10" : "bg-destructive/10"}`}>
@@ -90,10 +96,10 @@ export default function ClassificationLab({ data }: { data: ClassificationData }
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">{data.description}</p>
+      <p className="text-sm text-muted-foreground">{data?.description}</p>
 
       <div className="flex items-center justify-between">
-        <Badge variant="secondary">Item {Math.min(currentItem + 1, data.items.length)} of {data.items.length}</Badge>
+        <Badge variant="secondary">Item {Math.min(currentItem + 1, items.length)} of {items.length}</Badge>
         <span className="text-xs text-muted-foreground">{Object.keys(assignments).length} classified</span>
       </div>
 
@@ -108,7 +114,7 @@ export default function ClassificationLab({ data }: { data: ClassificationData }
       )}
 
       <div className="grid grid-cols-2 gap-3">
-        {data.categories.map((cat) => {
+        {categories.map((cat) => {
           const count = Object.values(assignments).filter((a) => a === cat.name).length;
           return (
             <button

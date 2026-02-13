@@ -25,33 +25,42 @@ type SimulationData = {
 };
 
 export default function SimulationLab({ data }: { data: SimulationData }) {
+  const parameters = data?.parameters ?? [];
+  const thresholds = data?.thresholds ?? [];
+
   const [values, setValues] = useState<Record<string, number>>(() =>
-    Object.fromEntries(data.parameters.map((p) => [p.name, p.default]))
+    Object.fromEntries(parameters.map((p) => [p.name, p.default]))
   );
 
   const totalCapacity = useMemo(() => {
-    const total = data.parameters.reduce((sum, p) => sum + values[p.name], 0);
-    const maxTotal = data.parameters.reduce((sum, p) => sum + p.max, 0);
-    return Math.round((total / maxTotal) * 100);
-  }, [values, data.parameters]);
+    if (!parameters.length) return 0;
+    const total = parameters.reduce((sum, p) => sum + (values[p.name] ?? 0), 0);
+    const maxTotal = parameters.reduce((sum, p) => sum + p.max, 0);
+    return maxTotal ? Math.round((total / maxTotal) * 100) : 0;
+  }, [values, parameters]);
 
   const limiting = useMemo(() => {
     let minRatio = Infinity;
     let limitingParam = "";
-    data.parameters.forEach((p) => {
-      const ratio = values[p.name] / p.max;
+    parameters.forEach((p) => {
+      const ratio = (values[p.name] ?? 0) / p.max;
       if (ratio < minRatio) {
         minRatio = ratio;
         limitingParam = p.name;
       }
     });
     return limitingParam;
-  }, [values, data.parameters]);
+  }, [values, parameters]);
 
   const threshold = useMemo(() => {
-    const sorted = [...data.thresholds].sort((a, b) => b.min_percent - a.min_percent);
+    if (!thresholds.length) return null;
+    const sorted = [...thresholds].sort((a, b) => b.min_percent - a.min_percent);
     return sorted.find((t) => totalCapacity >= t.min_percent) || sorted[sorted.length - 1];
-  }, [totalCapacity, data.thresholds]);
+  }, [totalCapacity, thresholds]);
+
+  if (!parameters.length) {
+    return <Card><CardContent className="p-6 text-muted-foreground text-sm">No simulation data available.</CardContent></Card>;
+  }
 
   return (
     <div className="space-y-6">
@@ -62,11 +71,11 @@ export default function SimulationLab({ data }: { data: SimulationData }) {
             <h3 className="font-display font-bold text-lg">{data.equation_label}</h3>
           </div>
           <div className="bg-secondary/50 rounded-lg p-4 font-mono text-sm">
-            {data.parameters.map((p, i) => (
+          {parameters.map((p, i) => (
               <span key={p.name}>
                 <span className="text-primary font-bold">{values[p.name]}</span>{" "}
                 <span className="text-muted-foreground">{p.name}</span>
-                {i < data.parameters.length - 1 && <span className="text-muted-foreground"> + </span>}
+                {i < parameters.length - 1 && <span className="text-muted-foreground"> + </span>}
               </span>
             ))}
             <span className="text-muted-foreground"> → </span>
@@ -76,7 +85,7 @@ export default function SimulationLab({ data }: { data: SimulationData }) {
         </CardContent>
       </Card>
 
-      {data.parameters.map((p) => (
+      {parameters.map((p) => (
         <div key={p.name} className="space-y-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
