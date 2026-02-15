@@ -215,20 +215,54 @@ Make the course progressive - start with basics, build to advanced.`
       status: "ready"
     }).eq("id", course.id);
 
-    // Insert modules
-    const modules = courseData.modules.map((mod: any, index: number) => ({
-      course_id: course.id,
-      module_order: index + 1,
-      title: mod.title,
-      lesson_content: mod.lesson_content,
-      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query)}`,
-      youtube_title: mod.youtube_title,
-      lab_title: mod.lab_data?.title || mod.title + " Lab",
-      lab_description: null,
-      lab_type: mod.lab_type,
-      lab_data: mod.lab_data,
-      quiz: mod.quiz,
-    }));
+    // Validate and fix lab data before inserting
+    const modules = courseData.modules.map((mod: any, index: number) => {
+      let labData = mod.lab_data;
+      let labType = mod.lab_type;
+
+      // Validate lab_data has actual content
+      const isValid = labData && typeof labData === "object" && (
+        (labType === "simulation" && Array.isArray(labData.parameters) && labData.parameters.length > 0) ||
+        (labType === "decision" && Array.isArray(labData.scenarios) && labData.scenarios.length > 0) ||
+        (labType === "classification" && Array.isArray(labData.items) && labData.items.length > 0)
+      );
+
+      if (!isValid) {
+        console.warn(`[generate-course] Empty/invalid lab_data for module "${mod.title}", generating server fallback.`);
+        labType = "simulation";
+        labData = {
+          title: `${mod.title} Lab`,
+          description: `Explore the key factors of ${mod.title.toLowerCase()} in this interactive simulation.`,
+          equation_label: `${mod.title} Factor Model`,
+          equation_template: "Factor A + Factor B + Factor C → Output",
+          output_label: "Overall Understanding",
+          parameters: [
+            { name: "Conceptual Grasp", icon: "🧠", unit: "%", min: 0, max: 100, default: 50, description: "Understanding of core concepts" },
+            { name: "Practical Skills", icon: "✏️", unit: "%", min: 0, max: 100, default: 30, description: "Hands-on application ability" },
+            { name: "Critical Thinking", icon: "💡", unit: "%", min: 0, max: 100, default: 40, description: "Analytical reasoning applied to the topic" },
+          ],
+          thresholds: [
+            { label: "🌟 Expert Level", min_percent: 80, message: "Strong command of all key factors." },
+            { label: "📈 Progressing", min_percent: 50, message: "Solid foundation — focus on weaker areas." },
+            { label: "🔰 Beginner", min_percent: 0, message: "Keep exploring — increase each factor to build mastery." },
+          ],
+        };
+      }
+
+      return {
+        course_id: course.id,
+        module_order: index + 1,
+        title: mod.title,
+        lesson_content: mod.lesson_content,
+        youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query)}`,
+        youtube_title: mod.youtube_title,
+        lab_title: labData?.title || mod.title + " Lab",
+        lab_description: null,
+        lab_type: labType,
+        lab_data: labData,
+        quiz: mod.quiz,
+      };
+    });
 
     const { error: modulesError } = await supabase.from("course_modules").insert(modules);
     if (modulesError) {
