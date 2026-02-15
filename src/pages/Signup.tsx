@@ -201,18 +201,3 @@ export default function Signup() {
     </div>
   );
 }
-
-            </Button>
-
-            <p className="text-center text-sm text-muted-foreground mt-6">
-              Already have an account?{" "}
-              <Link to="/login" className="text-primary hover:underline">
-                Log in
-              </Link>
-            </p>
-          </div>
-        </div>
-      </main>
-    </div>);
-
-}
