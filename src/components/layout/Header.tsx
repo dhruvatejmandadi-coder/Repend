@@ -16,11 +16,6 @@ export function Header() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    setMobileMenuOpen(false);
-  };
-
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
     scrolled ?
@@ -35,29 +30,16 @@ export function Header() {
               src={rependLogo}
               alt="Repend"
               className="h-8 sm:h-9 w-auto object-contain" />
-
           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-8">
-            
-
-
-
-
-
-            <button
-              onClick={scrollToTop}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
-
-              AI Tutor
-            </button>
-            <button
-              onClick={scrollToTop}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
-
-              Community
-            </button>
+            <Link
+              to="/courses"
+              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium"
+            >
+              Try AI Course
+            </Link>
           </nav>
 
           {/* Desktop CTA */}
@@ -74,7 +56,6 @@ export function Header() {
           <button
             className="md:hidden p-2 text-foreground hover:bg-secondary rounded-lg transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-
             {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
@@ -83,24 +64,13 @@ export function Header() {
         {mobileMenuOpen &&
         <div className="md:hidden py-4 border-t border-border animate-fade-in bg-background/95 backdrop-blur-md">
             <nav className="flex flex-col gap-4">
-              <button
-              onClick={scrollToTop}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium py-2 text-left">
-
-                Challenges
-              </button>
-              <button
-              onClick={scrollToTop}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium py-2 text-left">
-
-                AI Tutor
-              </button>
-              <button
-              onClick={scrollToTop}
-              className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium py-2 text-left">
-
-                Community
-              </button>
+              <Link
+                to="/courses"
+                className="text-muted-foreground hover:text-foreground transition-colors text-sm font-medium py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Try AI Course
+              </Link>
               <div className="flex gap-3 pt-4 border-t border-border">
                 <Button variant="ghost" size="sm" asChild className="flex-1">
                   <Link to="/login">Log in</Link>
@@ -113,6 +83,6 @@ export function Header() {
           </div>
         }
       </div>
-    </header>);
-
+    </header>
+  );
 }

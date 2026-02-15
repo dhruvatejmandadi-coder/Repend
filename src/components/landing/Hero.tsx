@@ -39,8 +39,8 @@ export function Hero() {
           {/* CTAs */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
             <Button variant="hero" size="xl" asChild>
-              <Link to="/signup">
-                Get Started Free
+              <Link to="/courses">
+                Try AI Course Free
                 <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
