@@ -71,6 +71,14 @@ For "decision" labs: Create realistic scenarios with meaningful trade-offs drawn
 
 For "classification" labs: Use real items and categories from the module's lesson content (e.g., types of reactions, parts of speech, literary devices).
 
+CRITICAL: LAB TYPE VARIETY
+- A course with 4-6 modules MUST use a MIX of lab types. Use at least 2 different lab_type values across the course.
+- Suggested distribution: 2 simulation labs, 2 decision labs, 1-2 classification labs.
+- Decision labs work great for modules about processes, trade-offs, real-world applications, ethics, or strategy.
+- Classification labs work great for modules about categorization, terminology, identifying types, or sorting concepts.
+- Simulation labs work great for modules about measurable variables, cause-and-effect, or quantitative relationships.
+- Pick the lab_type that best fits each module's content — do NOT default everything to simulation.
+
 Make each lab genuinely educational — a student should learn by interacting with it.`
           },
           { role: "user", content: `Create a comprehensive course on: ${topic}` }
@@ -260,7 +268,6 @@ Make each lab genuinely educational — a student should learn by interacting wi
 
       if (!isValid) {
         console.warn(`[generate-course] Empty/invalid lab_data for module "${mod.title}", generating server fallback.`);
-        labType = "simulation";
 
         // Extract key noun phrases from lesson content for topic-relevant fallback
         const lessonSnippet = (mod.lesson_content || "").slice(0, 300);
@@ -268,15 +275,15 @@ Make each lab genuinely educational — a student should learn by interacting wi
           .replace(/[^a-zA-Z\s]/g, " ")
           .split(/\s+/)
           .filter((w: string) => w.length > 5);
-        // Pick up to 3 unique capitalized or long words as parameter names
         const seen = new Set<string>();
         const keyTerms: string[] = [];
+        const stopWords = ["which", "their", "these", "about", "through", "between", "understanding", "important", "different", "example", "process", "called", "during"];
         for (const w of words) {
           const lower = w.toLowerCase();
-          if (!seen.has(lower) && !["which", "their", "these", "about", "through", "between", "understanding"].includes(lower)) {
+          if (!seen.has(lower) && !stopWords.includes(lower)) {
             seen.add(lower);
             keyTerms.push(w.charAt(0).toUpperCase() + w.slice(1).toLowerCase());
-            if (keyTerms.length >= 3) break;
+            if (keyTerms.length >= 6) break;
           }
         }
         if (keyTerms.length < 3) {
@@ -287,25 +294,81 @@ Make each lab genuinely educational — a student should learn by interacting wi
             if (!seen.has(cap.toLowerCase())) { keyTerms.push(cap); seen.add(cap.toLowerCase()); }
           }
         }
-        while (keyTerms.length < 3) keyTerms.push(`Factor ${keyTerms.length + 1}`);
-        const icons = ["🔬", "📊", "⚙️"];
+        while (keyTerms.length < 6) keyTerms.push(`Concept ${keyTerms.length + 1}`);
 
-        labData = {
-          title: `${mod.title} Lab`,
-          description: `Explore the key factors of ${mod.title.toLowerCase()} in this interactive simulation.`,
-          equation_label: `${mod.title} Model`,
-          equation_template: `${keyTerms[0]} + ${keyTerms[1]} + ${keyTerms[2]} → Output`,
-          output_label: `${mod.title} Score`,
-          parameters: keyTerms.map((term: string, i: number) => ({
-            name: term, icon: icons[i] || "📐", unit: "%", min: 0, max: 100, default: 50,
-            description: `Level of ${term.toLowerCase()} as it relates to ${mod.title.toLowerCase()}`
-          })),
-          thresholds: [
-            { label: "🌟 Expert Level", min_percent: 80, message: `Strong command of ${mod.title.toLowerCase()}.` },
-            { label: "📈 Progressing", min_percent: 50, message: "Solid foundation — focus on weaker areas." },
-            { label: "🔰 Beginner", min_percent: 0, message: "Keep exploring — increase each factor to build mastery." },
-          ],
-        };
+        const fallbackType = index % 3;
+
+        if (fallbackType === 1) {
+          // Decision lab fallback
+          labType = "decision";
+          labData = {
+            title: `${mod.title} Decisions`,
+            description: `Make critical decisions related to ${mod.title.toLowerCase()}.`,
+            scenarios: [
+              {
+                title: `${keyTerms[0]} Strategy`,
+                description: `You need to decide how to approach ${keyTerms[0].toLowerCase()} in the context of ${mod.title.toLowerCase()}.`,
+                emoji: "🤔",
+                choices: [
+                  { text: `Prioritize ${keyTerms[0].toLowerCase()}`, consequence: `Strong focus on ${keyTerms[0].toLowerCase()} yields deep understanding but may neglect other factors.`, impact: "positive" },
+                  { text: `Balance ${keyTerms[0].toLowerCase()} with ${keyTerms[1].toLowerCase()}`, consequence: `A balanced approach covers more ground but with less depth.`, impact: "neutral" },
+                  { text: `Ignore ${keyTerms[0].toLowerCase()}`, consequence: `Skipping this fundamental concept creates knowledge gaps.`, impact: "negative" },
+                ],
+              },
+              {
+                title: `${keyTerms[1]} Trade-off`,
+                description: `Consider the trade-offs when applying ${keyTerms[1].toLowerCase()} to ${mod.title.toLowerCase()}.`,
+                emoji: "⚖️",
+                choices: [
+                  { text: `Apply ${keyTerms[1].toLowerCase()} carefully`, consequence: `Careful application leads to better outcomes.`, impact: "positive" },
+                  { text: `Partial application of ${keyTerms[1].toLowerCase()}`, consequence: `Some benefit, but results are inconsistent.`, impact: "neutral" },
+                  { text: `Skip ${keyTerms[1].toLowerCase()} entirely`, consequence: `Missing this step leads to poor results.`, impact: "negative" },
+                ],
+              },
+            ],
+            summary_prompt: `Reflect on how your decisions about ${keyTerms[0].toLowerCase()} and ${keyTerms[1].toLowerCase()} impact ${mod.title.toLowerCase()}.`,
+          };
+        } else if (fallbackType === 2) {
+          // Classification lab fallback
+          labType = "classification";
+          const catTerms = keyTerms.slice(0, 3);
+          const itemTerms = keyTerms.slice(0, 6);
+          labData = {
+            title: `${mod.title} Classifier`,
+            description: `Sort concepts related to ${mod.title.toLowerCase()} into the correct categories.`,
+            categories: catTerms.map((t: string, i: number) => ({
+              name: t,
+              emoji: ["📁", "📂", "🗂️"][i],
+              description: `Items related to ${t.toLowerCase()} in ${mod.title.toLowerCase()}.`,
+            })),
+            items: itemTerms.map((t: string, i: number) => ({
+              name: `${t} concept`,
+              correct_category: catTerms[i % catTerms.length],
+              hint: `Think about how this relates to ${catTerms[i % catTerms.length].toLowerCase()}.`,
+            })),
+          };
+        } else {
+          // Simulation lab fallback (existing logic)
+          labType = "simulation";
+          const simTerms = keyTerms.slice(0, 3);
+          const icons = ["🔬", "📊", "⚙️"];
+          labData = {
+            title: `${mod.title} Lab`,
+            description: `Explore the key factors of ${mod.title.toLowerCase()} in this interactive simulation.`,
+            equation_label: `${mod.title} Model`,
+            equation_template: `${simTerms[0]} + ${simTerms[1]} + ${simTerms[2]} → Output`,
+            output_label: `${mod.title} Score`,
+            parameters: simTerms.map((term: string, i: number) => ({
+              name: term, icon: icons[i] || "📐", unit: "%", min: 0, max: 100, default: 50,
+              description: `Level of ${term.toLowerCase()} as it relates to ${mod.title.toLowerCase()}`
+            })),
+            thresholds: [
+              { label: "🌟 Expert Level", min_percent: 80, message: `Strong command of ${mod.title.toLowerCase()}.` },
+              { label: "📈 Progressing", min_percent: 50, message: "Solid foundation — focus on weaker areas." },
+              { label: "🔰 Beginner", min_percent: 0, message: "Keep exploring — increase each factor to build mastery." },
+            ],
+          };
+        }
       }
 
       return {
