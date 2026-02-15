@@ -1,45 +1,68 @@
 
 
-# Mix Lab Types: Add Decision & Classification Labs
+# Turn Lessons into Interactive Slides
 
-## Problem
-The system prompt and schema already support all three lab types (simulation, decision, classification), but the AI defaults to generating only simulation labs. The server-side fallback also only produces simulation labs. The result: every module gets sliders, no variety.
+## What Changes
 
-## Changes
+Instead of showing lessons as one long wall of text, lessons will be split into **navigable slides** with emoji-rich content. Users click "Next" and "Previous" to move through bite-sized content cards.
 
-### File: `supabase/functions/generate-course/index.ts`
+## Two Parts
 
-**1. Add explicit variety instruction to the system prompt**
+### 1. AI Prompt Update (Edge Function)
 
-Add to the system prompt (around line 54-74):
+Update the system prompt in `supabase/functions/generate-course/index.ts` to instruct the AI to:
+- Format `lesson_content` with `---` (horizontal rule) separators between slides
+- Each slide should have an emoji-prefixed heading (e.g., `## 🧬 What is DNA?`)
+- Keep each slide to 2-3 short paragraphs max
+- Add relevant emojis throughout the text to make it engaging
+- Aim for 4-6 slides per module
 
+Example output format:
 ```
-CRITICAL: LAB TYPE VARIETY
-- A course with 4-6 modules MUST use a MIX of lab types. Use at least 2 different lab_type values across the course.
-- Suggested distribution: 2 simulation labs, 2 decision labs, 1-2 classification labs.
-- Decision labs work great for modules about processes, trade-offs, real-world applications, ethics, or strategy.
-- Classification labs work great for modules about categorization, terminology, identifying types, or sorting concepts.
-- Simulation labs work great for modules about measurable variables, cause-and-effect, or quantitative relationships.
-- Pick the lab_type that best fits each module's content — do NOT default everything to simulation.
+## 🎯 Introduction to Forces
+
+Forces are pushes or pulls that act on objects! 💪 ...
+
+---
+
+## 🔬 Types of Forces
+
+There are two main types of forces: **contact** and **non-contact** ✨ ...
+
+---
+
+## 📐 Measuring Forces
+
+We measure forces in **Newtons (N)** 📏 ...
 ```
 
-**2. Improve the server-side fallback to rotate lab types**
+### 2. Slide Viewer Component (Frontend)
 
-Currently lines 261-309 always fall back to `labType = "simulation"`. Change the fallback to rotate through types based on the module index:
+Create a new `LessonSlides` component used in `CourseView.tsx` that:
+- Splits the markdown content on `---` into an array of slides
+- Shows one slide at a time inside a styled card
+- Displays a slide counter (e.g., "Slide 2 of 5")
+- Has "Previous" and "Next" buttons with arrow icons
+- Supports keyboard navigation (left/right arrow keys)
+- Shows a progress bar across the top of the slide
+- Each slide renders its markdown chunk with `ReactMarkdown`
 
-- Module index % 3 === 0 --> simulation fallback (existing logic with key-term extraction)
-- Module index % 3 === 1 --> decision fallback: generate 2-3 scenarios from the lesson content key terms, each with 3 choices (positive/negative/neutral)
-- Module index % 3 === 2 --> classification fallback: extract 3 categories from key terms and create 6 items to sort
+### Technical Details
 
-This ensures even when the AI fails, users still see varied lab types.
+**New file:** `src/components/courses/LessonSlides.tsx`
+- Props: `content: string`, `youtubeUrl?: string`, `youtubeTitle?: string`
+- Splits content by `---` separator, trims empty slides
+- Manages `currentSlide` state (0-indexed)
+- Renders the YouTube card on the last slide
+- Keyboard listener for arrow key navigation
 
-**3. No changes to frontend**
+**Modified file:** `src/pages/CourseView.tsx`
+- Replace the current lesson rendering block (lines 194-219) with the new `<LessonSlides>` component
+- Pass `mod.lesson_content`, `mod.youtube_url`, `mod.youtube_title` as props
 
-`InteractiveLab.tsx` already handles all three lab types and has frontend fallbacks. `DecisionLab.tsx` and `ClassificationLab.tsx` already render properly. No frontend changes needed.
+**Modified file:** `supabase/functions/generate-course/index.ts`
+- Add to system prompt: instruction to format lesson_content as slide-separated sections using `---`, with emoji headings, 4-6 slides per module, 2-3 paragraphs max per slide
+- Update the `lesson_content` field description in the tool schema to: `"Detailed lesson formatted as slides separated by --- dividers. Each slide starts with an emoji heading (## emoji Title). 4-6 slides per module, 2-3 paragraphs each. Use emojis throughout to make content engaging."`
 
-## Summary
-- One file changed: `supabase/functions/generate-course/index.ts`
-- Prompt update to force lab type variety
-- Fallback logic expanded from simulation-only to all three types
-- Zero new API calls, zero new dependencies
+Existing courses with plain markdown will still work -- if no `---` separators are found, the entire content becomes a single slide.
 
