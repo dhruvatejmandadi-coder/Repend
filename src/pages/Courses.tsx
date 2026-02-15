@@ -2,12 +2,13 @@ import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight } from "lucide-react";
+import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Rocket } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { GeneratingSignUpPrompt } from "@/components/survey/GeneratingSignUpPrompt";
 
 type Course = {
   id: string;
@@ -23,12 +24,17 @@ export default function Courses() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (user) fetchCourses();
+    if (user) {
+      fetchCourses();
+    } else {
+      setLoading(false);
+    }
   }, [user]);
 
   const fetchCourses = async () => {
@@ -42,9 +48,12 @@ export default function Courses() {
 
   const handleGenerate = async () => {
     if (!topic.trim() || isGenerating) return;
+
+    // Guest flow: show generating animation + signup prompt
     if (!user) {
-      toast({ title: "Sign in required", description: "Please sign in to create courses.", variant: "destructive" });
-      navigate("/login");
+      setIsGenerating(true);
+      // Show signup prompt after a brief delay to simulate generation start
+      setTimeout(() => setShowSignUpPrompt(true), 1200);
       return;
     }
 
@@ -85,6 +94,11 @@ export default function Courses() {
     toast({ title: "Course deleted" });
   };
 
+  const handleSignUpPromptClose = () => {
+    setShowSignUpPrompt(false);
+    setIsGenerating(false);
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6">
@@ -95,10 +109,16 @@ export default function Courses() {
             <span className="text-sm text-muted-foreground">AI-Powered Learning</span>
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold mb-4">
-            Learn <span className="gradient-text">Anything</span>
+            {user ? (
+              <>Learn <span className="gradient-text">Anything</span></>
+            ) : (
+              <>Try AI <span className="gradient-text">Course Generation</span></>
+            )}
           </h1>
           <p className="text-muted-foreground mb-6">
-            Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos.
+            {user
+              ? "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos."
+              : "Enter any topic below and watch our AI build a personalized course — no account needed to try it out."}
           </p>
 
           {/* Generate Form */}
@@ -120,73 +140,92 @@ export default function Courses() {
               ) : (
                 <>
                   <Plus className="w-4 h-4" />
-                  Create Course
+                  {user ? "Create Course" : "Try It Free"}
                 </>
               )}
             </Button>
           </div>
+
+          {/* Guest hint */}
+          {!user && !isGenerating && (
+            <p className="text-xs text-muted-foreground mt-3">
+              <Rocket className="w-3 h-3 inline mr-1" />
+              No sign-up required to try — create an account to save your courses.
+            </p>
+          )}
         </div>
 
-        {/* Courses List */}
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-          </div>
-        ) : courses.length > 0 ? (
-          <div className="max-w-4xl mx-auto">
-            <h2 className="font-display text-xl font-bold mb-4">Your Courses</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {courses.map((course) => (
-                <Card
-                  key={course.id}
-                  className="bg-card border-border hover:border-primary/30 transition-colors cursor-pointer group"
-                  onClick={() => course.status === "ready" && navigate(`/courses/${course.id}`)}
-                >
-                  <CardContent className="p-5">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                        <BookOpen className="w-5 h-5 text-primary-foreground" />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-8 w-8"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(course.id);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                    <h3 className="font-display font-semibold mb-1 line-clamp-2">{course.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                      {course.description || course.topic}
-                    </p>
-                    {course.status === "generating" ? (
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Generating...
-                      </div>
-                    ) : course.status === "failed" ? (
-                      <span className="text-xs text-destructive">Generation failed</span>
-                    ) : (
-                      <div className="flex items-center gap-1 text-xs text-primary">
-                        View Course <ArrowRight className="w-3 h-3" />
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        ) : user ? (
-          <div className="text-center py-12 text-muted-foreground">
-            <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-            <p>No courses yet. Create your first one above!</p>
-          </div>
-        ) : null}
+        {/* Courses List (authenticated only) */}
+        {user && (
+          <>
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : courses.length > 0 ? (
+              <div className="max-w-4xl mx-auto">
+                <h2 className="font-display text-xl font-bold mb-4">Your Courses</h2>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {courses.map((course) => (
+                    <Card
+                      key={course.id}
+                      className="bg-card border-border hover:border-primary/30 transition-colors cursor-pointer group"
+                      onClick={() => course.status === "ready" && navigate(`/courses/${course.id}`)}
+                    >
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                            <BookOpen className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-8 w-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(course.id);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                        <h3 className="font-display font-semibold mb-1 line-clamp-2">{course.title}</h3>
+                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                          {course.description || course.topic}
+                        </p>
+                        {course.status === "generating" ? (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Generating...
+                          </div>
+                        ) : course.status === "failed" ? (
+                          <span className="text-xs text-destructive">Generation failed</span>
+                        ) : (
+                          <div className="flex items-center gap-1 text-xs text-primary">
+                            View Course <ArrowRight className="w-3 h-3" />
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-12 text-muted-foreground">
+                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No courses yet. Create your first one above!</p>
+              </div>
+            )}
+          </>
+        )}
       </div>
+
+      {/* Signup prompt shown to guests during "generation" */}
+      <GeneratingSignUpPrompt
+        open={showSignUpPrompt}
+        onOpenChange={handleSignUpPromptClose}
+        topic={topic}
+      />
     </DashboardLayout>
   );
 }
