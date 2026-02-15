@@ -4,7 +4,8 @@ import {
   TrendingUp,
   Trophy,
   BookOpen,
-  LogIn
+  LogIn,
+  MessageSquare
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -29,6 +30,7 @@ const guestItems = [
 const authedMainItems = [
   { title: "Courses", url: "/courses", icon: BookOpen },
   { title: "Challenges", url: "/challenges", icon: Trophy },
+  { title: "Community", url: "/community", icon: MessageSquare },
 ];
 
 const authedLearnItems = [
