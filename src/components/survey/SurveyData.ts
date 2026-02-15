@@ -1,20 +1,4 @@
 export const surveyQuestions = {
-  heard_about: {
-    title: "How Did You Hear About Us?",
-    question: "How did you first discover Repend AI?",
-    type: "single" as const,
-    options: [
-      "Instagram",
-      "TikTok",
-      "YouTube",
-      "Google Search",
-      "Friend / Referral",
-      "School / Teacher",
-      "Online Community",
-      "Other",
-    ],
-  },
-
   goals: {
     title: "Your Goal",
     question: "What do you want help with right now?",
@@ -29,6 +13,21 @@ export const surveyQuestions = {
       "Resume / interviews",
       "Starting a business",
       "Improving productivity",
+    ],
+  },
+
+  challenges: {
+    title: "Your Challenges",
+    question: "What's been holding you back?",
+    type: "multi" as const,
+    options: [
+      "Lack of motivation",
+      "Don't know where to start",
+      "Too many distractions",
+      "No mentor or guidance",
+      "Not enough time",
+      "Feeling overwhelmed",
+      "Fear of failure",
     ],
   },
 
@@ -56,34 +55,107 @@ export const surveyQuestions = {
     options: ["Complete beginner", "Basic understanding", "Intermediate", "Advanced"],
   },
 
-  interests: {
-    title: "Your Interests",
-    question: "What topics are you most interested in?",
+  help_types: {
+    title: "Type of Help",
+    question: "What kind of help would benefit you most?",
     type: "multi" as const,
     options: [
-      "Artificial Intelligence",
-      "Web Development",
-      "Startups",
-      "Finance / Investing",
-      "Personal Branding",
-      "Productivity",
-      "College Prep",
-      "Public Speaking",
-      "Creative Design",
-      "Leadership",
+      "Step-by-step tutorials",
+      "Practice problems",
+      "Real-world projects",
+      "Mentorship",
+      "Study plans",
+      "Career advice",
     ],
   },
 
-  experience_rating: {
-    title: "First Impression",
-    question: "How would you rate your experience so far?",
-    type: "single" as const,
-    options: ["⭐ Very Poor", "⭐⭐ Poor", "⭐⭐⭐ Average", "⭐⭐⭐⭐ Good", "⭐⭐⭐⭐⭐ Excellent"],
+  mentor_personality: {
+    title: "Mentor Style",
+    question: "What mentor personality resonates with you?",
+    type: "multi" as const,
+    options: [
+      "Encouraging & supportive",
+      "Direct & no-nonsense",
+      "Funny & casual",
+      "Analytical & detailed",
+      "Big-picture thinker",
+    ],
   },
 
-  biggest_outcome: {
-    title: "Desired Outcome",
-    question: "If Repend AI works perfectly for you, what changes in your life?",
-    type: "text" as const,
+  learning_styles: {
+    title: "Learning Style",
+    question: "How do you learn best?",
+    type: "multi" as const,
+    options: [
+      "Watching videos",
+      "Reading articles",
+      "Hands-on projects",
+      "Interactive quizzes",
+      "Group discussions",
+      "One-on-one coaching",
+    ],
   },
+
+  time_commitment: {
+    title: "Time Commitment",
+    question: "How much time can you dedicate per week?",
+    type: "single" as const,
+    options: [
+      "Less than 1 hour",
+      "1–3 hours",
+      "3–5 hours",
+      "5–10 hours",
+      "10+ hours",
+    ],
+  },
+
+  urgency: {
+    title: "Urgency",
+    question: "How soon do you need results?",
+    type: "single" as const,
+    options: [
+      "No rush — just exploring",
+      "Within a few weeks",
+      "Within a month",
+      "ASAP — I have a deadline",
+    ],
+  },
+};
+
+export interface SurveyResponses {
+  goals: string[];
+  goals_other: string;
+  challenges: string[];
+  challenges_other: string;
+  subject_area: string;
+  subject_other: string;
+  skill_level: string;
+  help_types: string[];
+  help_other: string;
+  mentor_personality: string[];
+  mentor_other: string;
+  learning_styles: string[];
+  learning_other: string;
+  time_commitment: string;
+  urgency: string;
+  success_definition: string;
+}
+
+export const initialSurveyResponses: SurveyResponses = {
+  goals: [],
+  goals_other: "",
+  challenges: [],
+  challenges_other: "",
+  subject_area: "",
+  subject_other: "",
+  skill_level: "",
+  help_types: [],
+  help_other: "",
+  mentor_personality: [],
+  mentor_other: "",
+  learning_styles: [],
+  learning_other: "",
+  time_commitment: "",
+  urgency: "",
+  success_definition: "",
 };
