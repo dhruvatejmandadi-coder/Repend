@@ -50,84 +50,22 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `You are a course creator AI for Repend AI. Generate a structured course with 4-6 modules.
+            content: `You are a course creator AI. Generate a structured course with 4-6 progressive modules on the given topic.
 
-Return ONLY valid JSON with this exact structure:
-{
-  "title": "Course title",
-  "description": "2-3 sentence course description",
-  "modules": [
-    {
-      "title": "Module title",
-      "lesson_content": "Detailed lesson in markdown (3-5 paragraphs with examples, code if relevant)",
-      "youtube_query": "YouTube search query to find a relevant tutorial video",
-      "youtube_title": "Suggested video title",
-      "lab_type": "simulation OR decision OR classification",
-      "lab_data": { ... structured lab object depending on lab_type ... },
-      "quiz": [
-        {
-          "question": "Quiz question text",
-          "options": ["Option A", "Option B", "Option C", "Option D"],
-          "correct": 0
-        }
-      ]
-    }
-  ]
-}
+CRITICAL RULES FOR lab_data:
+- Every module MUST have a fully populated lab_data object. NEVER return an empty {} object.
+- lab_data MUST contain all required fields for its lab_type.
+- Labs must be SPECIFIC to the module topic, not generic "understanding/practice" sliders.
 
-INTERACTIVE LAB TYPES - Choose the BEST type for each module's topic:
+For "simulation" labs: Create parameters that represent REAL measurable variables from the topic.
+  Example for "Stoichiometry": parameters like "Moles of Reactant A" (mol), "Moles of Reactant B" (mol), "Temperature" (°C)
+  Example for "Supply & Demand": parameters like "Price" ($), "Consumer Income" ($K), "Number of Competitors"
+  
+For "decision" labs: Create realistic scenarios with meaningful trade-offs from the topic domain.
 
-1. "simulation" - lab_data structure:
-{
-  "title": "Lab title",
-  "description": "What students will learn",
-  "equation_label": "The relationship being modeled",
-  "equation_template": "X + Y -> Output",
-  "output_label": "What the output represents",
-  "parameters": [
-    { "name": "Parameter Name", "icon": "emoji", "unit": "unit label", "min": 0, "max": 100, "default": 50, "description": "What this controls" }
-  ],
-  "thresholds": [
-    { "label": "High Result", "min_percent": 80, "message": "Explanation of high output" },
-    { "label": "Medium Result", "min_percent": 50, "message": "Explanation of medium output" },
-    { "label": "Low Result", "min_percent": 0, "message": "Explanation of low output" }
-  ]
-}
-Best for: economics, chemistry, physics, resource management, any topic with adjustable variables.
+For "classification" labs: Use real items and categories from the topic (e.g., types of reactions, parts of speech).
 
-2. "decision" - lab_data structure:
-{
-  "title": "Lab title",
-  "description": "Context for the decision scenarios",
-  "scenarios": [
-    {
-      "title": "Scenario title",
-      "description": "Detailed scenario description",
-      "emoji": "relevant emoji",
-      "choices": [
-        { "text": "Choice description", "consequence": "What happens", "impact": "positive OR negative OR neutral" }
-      ]
-    }
-  ],
-  "summary_prompt": "Reflection prompt after all decisions"
-}
-Best for: history, ethics, social studies, business, any topic with moral/strategic dilemmas.
-
-3. "classification" - lab_data structure:
-{
-  "title": "Lab title",
-  "description": "Instructions for classification",
-  "categories": [
-    { "name": "Category Name", "emoji": "emoji", "description": "What belongs here" }
-  ],
-  "items": [
-    { "name": "Item to classify", "correct_category": "Category Name", "hint": "Optional hint" }
-  ]
-}
-Best for: biology (taxonomy), language (parts of speech), science (element types), any topic with categorization.
-
-Each module MUST have a creative, educational interactive lab. Be creative with the parameters and scenarios!
-Make the course progressive - start with basics, build to advanced.`
+Make each lab genuinely educational — a student should learn by interacting with it.`
           },
           { role: "user", content: `Create a comprehensive course on: ${topic}` }
         ],
@@ -136,23 +74,110 @@ Make the course progressive - start with basics, build to advanced.`
             type: "function",
             function: {
               name: "create_course",
-              description: "Create a structured learning course",
+              description: "Create a structured learning course with interactive labs",
               parameters: {
                 type: "object",
                 properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
+                  title: { type: "string", description: "Course title" },
+                  description: { type: "string", description: "2-3 sentence course description" },
                   modules: {
                     type: "array",
                     items: {
                       type: "object",
                       properties: {
                         title: { type: "string" },
-                        lesson_content: { type: "string" },
+                        lesson_content: { type: "string", description: "Detailed lesson in markdown, 3-5 paragraphs with examples" },
                         youtube_query: { type: "string" },
                         youtube_title: { type: "string" },
                         lab_type: { type: "string", enum: ["simulation", "decision", "classification"] },
-                        lab_data: { type: "object" },
+                        lab_data: {
+                          type: "object",
+                          description: "MUST be fully populated. For simulation: title, description, equation_label, output_label, parameters (array of {name,icon,unit,min,max,default,description}), thresholds (array of {label,min_percent,message}). For decision: title, description, scenarios (array of {title,description,emoji,choices:[{text,consequence,impact}]}), summary_prompt. For classification: title, description, categories (array of {name,emoji,description}), items (array of {name,correct_category,hint}).",
+                          properties: {
+                            title: { type: "string" },
+                            description: { type: "string" },
+                            equation_label: { type: "string" },
+                            output_label: { type: "string" },
+                            parameters: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  name: { type: "string" },
+                                  icon: { type: "string" },
+                                  unit: { type: "string" },
+                                  min: { type: "number" },
+                                  max: { type: "number" },
+                                  default: { type: "number" },
+                                  description: { type: "string" }
+                                },
+                                required: ["name", "icon", "unit", "min", "max", "default", "description"]
+                              }
+                            },
+                            thresholds: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  label: { type: "string" },
+                                  min_percent: { type: "number" },
+                                  message: { type: "string" }
+                                },
+                                required: ["label", "min_percent", "message"]
+                              }
+                            },
+                            scenarios: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  title: { type: "string" },
+                                  description: { type: "string" },
+                                  emoji: { type: "string" },
+                                  choices: {
+                                    type: "array",
+                                    items: {
+                                      type: "object",
+                                      properties: {
+                                        text: { type: "string" },
+                                        consequence: { type: "string" },
+                                        impact: { type: "string", enum: ["positive", "negative", "neutral"] }
+                                      },
+                                      required: ["text", "consequence", "impact"]
+                                    }
+                                  }
+                                },
+                                required: ["title", "description", "emoji", "choices"]
+                              }
+                            },
+                            summary_prompt: { type: "string" },
+                            categories: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  name: { type: "string" },
+                                  emoji: { type: "string" },
+                                  description: { type: "string" }
+                                },
+                                required: ["name", "emoji", "description"]
+                              }
+                            },
+                            items: {
+                              type: "array",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  name: { type: "string" },
+                                  correct_category: { type: "string" },
+                                  hint: { type: "string" }
+                                },
+                                required: ["name", "correct_category"]
+                              }
+                            }
+                          },
+                          required: ["title", "description"]
+                        },
                         quiz: {
                           type: "array",
                           items: {
