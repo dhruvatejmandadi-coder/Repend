@@ -1,112 +1,120 @@
-export const surveyQuestions = {
-  discovery: {
-    title: "How You Found Us",
-    question: "How did you hear about Repend AI?",
-    type: "single" as const,
-    options: [
-      "TikTok",
-      "Instagram",
-      "YouTube",
-      "Google Search",
-      "Friend / Referral",
-      "School / Teacher",
-      "Online Community",
-      "Advertisement",
-      "Other",
-    ],
-  },
+import * as React from "react"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { X } from "lucide-react"
 
-  primary_goal: {
-    title: "Your Main Goal",
-    question: "What is the main reason you joined Repend AI?",
-    type: "single" as const,
-    options: [
-      "Improve grades",
-      "Prepare for exams",
-      "Learn a new skill",
-      "Build projects",
-      "Career guidance",
-      "College preparation",
-      "Personal development",
-    ],
-  },
+import { cn } from "@/lib/utils"
 
-  interests: {
-    title: "Your Interests",
-    question: "What topics are you most interested in?",
-    type: "multi" as const,
-    options: [
-      "Math",
-      "Science",
-      "Programming / Tech",
-      "Business / Startups",
-      "Writing",
-      "Public Speaking",
-      "Design / Creative",
-      "Study Skills",
-      "Productivity",
-    ],
-  },
+const Dialog = DialogPrimitive.Root
 
-  experience_level: {
-    title: "Experience Level",
-    question: "How would you describe your current level?",
-    type: "single" as const,
-    options: ["Beginner", "Some experience", "Intermediate", "Advanced"],
-  },
+const DialogTrigger = DialogPrimitive.Trigger
 
-  learning_style: {
-    title: "Learning Preference",
-    question: "How do you prefer to learn?",
-    type: "multi" as const,
-    options: [
-      "Step-by-step explanations",
-      "Real-world examples",
-      "Practice challenges",
-      "Visual explanations",
-      "Short summaries",
-      "Interactive discussions",
-    ],
-  },
+const DialogPortal = DialogPrimitive.Portal
 
-  time_commitment: {
-    title: "Time Commitment",
-    question: "How much time can you dedicate weekly?",
-    type: "single" as const,
-    options: ["Less than 1 hour", "1–3 hours", "3–5 hours", "5+ hours"],
-  },
+const DialogClose = DialogPrimitive.Close
 
-  urgency: {
-    title: "Urgency",
-    question: "How urgent is your goal?",
-    type: "single" as const,
-    options: ["Just exploring", "Planning ahead", "Need progress soon", "Very urgent (deadline)"],
-  },
+const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/80 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+))
+DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
-  satisfaction_expectation: {
-    title: "Expectations",
-    question: "What would make this platform valuable for you?",
-    type: "multi" as const,
-    options: [
-      "Clear explanations",
-      "Structured learning paths",
-      "Personalized recommendations",
-      "Progress tracking",
-      "Practical real-world skills",
-      "Motivation and accountability",
-    ],
-  },
+const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPortal>
+    <DialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPortal>
+))
+DialogContent.displayName = DialogPrimitive.Content.displayName
 
-  rating_confidence: {
-    title: "Self Rating",
-    question: "On a scale of 1–5, how confident are you in achieving your goal right now?",
-    type: "rating" as const,
-    scale: 5,
-  },
+const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col space-y-1.5 text-center sm:text-left",
+      className
+    )}
+    {...props}
+  />
+)
+DialogHeader.displayName = "DialogHeader"
 
-  open_feedback: {
-    title: "Open Feedback",
-    question: "Is there anything we should know to better support you?",
-    type: "text" as const,
-  },
-};
+const DialogFooter = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div
+    className={cn(
+      "flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2",
+      className
+    )}
+    {...props}
+  />
+)
+DialogFooter.displayName = "DialogFooter"
+
+const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-lg font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+DialogTitle.displayName = DialogPrimitive.Title.displayName
+
+const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+DialogDescription.displayName = DialogPrimitive.Description.displayName
+
+export {
+  Dialog,
+  DialogPortal,
+  DialogOverlay,
+  DialogClose,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+}
