@@ -236,6 +236,39 @@ export type Database = {
         }
         Relationships: []
       }
+      lab_results: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          decision_style: string | null
+          decisions: Json | null
+          id: string
+          lab_id: string
+          metrics: Json | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          decision_style?: string | null
+          decisions?: Json | null
+          id?: string
+          lab_id: string
+          metrics?: Json | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          decision_style?: string | null
+          decisions?: Json | null
+          id?: string
+          lab_id?: string
+          metrics?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

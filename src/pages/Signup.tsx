@@ -68,7 +68,7 @@ export default function Signup() {
         title: "Account created!",
         description: "Welcome to Repend AI. You are now logged in.",
       });
-      navigate("/courses");
+      // Let useEffect([user]) handle redirect
     }
   };
 
