@@ -7,10 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { surveyQuestions, SurveyResponses, initialSurveyResponses } from "./SurveyData";
@@ -24,8 +22,7 @@ interface SurveyModalProps {
 }
 
 const steps = [
-  "goals", "challenges", "subject_area", "skill_level", "help_types",
-  "mentor_personality", "learning_styles", "time_commitment", "urgency", "success",
+  "hear_about", "signup_reason", "interests", "working_toward", "skill_level", "time_commitment",
 ] as const;
 
 export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: SurveyModalProps) {
@@ -74,18 +71,6 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
 
   const renderStep = () => {
     const step = steps[currentStep];
-
-    if (step === "success") {
-      return (
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Open Insight</h3>
-          <p className="text-muted-foreground">In one sentence, what would "success" look like for you?</p>
-          <Textarea value={responses.success_definition} onChange={(e) => handleOtherChange("success_definition", e.target.value)}
-            placeholder="e.g., Getting my first internship, passing my calculus exam..." className="min-h-[100px]" />
-        </div>
-      );
-    }
-
     const questionData = surveyQuestions[step as keyof typeof surveyQuestions];
     const isMulti = questionData.type === "multi";
     const fieldName = step as keyof SurveyResponses;
@@ -107,7 +92,7 @@ export function SurveyModal({ open, onOpenChange, allowAnonymous = false }: Surv
               </label>
             ))}
             <div className="pt-2">
-              <Input placeholder="Other (please specify)" value={responses[otherFieldName] as string} onChange={(e) => handleOtherChange(otherFieldName, e.target.value)} />
+              <Input placeholder="Other (please specify)" value={(otherFieldName in responses ? responses[otherFieldName] : "") as string} onChange={(e) => handleOtherChange(otherFieldName, e.target.value)} />
             </div>
           </div>
         ) : (
