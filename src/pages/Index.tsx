@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Hero } from "@/components/landing/Hero";
@@ -8,9 +9,18 @@ import { CTA } from "@/components/landing/CTA";
 import { Button } from "@/components/ui/button";
 import { ClipboardList } from "lucide-react";
 import { SurveyModal } from "@/components/survey/SurveyModal";
+import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const [surveyOpen, setSurveyOpen] = useState(false);
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect authenticated users to /courses immediately
+  if (!loading && user) {
+    navigate("/courses", { replace: true });
+    return null;
+  }
 
   const handleSurveyClick = () => {
     // Allow anonymous surveys - no login required
