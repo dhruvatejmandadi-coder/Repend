@@ -38,10 +38,7 @@ export default function Courses() {
   }, [user]);
 
   const fetchCourses = async () => {
-    const { data, error } = await supabase
-      .from("courses")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("courses").select("*").order("created_at", { ascending: false });
     if (!error && data) setCourses(data);
     setLoading(false);
   };
@@ -110,15 +107,19 @@ export default function Courses() {
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold mb-4">
             {user ? (
-              <>Learn <span className="gradient-text">Anything</span></>
+              <>
+                Learn <span className="gradient-text">Anything</span>
+              </>
             ) : (
-              <>Try AI <span className="gradient-text">Course Generation</span></>
+              <>
+                Try AI <span className="gradient-text">Course Generation</span>
+              </>
             )}
           </h1>
           <p className="text-muted-foreground mb-6">
             {user
               ? "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos."
-              : "Enter any topic below and watch our AI build a personalized course — no account needed to try it out."}
+              : "Enter any topic below and watch our AI build a personalized course"}
           </p>
 
           {/* Generate Form */}
@@ -221,11 +222,7 @@ export default function Courses() {
       </div>
 
       {/* Signup prompt shown to guests during "generation" */}
-      <GeneratingSignUpPrompt
-        open={showSignUpPrompt}
-        onOpenChange={handleSignUpPromptClose}
-        topic={topic}
-      />
+      <GeneratingSignUpPrompt open={showSignUpPrompt} onOpenChange={handleSignUpPromptClose} topic={topic} />
     </DashboardLayout>
   );
 }
