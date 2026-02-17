@@ -9,10 +9,6 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
-  BookOpen,
-  Youtube,
-  FlaskConical,
-  HelpCircle,
   CheckCircle2,
   Circle,
   ArrowLeft,
@@ -25,8 +21,11 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+import { useCourseProgress } from "@/hooks/useCourseProgress";
 import InteractiveLab from "@/components/labs/InteractiveLab";
 import LessonSlides from "@/components/courses/LessonSlides";
+import CourseCompletionScreen from "@/components/courses/CourseCompletionScreen";
 
 type Module = {
   id: string;
@@ -55,6 +54,9 @@ export default function CourseView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { progress, toggleLesson, justCompleted, dismissCompletion } = useCourseProgress(id);
+
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [activeModule, setActiveModule] = useState(0);
@@ -82,17 +84,37 @@ export default function CourseView() {
     setLoading(false);
   };
 
-  const toggleComplete = async (moduleId: string, completed: boolean) => {
-    await supabase.from("course_modules").update({ completed: !completed }).eq("id", moduleId);
+  const handleToggleComplete = async (moduleId: string) => {
+    // Toggle in DB (legacy column)
+    const mod = modules.find((m) => m.id === moduleId);
+    if (!mod) return;
+    await supabase.from("course_modules").update({ completed: !mod.completed }).eq("id", moduleId);
     setModules((prev) =>
       prev.map((m) => (m.id === moduleId ? { ...m, completed: !m.completed } : m))
     );
+    // Also track in course_progress
+    toggleLesson(moduleId, modules.length);
   };
 
   const mod = modules[activeModule];
-  const progress = modules.length ? Math.round((modules.filter((m) => m.completed).length / modules.length) * 100) : 0;
+  const completedCount = progress.completedLessons.length;
+  const progressPct = modules.length ? Math.round((completedCount / modules.length) * 100) : 0;
 
-  const handleQuizSubmit = () => setQuizSubmitted(true);
+  const handleQuizSubmit = async () => {
+    setQuizSubmitted(true);
+    // Save quiz attempt
+    if (user && mod) {
+      const score = (mod.quiz as any[]).filter((q: any, i: number) => quizAnswers[i] === q.correct).length;
+      await supabase.from("quiz_attempts").insert({
+        user_id: user.id,
+        module_id: mod.id,
+        answers: quizAnswers,
+        score,
+        total: mod.quiz.length,
+      });
+    }
+  };
+
   const resetQuiz = () => { setQuizAnswers({}); setQuizSubmitted(false); };
 
   const selectItem = (moduleIndex: number, content: ContentType) => {
@@ -113,6 +135,19 @@ export default function CourseView() {
 
   return (
     <DashboardLayout>
+      {justCompleted && course && (
+        <CourseCompletionScreen
+          courseName={course.title}
+          totalModules={modules.length}
+          pointsAwarded={150}
+          onDismiss={dismissCompletion}
+          onViewCertificate={() => {
+            dismissCompletion();
+            navigate("/profile");
+          }}
+        />
+      )}
+
       <div className="flex h-[calc(100vh-3.5rem)]">
         {/* Sidebar */}
         <aside className="w-80 border-r border-border bg-card/50 backdrop-blur-sm flex flex-col flex-shrink-0">
@@ -123,50 +158,53 @@ export default function CourseView() {
             <h2 className="font-display font-bold text-base line-clamp-2">{course?.title}</h2>
             <div className="flex items-center gap-2 mt-2">
               <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progress}%` }} />
+                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">{progress}%</span>
+              <span className="text-xs text-muted-foreground font-medium">{progressPct}%</span>
             </div>
           </div>
 
           <div className="flex-1 overflow-y-auto">
             <Accordion type="multiple" defaultValue={[`module-0`]} className="w-full">
-              {modules.map((m, i) => (
-                <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/50">
-                  <AccordionTrigger className="px-4 py-3 text-sm hover:no-underline hover:bg-secondary/30">
-                    <div className="flex items-center gap-2 text-left">
-                      {m.completed ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <span className="line-clamp-1 font-medium">{m.title}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="pb-1">
-                    <div className="flex flex-col">
-                      {[
-                        { key: "lesson" as ContentType, icon: FileText, label: "Lesson" },
-                        { key: "lab" as ContentType, icon: Beaker, label: "Lab" },
-                        { key: "quiz" as ContentType, icon: ClipboardList, label: "Quiz" },
-                      ].map(({ key, icon: Icon, label }) => (
-                        <button
-                          key={key}
-                          onClick={() => selectItem(i, key)}
-                          className={`flex items-center gap-2.5 pl-10 pr-4 py-2 text-sm transition-colors ${
-                            activeModule === i && activeContent === key
-                              ? "bg-primary/10 text-primary border-l-2 border-primary"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
-                          }`}
-                        >
-                          <Icon className="w-3.5 h-3.5" />
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
+              {modules.map((m, i) => {
+                const isLessonDone = progress.completedLessons.includes(m.id);
+                return (
+                  <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/50">
+                    <AccordionTrigger className="px-4 py-3 text-sm hover:no-underline hover:bg-secondary/30">
+                      <div className="flex items-center gap-2 text-left">
+                        {isLessonDone ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        ) : (
+                          <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span className="line-clamp-1 font-medium">{m.title}</span>
+                      </div>
+                    </AccordionTrigger>
+                    <AccordionContent className="pb-1">
+                      <div className="flex flex-col">
+                        {[
+                          { key: "lesson" as ContentType, icon: FileText, label: "Lesson" },
+                          { key: "lab" as ContentType, icon: Beaker, label: "Lab" },
+                          { key: "quiz" as ContentType, icon: ClipboardList, label: "Quiz" },
+                        ].map(({ key, icon: Icon, label }) => (
+                          <button
+                            key={key}
+                            onClick={() => selectItem(i, key)}
+                            className={`flex items-center gap-2.5 pl-10 pr-4 py-2 text-sm transition-colors ${
+                              activeModule === i && activeContent === key
+                                ? "bg-primary/10 text-primary border-l-2 border-primary"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                            }`}
+                          >
+                            <Icon className="w-3.5 h-3.5" />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
             </Accordion>
           </div>
         </aside>
@@ -181,8 +219,8 @@ export default function CourseView() {
                   <Badge variant="secondary" className="mb-2">Module {mod.module_order}</Badge>
                   <h1 className="font-display text-2xl font-bold">{mod.title}</h1>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => toggleComplete(mod.id, mod.completed)}>
-                  {mod.completed ? (
+                <Button variant="outline" size="sm" onClick={() => handleToggleComplete(mod.id)}>
+                  {progress.completedLessons.includes(mod.id) ? (
                     <><CheckCircle2 className="w-4 h-4 mr-1 text-green-500" /> Completed</>
                   ) : (
                     <><Circle className="w-4 h-4 mr-1" /> Mark Complete</>
@@ -239,6 +277,12 @@ export default function CourseView() {
                             );
                           })}
                         </div>
+                        {/* Show explanation after submit */}
+                        {quizSubmitted && q.explanation && (
+                          <p className="mt-3 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                            💡 {q.explanation}
+                          </p>
+                        )}
                       </CardContent>
                     </Card>
                   ))}

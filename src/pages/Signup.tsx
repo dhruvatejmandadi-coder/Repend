@@ -14,6 +14,7 @@ export default function Signup() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -28,6 +29,7 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitted(true);
 
     if (!email || !password || !name) {
       toast({
@@ -102,7 +104,9 @@ export default function Signup() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={loading}
+                  className={!name && submitted ? "border-destructive" : ""}
                 />
+                {!name && submitted && <p className="text-xs text-destructive">Name is required</p>}
               </div>
 
               <div className="space-y-2">
@@ -114,7 +118,9 @@ export default function Signup() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  className={!email && submitted ? "border-destructive" : ""}
                 />
+                {!email && submitted && <p className="text-xs text-destructive">Email is required</p>}
               </div>
 
               <div className="space-y-2">
@@ -126,7 +132,10 @@ export default function Signup() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  className={submitted && (!password || password.length < 6) ? "border-destructive" : ""}
                 />
+                {submitted && !password && <p className="text-xs text-destructive">Password is required</p>}
+                {submitted && password && password.length < 6 && <p className="text-xs text-destructive">Password must be at least 6 characters</p>}
               </div>
 
               <Button

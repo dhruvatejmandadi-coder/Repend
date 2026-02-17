@@ -139,26 +139,20 @@ export default function ProgressPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <span className="text-sm">Complete a challenge</span>
-                <span className="text-sm font-bold text-primary">+50 pts</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <span className="text-sm">Complete daily challenge</span>
-                <span className="text-sm font-bold text-primary">+100 pts</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <span className="text-sm">Create a community post</span>
-                <span className="text-sm font-bold text-primary">+25 pts</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <span className="text-sm">AI tutor session</span>
-                <span className="text-sm font-bold text-primary">+15 pts</span>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
-                <span className="text-sm">Daily streak bonus</span>
-                <span className="text-sm font-bold text-primary">+20 pts/day</span>
-              </div>
+              {[
+                { label: "Complete a course", pts: "+150 pts" },
+                { label: "Complete a lab", pts: "+75 pts" },
+                { label: "Complete daily challenge", pts: "+100 pts" },
+                { label: "Complete a challenge", pts: "+50 pts" },
+                { label: "Create a community post", pts: "+25 pts" },
+                { label: "AI tutor session", pts: "+15 pts" },
+                { label: "Daily streak bonus", pts: "+20 pts/day" },
+              ].map((item) => (
+                <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                  <span className="text-sm">{item.label}</span>
+                  <span className="text-sm font-bold text-primary">{item.pts}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
