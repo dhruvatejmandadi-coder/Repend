@@ -13,6 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [quizSubmittedOnce, setQuizSubmittedOnce] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const { signIn, user } = useAuth();
@@ -26,7 +27,7 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    setQuizSubmittedOnce(true);
     if (!email || !password) {
       toast({
         title: "Missing fields",
@@ -78,7 +79,9 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   disabled={loading}
+                  className={!email && quizSubmittedOnce ? "border-destructive" : ""}
                 />
+                {!email && quizSubmittedOnce && <p className="text-xs text-destructive">Email is required</p>}
               </div>
 
               <div className="space-y-2">
@@ -90,7 +93,9 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={loading}
+                  className={!password && quizSubmittedOnce ? "border-destructive" : ""}
                 />
+                {!password && quizSubmittedOnce && <p className="text-xs text-destructive">Password is required</p>}
               </div>
 
               <Button variant="hero" className="w-full" type="submit" disabled={loading}>

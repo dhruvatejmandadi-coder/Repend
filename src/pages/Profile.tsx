@@ -9,7 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { usePoints } from "@/hooks/usePoints";
-import { User, Mail, BookOpen, GraduationCap, Save, Trophy, Flame } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { User, Mail, BookOpen, GraduationCap, Save, Trophy, Flame, Award, Loader2 } from "lucide-react";
+import CertificateCard from "@/components/courses/CertificateCard";
 
 const PROFILE_KEY = "repend_profile";
 
@@ -21,16 +23,37 @@ function loadProfile() {
   return null;
 }
 
+interface CertificateRow {
+  certificate_id: string;
+  issued_at: string;
+  courses: { title: string } | null;
+}
+
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { totalPoints, streak, achievements } = usePoints();
   const [loading, setLoading] = useState(false);
+  const [certificates, setCertificates] = useState<CertificateRow[]>([]);
+  const [certsLoading, setCertsLoading] = useState(true);
 
   const saved = loadProfile();
   const [fullName, setFullName] = useState(saved?.fullName || user?.user_metadata?.full_name || user?.user_metadata?.name || "");
   const [role, setRole] = useState<"learner" | "mentor">(saved?.role || (user?.user_metadata?.role as "learner" | "mentor") || "learner");
   const [bio, setBio] = useState(saved?.bio || "");
+
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from("certificates")
+        .select("certificate_id, issued_at, courses(title)")
+        .eq("user_id", user.id)
+        .order("issued_at", { ascending: false });
+      setCertificates((data as any) || []);
+      setCertsLoading(false);
+    })();
+  }, [user]);
 
   const getInitials = (name: string) =>
     name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
@@ -43,6 +66,8 @@ export default function Profile() {
       toast({ title: "Profile updated", description: "Your changes have been saved." });
     }, 300);
   };
+
+  const userName = fullName || user?.user_metadata?.full_name || "Learner";
 
   return (
     <DashboardLayout>
@@ -89,6 +114,40 @@ export default function Profile() {
           </Card>
         </div>
 
+        {/* Certificates */}
+        <Card className="bg-card border-border">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Award className="w-5 h-5 text-primary" />
+              Certificates
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {certsLoading ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : certificates.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Complete a course to earn your first certificate!
+              </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {certificates.map((cert) => (
+                  <CertificateCard
+                    key={cert.certificate_id}
+                    userName={userName}
+                    courseName={cert.courses?.title || "Course"}
+                    certificateId={cert.certificate_id}
+                    issuedAt={cert.issued_at}
+                  />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Profile Info */}
         <Card className="bg-card border-border">
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
