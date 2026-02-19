@@ -8,7 +8,6 @@ import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import CourseView from "./pages/CourseView";
-import AITutor from "./pages/AITutor";
 import Community from "./pages/Community";
 import Challenges from "./pages/Challenges";
 import ProgressPage from "./pages/ProgressPage";
@@ -33,7 +32,6 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/courses" element={<Courses />} />
             <Route path="/courses/:id" element={<CourseView />} />
-            <Route path="/ai-tutor" element={<AITutor />} />
             <Route path="/community" element={<Community />} />
             <Route path="/challenges" element={<Challenges />} />
             
