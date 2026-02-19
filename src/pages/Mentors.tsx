@@ -206,8 +206,8 @@ export default function Mentors() {
             Want to start learning right now?
           </p>
           <Button variant="accent" size="lg" asChild>
-            <Link to="/ai-tutor">
-              Try AI Tutor Free
+            <Link to="/courses">
+              Start Learning Free
               <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
