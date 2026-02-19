@@ -66,6 +66,13 @@ CRITICAL RULES FOR lab_data:
 For "simulation" labs: Create parameters that represent REAL measurable variables from the module's specific lesson content.
   Example for "Stoichiometry": parameters like "Moles of Reactant A" (mol), "Moles of Reactant B" (mol), "Temperature" (°C)
   Example for "Supply & Demand": parameters like "Price" ($), "Consumer Income" ($K), "Number of Competitors"
+  ALSO include a "decisions" array: 2-3 scenario-based questions where each choice adjusts the slider values.
+  Each decision has: question (string), emoji (string), choices (array of {text, explanation, effects}).
+  "effects" is an object mapping parameter names to numeric deltas (positive or negative).
+  Example for "Supply & Demand": { question: "A competitor slashes prices by 30%. How do you respond?", emoji: "⚡", choices: [
+    { text: "Match their price cut", explanation: "Matching prices maintains market share but squeezes margins.", effects: { "Price Point": -15, "Demand": 100 } },
+    { text: "Focus on quality instead", explanation: "Premium positioning retains loyal customers at higher margins.", effects: { "Demand": -50, "Price Point": 10 } }
+  ]}
   
 For "decision" labs: Create realistic scenarios with meaningful trade-offs drawn directly from concepts in the module's lesson content.
 
@@ -119,7 +126,7 @@ Make each lab genuinely educational — a student should learn by interacting wi
                         lab_type: { type: "string", enum: ["simulation", "decision", "classification"] },
                         lab_data: {
                           type: "object",
-                          description: "MUST be fully populated. For simulation: title, description, equation_label, output_label, parameters (array of {name,icon,unit,min,max,default,description}), thresholds (array of {label,min_percent,message}). For decision: title, description, scenarios (array of {title,description,emoji,choices:[{text,consequence,impact}]}), summary_prompt. For classification: title, description, categories (array of {name,emoji,description}), items (array of {name,correct_category,hint}).",
+                          description: "MUST be fully populated. For simulation: title, description, equation_label, output_label, parameters (array of {name,icon,unit,min,max,default,description}), thresholds (array of {label,min_percent,message}), decisions (array of {question,emoji,choices:[{text,explanation,effects:{paramName:delta}}]}). For decision: title, description, scenarios (array of {title,description,emoji,choices:[{text,consequence,impact}]}), summary_prompt. For classification: title, description, categories (array of {name,emoji,description}), items (array of {name,correct_category,hint}).",
                           properties: {
                             title: { type: "string" },
                             description: { type: "string" },
@@ -151,6 +158,30 @@ Make each lab genuinely educational — a student should learn by interacting wi
                                   message: { type: "string" }
                                 },
                                 required: ["label", "min_percent", "message"]
+                              }
+                            },
+                            decisions: {
+                              type: "array",
+                              description: "2-3 scenario questions for simulation labs where choices adjust parameter values",
+                              items: {
+                                type: "object",
+                                properties: {
+                                  question: { type: "string" },
+                                  emoji: { type: "string" },
+                                  choices: {
+                                    type: "array",
+                                    items: {
+                                      type: "object",
+                                      properties: {
+                                        text: { type: "string" },
+                                        explanation: { type: "string" },
+                                        effects: { type: "object", description: "Map of parameter name to numeric delta" }
+                                      },
+                                      required: ["text", "explanation", "effects"]
+                                    }
+                                  }
+                                },
+                                required: ["question", "emoji", "choices"]
                               }
                             },
                             scenarios: {

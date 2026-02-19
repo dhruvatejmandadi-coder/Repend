@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
-import { TrendingUp, TrendingDown, Minus, Lightbulb } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Lightbulb, MessageCircleQuestion, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type Parameter = {
   name: string;
@@ -14,6 +15,16 @@ type Parameter = {
   description: string;
 };
 
+type Decision = {
+  question: string;
+  emoji: string;
+  choices: {
+    text: string;
+    explanation: string;
+    effects: Record<string, number>;
+  }[];
+};
+
 type SimulationData = {
   title: string;
   description: string;
@@ -22,6 +33,7 @@ type SimulationData = {
   output_label: string;
   parameters: Parameter[];
   thresholds: { label: string; min_percent: number; message: string }[];
+  decisions?: Decision[];
 };
 
 function getParamLevel(value: number, min: number, max: number) {
@@ -34,10 +46,15 @@ function getParamLevel(value: number, min: number, max: number) {
 export default function SimulationLab({ data }: { data: SimulationData }) {
   const parameters = data?.parameters ?? [];
   const thresholds = data?.thresholds ?? [];
+  const decisions = data?.decisions ?? [];
 
   const [values, setValues] = useState<Record<string, number>>(() =>
     Object.fromEntries(parameters.map((p) => [p.name, p.default]))
   );
+
+  const [currentDecision, setCurrentDecision] = useState(0);
+  const [answeredDecisions, setAnsweredDecisions] = useState<Record<number, number>>({});
+  const [showExplanation, setShowExplanation] = useState<{ idx: number; choiceIdx: number } | null>(null);
 
   const totalCapacity = useMemo(() => {
     if (!parameters.length) return 0;
@@ -54,6 +71,29 @@ export default function SimulationLab({ data }: { data: SimulationData }) {
     return sorted.find((t) => totalCapacity >= t.min_percent) || sorted[sorted.length - 1];
   }, [totalCapacity, thresholds]);
 
+  const handleDecisionChoice = (decisionIdx: number, choiceIdx: number) => {
+    if (answeredDecisions[decisionIdx] !== undefined) return;
+
+    const choice = decisions[decisionIdx]?.choices[choiceIdx];
+    if (!choice) return;
+
+    // Apply effects to sliders
+    setValues((prev) => {
+      const next = { ...prev };
+      for (const [paramName, delta] of Object.entries(choice.effects)) {
+        const param = parameters.find((p) => p.name === paramName);
+        if (param) {
+          const current = next[paramName] ?? param.default;
+          next[paramName] = Math.max(param.min, Math.min(param.max, current + delta));
+        }
+      }
+      return next;
+    });
+
+    setAnsweredDecisions((prev) => ({ ...prev, [decisionIdx]: choiceIdx }));
+    setShowExplanation({ idx: decisionIdx, choiceIdx });
+  };
+
   if (!parameters.length) {
     return <Card><CardContent className="p-6 text-muted-foreground text-sm">No simulation data available.</CardContent></Card>;
   }
@@ -64,28 +104,112 @@ export default function SimulationLab({ data }: { data: SimulationData }) {
     ? "border-yellow-500/40 bg-yellow-500/5"
     : "border-destructive/40 bg-destructive/5";
 
+  const hasDecisions = decisions.length > 0;
+  const activeDecision = decisions[currentDecision];
+  const isAnswered = answeredDecisions[currentDecision] !== undefined;
+  const allDecisionsDone = decisions.length > 0 && Object.keys(answeredDecisions).length === decisions.length;
+
   return (
     <div className="space-y-5">
-      {/* Scenario prompt */}
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-5">
-          <div className="flex items-start gap-3">
-            <Lightbulb className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-            <div>
-              <h3 className="font-display font-bold text-base mb-1">Adjust the factors below</h3>
-              <p className="text-sm text-muted-foreground">
-                Each slider controls a key variable. Change them to see how different combinations affect the outcome.
-              </p>
+      {/* Decision scenario */}
+      {hasDecisions && !allDecisionsDone && activeDecision && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MessageCircleQuestion className="w-5 h-5 text-primary" />
+                <h3 className="font-display font-bold text-base">Scenario {currentDecision + 1} of {decisions.length}</h3>
+              </div>
+              <Badge variant="secondary" className="text-xs">{Object.keys(answeredDecisions).length}/{decisions.length} answered</Badge>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+            <p className="text-sm font-medium">
+              {activeDecision.emoji} {activeDecision.question}
+            </p>
+            <div className="space-y-2">
+              {activeDecision.choices.map((choice, ci) => {
+                const isChosen = answeredDecisions[currentDecision] === ci;
+                return (
+                  <button
+                    key={ci}
+                    onClick={() => handleDecisionChoice(currentDecision, ci)}
+                    disabled={isAnswered}
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${
+                      isAnswered && isChosen
+                        ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                        : isAnswered
+                        ? "border-border/50 opacity-60"
+                        : "border-border hover:border-primary/40 hover:bg-primary/5 cursor-pointer"
+                    }`}
+                  >
+                    <span>{choice.text}</span>
+                    {isAnswered && isChosen && (
+                      <div className="mt-2 flex flex-wrap gap-1.5">
+                        {Object.entries(choice.effects).map(([param, delta]) => (
+                          <Badge key={param} variant={delta > 0 ? "default" : "destructive"} className="text-[10px] font-mono">
+                            {param} {delta > 0 ? "+" : ""}{delta}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {/* Explanation after answering */}
+            {showExplanation?.idx === currentDecision && (
+              <div className="bg-secondary/50 rounded-lg p-3 text-sm text-muted-foreground">
+                💡 {activeDecision.choices[showExplanation.choiceIdx]?.explanation}
+              </div>
+            )}
+            {isAnswered && currentDecision < decisions.length - 1 && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setCurrentDecision((prev) => prev + 1);
+                  setShowExplanation(null);
+                }}
+              >
+                Next Scenario →
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* All decisions completed banner */}
+      {allDecisionsDone && (
+        <Card className="border-green-500/30 bg-green-500/5">
+          <CardContent className="p-4 flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-sm">All scenarios answered!</p>
+              <p className="text-xs text-muted-foreground">Your decisions have shaped the factors below. Fine-tune the sliders to explore further.</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Scenario prompt (when no decisions) */}
+      {!hasDecisions && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-5">
+            <div className="flex items-start gap-3">
+              <Lightbulb className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-display font-bold text-base mb-1">Adjust the factors below</h3>
+                <p className="text-sm text-muted-foreground">
+                  Each slider controls a key variable. Change them to see how different combinations affect the outcome.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Parameter sliders */}
       {parameters.map((p) => {
         const { level, color, icon: StatusIcon } = getParamLevel(values[p.name], p.min, p.max);
-        const pct = Math.round(((values[p.name] - p.min) / (p.max - p.min)) * 100);
-
         return (
           <Card key={p.name} className="border-border/60">
             <CardContent className="p-4 space-y-3">
@@ -132,7 +256,6 @@ export default function SimulationLab({ data }: { data: SimulationData }) {
               {totalCapacity}%
             </Badge>
           </div>
-          {/* Progress bar */}
           <div className="h-2 bg-secondary rounded-full overflow-hidden mb-3">
             <div
               className={`h-full rounded-full transition-all duration-300 ${

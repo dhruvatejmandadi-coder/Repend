@@ -160,7 +160,7 @@ function generateTopicFallback(title?: string | null): { type: string; data: any
   );
 }
 
-function sim(title: string | null | undefined, labTitle: string, description: string, eqLabel: string, params: any[], thresholds: any[]) {
+function sim(title: string | null | undefined, labTitle: string, description: string, eqLabel: string, params: any[], thresholds: any[], decisions?: any[]) {
   return {
     type: "simulation",
     data: {
@@ -171,6 +171,7 @@ function sim(title: string | null | undefined, labTitle: string, description: st
       output_label: "Overall Result",
       parameters: params,
       thresholds,
+      decisions: decisions || [],
     },
   };
 }
