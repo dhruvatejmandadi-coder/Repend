@@ -2,7 +2,7 @@ import { CheckCircle2 } from "lucide-react";
 
 const benefits = [
   "AI-generated courses tailored to any topic you choose",
-  "Interactive labs: simulations, decisions, and classification tasks",
+  "Interactive decision modules: simulations, scenarios, and classification tasks",
   "Daily challenges to keep your skills sharp",
   "Track your progress and see real improvement",
 ];
@@ -32,7 +32,7 @@ export function ValueProp() {
             </h2>
             <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
               Static tutorials only get you so far. Repend creates personalized courses with 
-              interactive labs and quizzes — so you actually <span className="text-foreground font-medium">retain</span> what you learn.
+              interactive decision modules and quizzes — so you actually <span className="text-foreground font-medium">retain</span> what you learn.
             </p>
             
             <ul className="space-y-4">

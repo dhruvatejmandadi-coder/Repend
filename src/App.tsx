@@ -12,7 +12,7 @@ import AITutor from "./pages/AITutor";
 import Community from "./pages/Community";
 import Challenges from "./pages/Challenges";
 import ProgressPage from "./pages/ProgressPage";
-import Labs from "./pages/Labs";
+
 import Profile from "./pages/Profile";
 import Waitlist from "./pages/Waitlist";
 import Login from "./pages/Login";
@@ -36,7 +36,7 @@ const App = () => (
             <Route path="/ai-tutor" element={<AITutor />} />
             <Route path="/community" element={<Community />} />
             <Route path="/challenges" element={<Challenges />} />
-            <Route path="/labs" element={<Labs />} />
+            
             <Route path="/progress" element={<ProgressPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/waitlist" element={<Waitlist />} />

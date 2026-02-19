@@ -141,7 +141,6 @@ export default function ProgressPage() {
             <div className="space-y-3">
               {[
                 { label: "Complete a course", pts: "+150 pts" },
-                { label: "Complete a lab", pts: "+75 pts" },
                 { label: "Complete daily challenge", pts: "+100 pts" },
                 { label: "Complete a challenge", pts: "+50 pts" },
                 { label: "Create a community post", pts: "+25 pts" },

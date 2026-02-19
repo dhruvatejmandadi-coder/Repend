@@ -6,7 +6,6 @@ import {
   BookOpen,
   LogIn,
   MessageSquare,
-  FlaskConical
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -30,7 +29,6 @@ const guestItems = [
 
 const authedMainItems = [
   { title: "Courses", url: "/courses", icon: BookOpen },
-  { title: "Labs", url: "/labs", icon: FlaskConical },
   { title: "Challenges", url: "/challenges", icon: Trophy },
   { title: "Community", url: "/community", icon: MessageSquare },
 ];
