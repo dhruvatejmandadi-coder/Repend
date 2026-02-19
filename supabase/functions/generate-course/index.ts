@@ -74,16 +74,14 @@ For "simulation" labs: Create parameters that represent REAL measurable variable
     { text: "Focus on quality instead", explanation: "Premium positioning retains loyal customers at higher margins.", effects: { "Demand": -50, "Price Point": 10 } }
   ]}
   
-For "decision" labs: Create realistic scenarios with meaningful trade-offs drawn directly from concepts in the module's lesson content.
-
 For "classification" labs: Use real items and categories from the module's lesson content (e.g., types of reactions, parts of speech, literary devices).
 
 CRITICAL: LAB TYPE VARIETY
 - A course with 4-6 modules MUST use a MIX of lab types. Use at least 2 different lab_type values across the course.
-- Suggested distribution: 2 simulation labs, 2 decision labs, 1-2 classification labs.
-- Decision labs work great for modules about processes, trade-offs, real-world applications, ethics, or strategy.
+- Suggested distribution: 3-4 simulation labs, 1-2 classification labs.
+- IMPORTANT: Do NOT generate "decision" as a lab_type. Decision scenarios are INCLUDED INSIDE simulation labs via the "decisions" array.
 - Classification labs work great for modules about categorization, terminology, identifying types, or sorting concepts.
-- Simulation labs work great for modules about measurable variables, cause-and-effect, or quantitative relationships.
+- Simulation labs work great for modules about measurable variables, cause-and-effect, quantitative relationships, processes, trade-offs, strategy, or ethics. They ALWAYS include decision scenarios that move sliders.
 - Pick the lab_type that best fits each module's content — do NOT default everything to simulation.
 
 LESSON FORMAT — INTERACTIVE SLIDES:
@@ -123,7 +121,7 @@ Make each lab genuinely educational — a student should learn by interacting wi
                         lesson_content: { type: "string", description: "Detailed lesson formatted as slides separated by --- dividers. Each slide starts with an emoji heading (## 🎯 Title). 4-6 slides per module, 2-3 paragraphs each. Use emojis throughout to make content engaging." },
                         youtube_query: { type: "string" },
                         youtube_title: { type: "string" },
-                        lab_type: { type: "string", enum: ["simulation", "decision", "classification"] },
+                        lab_type: { type: "string", enum: ["simulation", "classification"] },
                         lab_data: {
                           type: "object",
                           description: "MUST be fully populated. For simulation: title, description, equation_label, output_label, parameters (array of {name,icon,unit,min,max,default,description}), thresholds (array of {label,min_percent,message}), decisions (array of {question,emoji,choices:[{text,explanation,effects:{paramName:delta}}]}). For decision: title, description, scenarios (array of {title,description,emoji,choices:[{text,consequence,impact}]}), summary_prompt. For classification: title, description, categories (array of {name,emoji,description}), items (array of {name,correct_category,hint}).",
@@ -304,9 +302,47 @@ Make each lab genuinely educational — a student should learn by interacting wi
       let labType = mod.lab_type;
 
       // Validate lab_data has actual content
+      // Convert any legacy "decision" type to simulation
+      if (labType === "decision" && labData && Array.isArray(labData.scenarios)) {
+        console.info(`[generate-course] Converting legacy "decision" lab to simulation for "${mod.title}"`);
+        labType = "simulation";
+        // Build parameters from effect keys found in scenarios, or use generic ones
+        const effectKeys = new Set<string>();
+        for (const s of labData.scenarios) {
+          for (const c of (s.choices || [])) {
+            if (c.effects) Object.keys(c.effects).forEach((k: string) => effectKeys.add(k));
+          }
+        }
+        const paramNames = effectKeys.size > 0 ? [...effectKeys] : ["Factor A", "Factor B", "Factor C"];
+        const icons = ["📊", "📈", "⚙️", "🔬", "💡", "🎯"];
+        labData = {
+          title: labData.title || `${mod.title} Lab`,
+          description: labData.description || `Explore factors of ${mod.title.toLowerCase()}.`,
+          equation_label: `${mod.title} Model`,
+          output_label: `${mod.title} Score`,
+          parameters: paramNames.map((name: string, i: number) => ({
+            name, icon: icons[i % icons.length], unit: "%", min: 0, max: 100, default: 50,
+            description: `Level of ${name.toLowerCase()}`
+          })),
+          thresholds: [
+            { label: "🌟 Optimal", min_percent: 80, message: "Excellent balance of factors." },
+            { label: "📈 Moderate", min_percent: 50, message: "Reasonable, but room to improve." },
+            { label: "⚠️ Needs Work", min_percent: 0, message: "Adjust factors to improve outcomes." },
+          ],
+          decisions: labData.scenarios.map((s: any) => ({
+            question: s.description || s.title,
+            emoji: s.emoji || "🤔",
+            choices: (s.choices || []).map((c: any) => ({
+              text: c.text,
+              explanation: c.consequence || c.explanation || "",
+              effects: c.effects || {},
+            })),
+          })),
+        };
+      }
+
       const isValid = labData && typeof labData === "object" && (
         (labType === "simulation" && Array.isArray(labData.parameters) && labData.parameters.length > 0) ||
-        (labType === "decision" && Array.isArray(labData.scenarios) && labData.scenarios.length > 0) ||
         (labType === "classification" && Array.isArray(labData.items) && labData.items.length > 0)
       );
 
@@ -343,36 +379,7 @@ Make each lab genuinely educational — a student should learn by interacting wi
         const fallbackType = index % 3;
 
         if (fallbackType === 1) {
-          // Decision lab fallback
-          labType = "decision";
-          labData = {
-            title: `${mod.title} Decisions`,
-            description: `Make critical decisions related to ${mod.title.toLowerCase()}.`,
-            scenarios: [
-              {
-                title: `${keyTerms[0]} Strategy`,
-                description: `You need to decide how to approach ${keyTerms[0].toLowerCase()} in the context of ${mod.title.toLowerCase()}.`,
-                emoji: "🤔",
-                choices: [
-                  { text: `Prioritize ${keyTerms[0].toLowerCase()}`, consequence: `Strong focus on ${keyTerms[0].toLowerCase()} yields deep understanding but may neglect other factors.`, impact: "positive" },
-                  { text: `Balance ${keyTerms[0].toLowerCase()} with ${keyTerms[1].toLowerCase()}`, consequence: `A balanced approach covers more ground but with less depth.`, impact: "neutral" },
-                  { text: `Ignore ${keyTerms[0].toLowerCase()}`, consequence: `Skipping this fundamental concept creates knowledge gaps.`, impact: "negative" },
-                ],
-              },
-              {
-                title: `${keyTerms[1]} Trade-off`,
-                description: `Consider the trade-offs when applying ${keyTerms[1].toLowerCase()} to ${mod.title.toLowerCase()}.`,
-                emoji: "⚖️",
-                choices: [
-                  { text: `Apply ${keyTerms[1].toLowerCase()} carefully`, consequence: `Careful application leads to better outcomes.`, impact: "positive" },
-                  { text: `Partial application of ${keyTerms[1].toLowerCase()}`, consequence: `Some benefit, but results are inconsistent.`, impact: "neutral" },
-                  { text: `Skip ${keyTerms[1].toLowerCase()} entirely`, consequence: `Missing this step leads to poor results.`, impact: "negative" },
-                ],
-              },
-            ],
-            summary_prompt: `Reflect on how your decisions about ${keyTerms[0].toLowerCase()} and ${keyTerms[1].toLowerCase()} impact ${mod.title.toLowerCase()}.`,
-          };
-        } else if (fallbackType === 2) {
+          // Classification lab fallback
           // Classification lab fallback
           labType = "classification";
           const catTerms = keyTerms.slice(0, 3);
@@ -392,7 +399,7 @@ Make each lab genuinely educational — a student should learn by interacting wi
             })),
           };
         } else {
-          // Simulation lab fallback (existing logic)
+          // Simulation lab fallback with decisions
           labType = "simulation";
           const simTerms = keyTerms.slice(0, 3);
           const icons = ["🔬", "📊", "⚙️"];
@@ -410,6 +417,26 @@ Make each lab genuinely educational — a student should learn by interacting wi
               { label: "🌟 Expert Level", min_percent: 80, message: `Strong command of ${mod.title.toLowerCase()}.` },
               { label: "📈 Progressing", min_percent: 50, message: "Solid foundation — focus on weaker areas." },
               { label: "🔰 Beginner", min_percent: 0, message: "Keep exploring — increase each factor to build mastery." },
+            ],
+            decisions: [
+              {
+                question: `How would you prioritize ${simTerms[0].toLowerCase()} vs ${simTerms[1].toLowerCase()} in ${mod.title.toLowerCase()}?`,
+                emoji: "🤔",
+                choices: [
+                  { text: `Focus on ${simTerms[0].toLowerCase()}`, explanation: `Strengthens ${simTerms[0].toLowerCase()} but may neglect other areas.`, effects: { [simTerms[0]]: 25, [simTerms[1]]: -10 } },
+                  { text: `Balance both equally`, explanation: `A moderate approach that covers all bases.`, effects: { [simTerms[0]]: 10, [simTerms[1]]: 10 } },
+                  { text: `Prioritize ${simTerms[1].toLowerCase()}`, explanation: `Strong ${simTerms[1].toLowerCase()} focus at the cost of ${simTerms[0].toLowerCase()}.`, effects: { [simTerms[0]]: -10, [simTerms[1]]: 25 } },
+                ],
+              },
+              {
+                question: `What role does ${simTerms[2].toLowerCase()} play in your strategy?`,
+                emoji: "⚡",
+                choices: [
+                  { text: `Maximize ${simTerms[2].toLowerCase()}`, explanation: `Pushing ${simTerms[2].toLowerCase()} to the limit for best results.`, effects: { [simTerms[2]]: 30 } },
+                  { text: `Keep it moderate`, explanation: `Safe approach with predictable outcomes.`, effects: { [simTerms[2]]: 10 } },
+                  { text: `Minimize it`, explanation: `Reducing ${simTerms[2].toLowerCase()} frees resources elsewhere.`, effects: { [simTerms[2]]: -15, [simTerms[0]]: 10 } },
+                ],
+              },
             ],
           };
         }
