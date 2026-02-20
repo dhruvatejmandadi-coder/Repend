@@ -71,9 +71,11 @@ QUIZ REQUIREMENTS:
 - EVERY question MUST include an "explanation" field
 
 SIMULATION LAB REQUIREMENTS:
-- MUST include parameters
-- MUST include 2–3 decision scenarios
-- Each decision must adjust slider parameters using numeric deltas
+- MUST include parameters (sliders with name, min, max, default, unit)
+- MUST include 2–3 decision scenarios in the "decisions" array
+- CRITICAL: Every choice in a decision MUST have a non-empty "effects" object
+- Effects map parameter names to NUMERIC deltas (e.g. {"Pressure": 20, "Volume": -15})
+- NEVER leave effects as an empty object {}
 
 LESSON FORMAT:
 - 4–6 slides
@@ -161,32 +163,47 @@ Return structured JSON only via the function tool.
       let labData = mod.lab_data;
       let labType = mod.lab_type;
 
-      // 🔥 FORCE DECISIONS IF MISSING
-      if (
-        labType === "simulation" &&
-        labData?.parameters?.length > 0 &&
-        (!Array.isArray(labData.decisions) || labData.decisions.length === 0)
-      ) {
-        const paramNames = labData.parameters.map((p: any) => p.name);
+      // 🔥 FORCE DECISIONS + FIX EMPTY EFFECTS
+      if (labType === "simulation" && labData?.parameters?.length > 0) {
+        const params = labData.parameters;
+        const paramNames = params.map((p: any) => p.name);
 
-        labData.decisions = [
-          {
-            question: `How would you adjust ${paramNames[0]}?`,
-            emoji: "⚡",
-            choices: [
-              {
-                text: "Increase it",
-                explanation: "Increasing strengthens this factor.",
-                effects: { [paramNames[0]]: 20 },
-              },
-              {
-                text: "Decrease it",
-                explanation: "Reducing may balance tradeoffs.",
-                effects: { [paramNames[0]]: -20 },
-              },
-            ],
-          },
-        ];
+        // Generate decisions if missing entirely
+        if (!Array.isArray(labData.decisions) || labData.decisions.length === 0) {
+          labData.decisions = [
+            {
+              question: `How would you adjust ${paramNames[0]}?`,
+              emoji: "⚡",
+              choices: [
+                {
+                  text: "Increase it",
+                  explanation: "Increasing strengthens this factor.",
+                  effects: { [paramNames[0]]: 20 },
+                },
+                {
+                  text: "Decrease it",
+                  explanation: "Reducing may balance tradeoffs.",
+                  effects: { [paramNames[0]]: -20 },
+                },
+              ],
+            },
+          ];
+        } else {
+          // Fix decisions that have empty effects
+          labData.decisions = labData.decisions.map((d: any) => ({
+            ...d,
+            choices: (d.choices || []).map((c: any, cIdx: number) => {
+              const hasEffects = c.effects && Object.keys(c.effects).length > 0 &&
+                Object.values(c.effects).some((v: any) => v !== 0);
+              if (hasEffects) return c;
+
+              const param = params[cIdx % params.length];
+              const range = (param.max || 100) - (param.min || 0);
+              const delta = Math.round(range * 0.2) * (cIdx % 2 === 0 ? 1 : -1);
+              return { ...c, effects: { [param.name]: delta || Math.round(range * 0.15) } };
+            }),
+          }));
+        }
       }
 
       return {

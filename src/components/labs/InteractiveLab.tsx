@@ -60,12 +60,37 @@ function getParamLevel(value: number, min: number, max: number) {
   return { level: "low", color: "text-red-500", icon: TrendingDown };
 }
 
+/* ======== FIX EMPTY EFFECTS ======== */
+
+function ensureDecisionEffects(decisions: Decision[], parameters: Parameter[]): Decision[] {
+  if (!decisions.length || !parameters.length) return decisions;
+
+  return decisions.map((d) => ({
+    ...d,
+    choices: d.choices.map((c, cIdx) => {
+      // If effects is empty or all values are 0, auto-generate from parameters
+      const hasEffects = c.effects && Object.values(c.effects).some((v) => v !== 0);
+      if (hasEffects) return c;
+
+      // Pick a parameter and assign a delta based on choice index
+      const param = parameters[cIdx % parameters.length];
+      const range = param.max - param.min;
+      const delta = Math.round(range * 0.2) * (cIdx % 2 === 0 ? 1 : -1);
+      return {
+        ...c,
+        effects: { [param.name]: delta || Math.round(range * 0.15) },
+      };
+    }),
+  }));
+}
+
 /* ======== SIMULATION ======== */
 
 function SimulationLabInline({ data }: { data: SimulationData }) {
   const parameters = data.parameters ?? [];
   const thresholds = data.thresholds ?? [];
-  const decisions = data.decisions ?? [];
+  const rawDecisions = data.decisions ?? [];
+  const decisions = useMemo(() => ensureDecisionEffects(rawDecisions, parameters), [rawDecisions, parameters]);
 
   const [values, setValues] = useState<Record<string, number>>({});
   const [currentDecision, setCurrentDecision] = useState(0);
