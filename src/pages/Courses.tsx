@@ -148,12 +148,11 @@ export default function Courses() {
           </div>
 
           {/* Guest hint */}
-          {!user && !isGenerating &&
-          <p className="text-xs text-muted-foreground mt-3">Create an account to save your courses.
-            <Rocket className="w-3 h-3 inline mr-1" />
+          {!user && !isGenerating && (
+            <p className="text-xs text-muted-foreground mt-3">
               No sign-up required to try — create an account to save your courses.
             </p>
-          }
+          )}
         </div>
 
         {/* Courses List (authenticated only) */}
