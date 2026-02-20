@@ -60,9 +60,9 @@ export default function Courses() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         },
-        body: JSON.stringify({ topic: topic.trim() }),
+        body: JSON.stringify({ topic: topic.trim() })
       });
 
       if (!resp.ok) {
@@ -78,7 +78,7 @@ export default function Courses() {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Failed to generate course",
-        variant: "destructive",
+        variant: "destructive"
       });
     } finally {
       setIsGenerating(false);
@@ -106,20 +106,20 @@ export default function Courses() {
             <span className="text-sm text-muted-foreground">AI-Powered Learning</span>
           </div>
           <h1 className="font-display text-3xl sm:text-4xl font-bold mb-4">
-            {user ? (
-              <>
+            {user ?
+            <>
                 Learn <span className="gradient-text">Anything</span>
-              </>
-            ) : (
-              <>
+              </> :
+
+            <>
                 Try AI <span className="gradient-text">Course Generation</span>
               </>
-            )}
+            }
           </h1>
           <p className="text-muted-foreground mb-6">
-            {user
-              ? "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos."
-              : "Enter any topic below and watch our AI build a personalized course"}
+            {user ?
+            "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos." :
+            "Enter any topic below and watch our AI build a personalized course"}
           </p>
 
           {/* Generate Form */}
@@ -130,63 +130,63 @@ export default function Courses() {
               onChange={(e) => setTopic(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
               disabled={isGenerating}
-              className="flex-1"
-            />
+              className="flex-1" />
+
             <Button variant="hero" onClick={handleGenerate} disabled={!topic.trim() || isGenerating}>
-              {isGenerating ? (
-                <>
+              {isGenerating ?
+              <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Generating...
-                </>
-              ) : (
-                <>
+                </> :
+
+              <>
                   <Plus className="w-4 h-4" />
                   {user ? "Create Course" : "Try It Free"}
                 </>
-              )}
+              }
             </Button>
           </div>
 
           {/* Guest hint */}
-          {!user && !isGenerating && (
-            <p className="text-xs text-muted-foreground mt-3">
-              <Rocket className="w-3 h-3 inline mr-1" />
+          {!user && !isGenerating &&
+          <p className="text-xs text-muted-foreground mt-3">Create an account to save your courses.
+            <Rocket className="w-3 h-3 inline mr-1" />
               No sign-up required to try — create an account to save your courses.
             </p>
-          )}
+          }
         </div>
 
         {/* Courses List (authenticated only) */}
-        {user && (
-          <>
-            {loading ? (
-              <div className="flex justify-center py-12">
+        {user &&
+        <>
+            {loading ?
+          <div className="flex justify-center py-12">
                 <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : courses.length > 0 ? (
-              <div className="max-w-4xl mx-auto">
+              </div> :
+          courses.length > 0 ?
+          <div className="max-w-4xl mx-auto">
                 <h2 className="font-display text-xl font-bold mb-4">Your Courses</h2>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {courses.map((course) => (
-                    <Card
-                      key={course.id}
-                      className="bg-card border-border hover:border-primary/30 transition-colors cursor-pointer group"
-                      onClick={() => course.status === "ready" && navigate(`/courses/${course.id}`)}
-                    >
+                  {courses.map((course) =>
+              <Card
+                key={course.id}
+                className="bg-card border-border hover:border-primary/30 transition-colors cursor-pointer group"
+                onClick={() => course.status === "ready" && navigate(`/courses/${course.id}`)}>
+
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-3">
                           <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                             <BookOpen className="w-5 h-5 text-primary-foreground" />
                           </div>
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-8 w-8"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDelete(course.id);
-                            }}
-                          >
+                      variant="ghost"
+                      size="icon"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(course.id);
+                      }}>
+
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -194,35 +194,35 @@ export default function Courses() {
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
                           {course.description || course.topic}
                         </p>
-                        {course.status === "generating" ? (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        {course.status === "generating" ?
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <Loader2 className="w-3 h-3 animate-spin" />
                             Generating...
-                          </div>
-                        ) : course.status === "failed" ? (
-                          <span className="text-xs text-destructive">Generation failed</span>
-                        ) : (
-                          <div className="flex items-center gap-1 text-xs text-primary">
+                          </div> :
+                  course.status === "failed" ?
+                  <span className="text-xs text-destructive">Generation failed</span> :
+
+                  <div className="flex items-center gap-1 text-xs text-primary">
                             View Course <ArrowRight className="w-3 h-3" />
                           </div>
-                        )}
+                  }
                       </CardContent>
                     </Card>
-                  ))}
+              )}
                 </div>
-              </div>
-            ) : (
-              <div className="text-center py-12 text-muted-foreground">
+              </div> :
+
+          <div className="text-center py-12 text-muted-foreground">
                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p>No courses yet. Create your first one above!</p>
               </div>
-            )}
+          }
           </>
-        )}
+        }
       </div>
 
       {/* Signup prompt shown to guests during "generation" */}
       <GeneratingSignUpPrompt open={showSignUpPrompt} onOpenChange={handleSignUpPromptClose} topic={topic} />
-    </DashboardLayout>
-  );
+    </DashboardLayout>);
+
 }
