@@ -81,9 +81,9 @@ function ensureDecisionEffects(decisions: Decision[], parameters: Parameter[]): 
 /* ================= SIMULATION ================= */
 
 function SimulationLabInline({ data }: { data: SimulationData }) {
-  const parameters = data.parameters ?? [];
-  const thresholds = data.thresholds ?? [];
-  const rawDecisions = data.decisions ?? [];
+  const parameters = useMemo(() => data.parameters ?? [], [data]);
+  const thresholds = useMemo(() => data.thresholds ?? [], [data]);
+  const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
 
   const decisions = useMemo(() => ensureDecisionEffects(rawDecisions, parameters), [rawDecisions, parameters]);
 
@@ -97,7 +97,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
     setValues(initial);
     setCurrentDecision(0);
     setAnswered({});
-  }, [data, parameters]);
+  }, [parameters]);
 
   /* ================= OUTCOME ================= */
 
