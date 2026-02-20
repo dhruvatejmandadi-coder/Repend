@@ -52,7 +52,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-5",
+        model: "google/gemini-2.5-pro",
         temperature: 0.4,
         messages: [
           {
@@ -139,7 +139,7 @@ Return structured JSON only via the function tool.
             },
           },
         ],
-        tool_choice: "auto",
+        tool_choice: { type: "function", function: { name: "create_course" } },
       }),
     });
 
