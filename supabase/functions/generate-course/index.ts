@@ -139,15 +139,22 @@ Return structured JSON only via the function tool.
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "create_course" } },
+        tool_choice: "auto",
       }),
     });
 
     const aiData = await response.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call returned");
-
-    const courseData = JSON.parse(toolCall.function.arguments);
+    let courseData;
+    if (toolCall) {
+      courseData = JSON.parse(toolCall.function.arguments);
+    } else {
+      // Fallback: try to parse JSON from content
+      const content = aiData.choices?.[0]?.message?.content || "";
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error("No structured data returned from AI");
+      courseData = JSON.parse(jsonMatch[0]);
+    }
 
     await supabase
       .from("courses")
