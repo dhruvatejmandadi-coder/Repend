@@ -24,7 +24,7 @@ type Decision = {
   choices: {
     text: string;
     explanation?: string;
-    effects?: Record<string, number>;
+    effects: Record<string, number>;
   }[];
 };
 
@@ -39,46 +39,44 @@ type SimulationData = {
 type Props = {
   labType?: string | null;
   labData?: any;
+  labTitle?: string | null;
+  labDescription?: string | null;
 };
 
 /* ================= HELPERS ================= */
 
 function getParamLevel(value: number, min: number, max: number) {
   const pct = ((value - min) / (max - min)) * 100;
-  if (pct >= 75) return { color: "text-green-500", icon: TrendingUp };
-  if (pct >= 35) return { color: "text-yellow-500", icon: Minus };
-  return { color: "text-red-500", icon: TrendingDown };
+
+  if (pct >= 75) return { level: "high", color: "text-green-500", icon: TrendingUp };
+  if (pct >= 35) return { level: "mid", color: "text-yellow-500", icon: Minus };
+
+  return { level: "low", color: "text-red-500", icon: TrendingDown };
 }
 
-/* ================= ULTRA SAFE EFFECT FIX ================= */
+/* ================= AUTO-FIX EMPTY EFFECTS ================= */
 
-function ensureDecisionEffects(decisions: Decision[] = [], parameters: Parameter[] = []): Decision[] {
-  if (!decisions.length || !parameters.length) return decisions;
+function ensureDecisionEffects(decisions: Decision[], parameters: Parameter[]): Decision[] {
+  if (!decisions?.length || !parameters?.length) return decisions ?? [];
 
-  return decisions.map((decision, dIndex) => ({
+  return decisions.map((decision) => ({
     ...decision,
-    choices: decision.choices.map((choice, cIndex) => {
-      const effects = choice.effects ?? {};
-      const hasRealEffect =
-        Object.keys(effects).length > 0 && Object.values(effects).some((v) => typeof v === "number" && v !== 0);
+    choices: decision.choices.map((choice, index) => {
+      const hasRealEffects = choice.effects && Object.values(choice.effects).some((v) => v !== 0);
 
-      if (hasRealEffect) return choice;
+      if (hasRealEffects) return choice;
 
-      // 🔥 Always generate a guaranteed working delta
-      const param = parameters[(dIndex + cIndex) % parameters.length];
+      // Auto-generate effects if empty
+      const param = parameters[index % parameters.length];
       const range = param.max - param.min;
 
       let delta = Math.round(range * 0.2);
-      if (delta === 0) delta = 1;
-
-      // Alternate + / -
-      if ((dIndex + cIndex) % 2 === 1) delta *= -1;
+      if (delta === 0) delta = Math.round(range * 0.15);
+      if (index % 2 === 1) delta *= -1;
 
       return {
         ...choice,
-        effects: {
-          [param.name]: delta,
-        },
+        effects: { [param.name]: delta },
       };
     }),
   }));
@@ -89,7 +87,6 @@ function ensureDecisionEffects(decisions: Decision[] = [], parameters: Parameter
 function SimulationLabInline({ data }: { data: SimulationData }) {
   const parameters = data.parameters ?? [];
   const thresholds = data.thresholds ?? [];
-
   const rawDecisions = data.decisions ?? [];
 
   const decisions = useMemo(() => ensureDecisionEffects(rawDecisions, parameters), [rawDecisions, parameters]);
@@ -98,16 +95,14 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
   const [currentDecision, setCurrentDecision] = useState(0);
   const [answered, setAnswered] = useState<Record<number, number>>({});
 
-  /* ===== INITIALIZE VALUES ONLY WHEN PARAMETERS CHANGE ===== */
+  /* RESET WHEN LAB CHANGES */
   useEffect(() => {
-    if (!parameters.length) return;
-
     const initial = Object.fromEntries(parameters.map((p) => [p.name, p.default]));
 
     setValues(initial);
     setCurrentDecision(0);
     setAnswered({});
-  }, [parameters]);
+  }, [data, parameters]);
 
   /* ================= OUTCOME ================= */
 
@@ -115,8 +110,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
     if (!parameters.length) return 0;
 
     const total = parameters.reduce((sum, p) => {
-      const value = values[p.name] ?? p.default;
-      const pct = (value - p.min) / (p.max - p.min);
+      const pct = ((values[p.name] ?? p.default) - p.min) / (p.max - p.min);
       return sum + pct;
     }, 0);
 
@@ -137,19 +131,18 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
     if (answered[dIdx] !== undefined) return;
 
     const choice = decisions[dIdx]?.choices[cIdx];
-    if (!choice?.effects) return;
+    if (!choice) return;
 
     setValues((prev) => {
       const next = { ...prev };
 
-      Object.entries(choice.effects!).forEach(([paramName, delta]) => {
+      Object.entries(choice.effects).forEach(([paramName, delta]) => {
         const param = parameters.find((p) => p.name === paramName);
         if (!param) return;
 
         const current = next[paramName] ?? param.default;
-        const updated = current + delta;
 
-        next[paramName] = Math.max(param.min, Math.min(param.max, updated));
+        next[paramName] = Math.max(param.min, Math.min(param.max, current + delta));
       });
 
       return next;
@@ -164,7 +157,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
 
   return (
     <div className="space-y-5">
-      {/* ===== DECISIONS ===== */}
+      {/* DECISIONS */}
       {decisions.length > 0 && !allDone && currentDecision < decisions.length && (
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-5 space-y-4">
@@ -206,7 +199,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
         </Card>
       )}
 
-      {/* ===== SLIDERS ===== */}
+      {/* SLIDERS */}
       {parameters.map((p) => {
         const value = values[p.name] ?? p.default;
         const { color, icon: Icon } = getParamLevel(value, p.min, p.max);
@@ -245,7 +238,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
         );
       })}
 
-      {/* ===== OUTCOME ===== */}
+      {/* OUTCOME */}
       <Card>
         <CardContent className="p-5">
           <div className="flex justify-between mb-2">
