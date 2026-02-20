@@ -39,8 +39,6 @@ type SimulationData = {
 type Props = {
   labType?: string | null;
   labData?: any;
-  labTitle?: string | null;
-  labDescription?: string | null;
 };
 
 /* ================= HELPERS ================= */
@@ -81,9 +79,9 @@ function ensureDecisionEffects(decisions: Decision[], parameters: Parameter[]): 
 /* ================= SIMULATION ================= */
 
 function SimulationLabInline({ data }: { data: SimulationData }) {
-  const parameters = useMemo(() => data.parameters ?? [], [data]);
-  const thresholds = useMemo(() => data.thresholds ?? [], [data]);
-  const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
+  const parameters = data.parameters ?? [];
+  const thresholds = data.thresholds ?? [];
+  const rawDecisions = data.decisions ?? [];
 
   const decisions = useMemo(() => ensureDecisionEffects(rawDecisions, parameters), [rawDecisions, parameters]);
 
@@ -97,7 +95,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
     setValues(initial);
     setCurrentDecision(0);
     setAnswered({});
-  }, [parameters]);
+  }, [data, parameters]);
 
   /* ================= OUTCOME ================= */
 
