@@ -39,6 +39,8 @@ type SimulationData = {
 type Props = {
   labType?: string | null;
   labData?: any;
+  labTitle?: string | null;
+  labDescription?: string | null;
 };
 
 /* ================= HELPERS ================= */
