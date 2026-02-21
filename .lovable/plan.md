@@ -1,73 +1,67 @@
 
-# Merge Decision + Simulation Into One Unified Module
 
-## What Changes
+# Improve Lesson Slides and Lab Scenario Generation
 
-**Delete** `DecisionLab.tsx` -- its functionality gets absorbed into `SimulationLab.tsx` (which already has decision scenarios that move sliders).
+## Problem
+1. **Lessons** sometimes come back as a single wall of text instead of multiple slides separated by `---`
+2. **Scenario decisions** in simulation labs sometimes have empty or missing `effects`, so sliders don't move when you answer
+3. The AI prompt isn't strict enough about these requirements
 
-**Update** `InteractiveLab.tsx`:
-- Remove the `DecisionLab` import and rendering branch
-- Route ALL lab types (`"simulation"` and `"decision"`) to `SimulationLab`
-- When AI generates a `"decision"` type lab, convert its `scenarios` data into the simulation format (parameters + decisions that affect them)
+## Changes
 
-**Update** `InteractiveLab.tsx` fallback logic:
-- All fallbacks produce simulation-with-decisions format (already mostly done)
-- Add decision scenarios to the existing topic-based fallbacks (currently they only have sliders, no decisions)
+### 1. Strengthen the AI Prompt (Edge Function)
+**File:** `supabase/functions/generate-course/index.ts`
 
-**Update** `generate-course` edge function:
-- Remove the separate `"decision"` lab type from AI generation
-- All labs generate as `"simulation"` with both `parameters` (sliders) and `decisions` (scenarios that move sliders)
-- Update the prompt to always produce the combined format
+Update the system prompt to be much more explicit:
+- Require each slide to be wrapped between `---` separators with clear examples
+- Add an explicit example of the `lesson_content` format showing `---` between slides
+- Require 4-6 slides per module with mandatory `---` delimiters
+- Require 2-3 scenario decisions per simulation lab with concrete numeric effects on every choice
+- Add an inline example of the `decisions` and `effects` structure so the AI never returns empty objects
 
-**Update** `ClassificationLab` -- stays as-is (it's a different mechanic entirely: drag-and-sort)
+### 2. Post-Processing: Force Slide Splits
+**File:** `supabase/functions/generate-course/index.ts`
 
-## The Unified Flow
+After receiving AI data, add a post-processing step for `lesson_content`:
+- If the content has zero `---` separators, automatically chunk it by splitting on `## ` headings and rejoining with `---`
+- This guarantees multiple slides even if the AI ignores the separator instruction
 
-1. User sees scenario questions first (AI-generated, topic-specific)
-2. Each choice adjusts slider values with visible effect badges
-3. After answering, user can fine-tune sliders manually
-4. Live outcome bar updates in real-time
-5. All scenarios done -> summary banner, sliders still editable
+### 3. Post-Processing: Guarantee Decision Effects
+**File:** `supabase/functions/generate-course/index.ts`
 
-This is exactly what `SimulationLab.tsx` already does. The only work is removing the separate `DecisionLab` path and ensuring the AI never generates standalone decision labs.
+The existing fallback logic already handles empty effects, but strengthen it:
+- After fixing empty effects, validate that every choice has at least one non-zero numeric delta
+- Log a warning if auto-repair was needed (for debugging)
 
-## Files
-
-### Delete
-- `src/components/labs/DecisionLab.tsx`
-
-### Modify
-- `src/components/labs/InteractiveLab.tsx` -- remove DecisionLab import/branch, convert any incoming `"decision"` data to simulation format, add decision scenarios to all topic fallbacks
-- `supabase/functions/generate-course/index.ts` -- remove `"decision"` as a separate lab type, always generate combined simulation+decisions format, update fallback logic
-
-### No Changes
-- `src/components/labs/SimulationLab.tsx` -- already has the full decision+slider UI
-- `src/components/labs/ClassificationLab.tsx` -- separate mechanic, stays
+### 4. No Frontend Changes Needed
+- `LessonSlides.tsx` already splits on `\n---\n` and renders pagination -- it works correctly when slides are properly separated
+- `InteractiveLab.tsx` already applies decision effects to slider values via the `handleDecision` function -- it works correctly when effects have numeric values
 
 ## Technical Details
 
-### InteractiveLab.tsx Changes
+The key prompt update will include an explicit example like:
+```
+LESSON FORMAT (CRITICAL):
+- 4-6 slides per module
+- Separate EVERY slide with a line containing ONLY "---"
+- Example lesson_content:
+  "## Slide 1 Title\n\nParagraph...\n\n---\n\n## Slide 2 Title\n\nParagraph...\n\n---\n\n## Slide 3 Title\n\nParagraph..."
 
-In `isValidLabData`: remove the `"decision"` branch. Incoming `"decision"` type data gets converted to simulation format via a converter function:
-
-```text
-function convertDecisionToSimulation(data): SimulationData
-  - Extract unique "effect" keys from all scenario choices to build parameters
-  - Map scenarios to the decisions array format SimulationLab expects
-  - Generate thresholds automatically
+SIMULATION DECISIONS (CRITICAL):
+- 2-3 scenario questions per lab
+- Every choice MUST have effects with numeric values
+- Example: effects: {"Temperature": 15, "Pressure": -10}
+- NEVER use effects: {}
 ```
 
-In `generateTopicFallback`: add 2-3 decision scenarios to each topic category (economics gets budget decisions, science gets experiment decisions, etc.)
+The post-processing chunking logic:
+```typescript
+// If no --- separators found, split by headings
+if (!mod.lesson_content.includes('\n---\n')) {
+  const sections = mod.lesson_content.split(/(?=^## )/m).filter(Boolean);
+  if (sections.length > 1) {
+    mod.lesson_content = sections.join('\n\n---\n\n');
+  }
+}
+```
 
-### Edge Function Changes
-
-Update the AI prompt to only generate `"simulation"` labs with both `parameters` and `decisions` arrays. Remove the `"decision"` fallback branch. The validation check for `"decision"` type gets removed since it's no longer generated.
-
-## Implementation Order
-
-1. Update `generate-course` edge function (remove decision type, always generate combined)
-2. Deploy edge function
-3. Add decision scenarios to all topic fallbacks in `InteractiveLab.tsx`
-4. Add converter function for legacy `"decision"` data in `InteractiveLab.tsx`
-5. Remove `DecisionLab` import/branch from `InteractiveLab.tsx`
-6. Delete `DecisionLab.tsx`
