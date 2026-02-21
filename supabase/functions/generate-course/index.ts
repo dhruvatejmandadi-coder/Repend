@@ -76,13 +76,18 @@ SIMULATION LAB REQUIREMENTS:
 - CRITICAL: Every choice in a decision MUST have a non-empty "effects" object
 - Effects map parameter names to NUMERIC deltas (e.g. {"Pressure": 20, "Volume": -15})
 - NEVER leave effects as an empty object {}
+- Example decisions array:
+  [{"question":"What approach?","emoji":"⚡","choices":[{"text":"Option A","explanation":"Why A.","effects":{"Understanding":20,"Confidence":10}},{"text":"Option B","explanation":"Why B.","effects":{"Application":25,"Confidence":-5}}]},{"question":"Second scenario?","emoji":"🔬","choices":[{"text":"Choice X","explanation":"Reason.","effects":{"Understanding":15}},{"text":"Choice Y","explanation":"Reason.","effects":{"Application":20}}]}]
 
-LESSON FORMAT:
-- 4–6 slides
-- Slides separated by ---
+LESSON FORMAT (CRITICAL — YOU MUST FOLLOW THIS EXACTLY):
+- Each module MUST have 4–6 slides
+- Separate EVERY slide with a line containing ONLY "---"
 - Each slide starts with: ## 🎯 Title
-- Use emojis
+- Use emojis in headings
 - 2–3 short paragraphs per slide
+- Example lesson_content value:
+  "## 🎯 Slide 1 Title\\n\\nParagraph one.\\n\\nParagraph two.\\n\\n---\\n\\n## 🎯 Slide 2 Title\\n\\nParagraph one.\\n\\nParagraph two.\\n\\n---\\n\\n## 🎯 Slide 3 Title\\n\\nParagraph one.\\n\\nParagraph two."
+- The "---" separator MUST appear between every slide. Without it, the lesson will display as a single wall of text.
 
 Return structured JSON only via the function tool.
 `,
@@ -269,10 +274,11 @@ Return structured JSON only via the function tool.
           labData.decisions = labData.decisions.map((d: any) => ({
             ...d,
             choices: (d.choices || []).map((c: any, cIdx: number) => {
-              const hasEffects = c.effects && Object.keys(c.effects).length > 0 &&
+            const hasEffects = c.effects && Object.keys(c.effects).length > 0 &&
                 Object.values(c.effects).some((v: any) => v !== 0);
               if (hasEffects) return c;
 
+              console.warn(`[auto-repair] Empty effects in module "${mod.title}", decision "${d.question}", choice "${c.text}"`);
               const param = params[cIdx % params.length];
               const range = (param.max || 100) - (param.min || 0);
               const delta = Math.round(range * 0.2) * (cIdx % 2 === 0 ? 1 : -1);
@@ -282,11 +288,21 @@ Return structured JSON only via the function tool.
         }
       }
 
+      // 🔥 POST-PROCESS: Force slide separators in lesson_content
+      let lessonContent = mod.lesson_content || "";
+      if (!lessonContent.includes("\n---\n")) {
+        const sections = lessonContent.split(/(?=^## )/m).filter(Boolean);
+        if (sections.length > 1) {
+          lessonContent = sections.join("\n\n---\n\n");
+          console.log(`[auto-repair] Added slide separators for module: ${mod.title} (${sections.length} slides)`);
+        }
+      }
+
       return {
         course_id: course.id,
         module_order: index + 1,
         title: mod.title,
-        lesson_content: mod.lesson_content,
+        lesson_content: lessonContent,
         youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(
           mod.youtube_query || mod.title,
         )}`,
