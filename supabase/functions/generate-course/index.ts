@@ -73,11 +73,13 @@ QUIZ REQUIREMENTS:
 SIMULATION LAB REQUIREMENTS:
 - MUST include parameters (sliders with name, min, max, default, unit)
 - MUST include 2–3 decision scenarios in the "decisions" array
-- CRITICAL: Every choice in a decision MUST have a non-empty "effects" object
-- Effects map parameter names to NUMERIC deltas (e.g. {"Pressure": 20, "Volume": -15})
-- NEVER leave effects as an empty object {}
+- CRITICAL: Every choice MUST have "set_state" (NOT "effects")
+- set_state maps ALL slider names to exact integer values 0-100
+- Example: {"set_state": {"Understanding": 85, "Application": 60, "Confidence": 70}}
+- NEVER use delta values, NEVER use "effects", NEVER leave set_state empty
+- Each choice must set ALL sliders, modifying at least 2
 - Example decisions array:
-  [{"question":"What approach?","emoji":"⚡","choices":[{"text":"Option A","explanation":"Why A.","effects":{"Understanding":20,"Confidence":10}},{"text":"Option B","explanation":"Why B.","effects":{"Application":25,"Confidence":-5}}]},{"question":"Second scenario?","emoji":"🔬","choices":[{"text":"Choice X","explanation":"Reason.","effects":{"Understanding":15}},{"text":"Choice Y","explanation":"Reason.","effects":{"Application":20}}]}]
+  [{"question":"What approach?","emoji":"⚡","choices":[{"text":"Option A","explanation":"Why A.","set_state":{"Understanding":85,"Application":60,"Confidence":70}},{"text":"Option B","explanation":"Why B.","set_state":{"Understanding":45,"Application":85,"Confidence":65}}]}]
 
 LESSON FORMAT (CRITICAL — YOU MUST FOLLOW THIS EXACTLY):
 - Each module MUST have 4–6 slides
@@ -208,16 +210,16 @@ Return structured JSON only via the function tool.
               question: `How would you approach learning ${mod.title}?`,
               emoji: "📚",
               choices: [
-                { text: "Deep dive into theory first", explanation: "Strong foundation approach.", effects: { Understanding: 25, Confidence: 10 } },
-                { text: "Jump into practice problems", explanation: "Hands-on learning approach.", effects: { Application: 25, Confidence: 15 } },
+                { text: "Deep dive into theory first", explanation: "Strong foundation approach.", set_state: { Understanding: 80, Application: 40, Confidence: 55 } },
+                { text: "Jump into practice problems", explanation: "Hands-on learning approach.", set_state: { Understanding: 45, Application: 85, Confidence: 65 } },
               ],
             },
             {
               question: `A student asks you to explain ${mod.title}. What do you do?`,
               emoji: "🎓",
               choices: [
-                { text: "Use real-world analogies", explanation: "Makes concepts relatable.", effects: { Understanding: 15, Application: 20 } },
-                { text: "Walk through step-by-step examples", explanation: "Methodical teaching.", effects: { Understanding: 20, Confidence: 15 } },
+                { text: "Use real-world analogies", explanation: "Makes concepts relatable.", set_state: { Understanding: 70, Application: 80, Confidence: 60 } },
+                { text: "Walk through step-by-step examples", explanation: "Methodical teaching.", set_state: { Understanding: 85, Application: 55, Confidence: 75 } },
               ],
             },
           ],
@@ -251,6 +253,8 @@ Return structured JSON only via the function tool.
 
         // Generate decisions if missing entirely
         if (!Array.isArray(labData.decisions) || labData.decisions.length === 0) {
+          const defaultState: Record<string, number> = {};
+          for (const p of params) defaultState[p.name] = 50;
           labData.decisions = [
             {
               question: `How would you adjust ${paramNames[0]}?`,
@@ -259,30 +263,47 @@ Return structured JSON only via the function tool.
                 {
                   text: "Increase it",
                   explanation: "Increasing strengthens this factor.",
-                  effects: { [paramNames[0]]: 20 },
+                  set_state: { ...defaultState, [paramNames[0]]: 80 },
                 },
                 {
                   text: "Decrease it",
                   explanation: "Reducing may balance tradeoffs.",
-                  effects: { [paramNames[0]]: -20 },
+                  set_state: { ...defaultState, [paramNames[0]]: 20 },
                 },
               ],
             },
           ];
         } else {
-          // Fix decisions that have empty effects
+          // Convert effects to set_state and ensure all sliders present
           labData.decisions = labData.decisions.map((d: any) => ({
             ...d,
             choices: (d.choices || []).map((c: any, cIdx: number) => {
-            const hasEffects = c.effects && Object.keys(c.effects).length > 0 &&
-                Object.values(c.effects).some((v: any) => v !== 0);
-              if (hasEffects) return c;
+              let setState = c.set_state;
 
-              console.warn(`[auto-repair] Empty effects in module "${mod.title}", decision "${d.question}", choice "${c.text}"`);
-              const param = params[cIdx % params.length];
-              const range = (param.max || 100) - (param.min || 0);
-              const delta = Math.round(range * 0.2) * (cIdx % 2 === 0 ? 1 : -1);
-              return { ...c, effects: { [param.name]: delta || Math.round(range * 0.15) } };
+              // Convert legacy effects to set_state
+              if (!setState || Object.keys(setState).length === 0) {
+                if (c.effects && Object.keys(c.effects).length > 0) {
+                  console.warn(`[auto-repair] Converting effects to set_state in "${mod.title}"`);
+                  setState = {};
+                  for (const p of params) {
+                    const delta = c.effects[p.name] ?? 0;
+                    setState[p.name] = Math.max(0, Math.min(100, (p.default || 50) + delta));
+                  }
+                } else {
+                  // No data at all, generate defaults
+                  setState = {};
+                  for (const p of params) {
+                    setState[p.name] = cIdx % 2 === 0 ? 65 : 35;
+                  }
+                }
+              }
+
+              // Ensure ALL parameter names exist in set_state
+              for (const p of params) {
+                if (setState[p.name] === undefined) setState[p.name] = 50;
+              }
+
+              return { ...c, set_state: setState };
             }),
           }));
         }
