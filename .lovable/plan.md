@@ -1,67 +1,101 @@
 
 
-# Improve Lesson Slides and Lab Scenario Generation
+# Switch Simulation Labs from Delta Effects to Set-State Model
 
-## Problem
-1. **Lessons** sometimes come back as a single wall of text instead of multiple slides separated by `---`
-2. **Scenario decisions** in simulation labs sometimes have empty or missing `effects`, so sliders don't move when you answer
-3. The AI prompt isn't strict enough about these requirements
+## What Changes
+Decision choices will set sliders to exact values (0-100) instead of adding/subtracting deltas. When you click a decision, every slider jumps to a precise position immediately.
 
-## Changes
+## Files to Modify
 
-### 1. Strengthen the AI Prompt (Edge Function)
-**File:** `supabase/functions/generate-course/index.ts`
+### 1. `src/components/labs/InteractiveLab.tsx` (Frontend)
 
-Update the system prompt to be much more explicit:
-- Require each slide to be wrapped between `---` separators with clear examples
-- Add an explicit example of the `lesson_content` format showing `---` between slides
-- Require 4-6 slides per module with mandatory `---` delimiters
-- Require 2-3 scenario decisions per simulation lab with concrete numeric effects on every choice
-- Add an inline example of the `decisions` and `effects` structure so the AI never returns empty objects
+**Type updates:**
+- Change `Decision.choices` from `effects: Record<string, number>` to `set_state: Record<string, number>`
+- Support legacy `effects` field as backward compatibility (convert to set_state on read)
 
-### 2. Post-Processing: Force Slide Splits
-**File:** `supabase/functions/generate-course/index.ts`
+**Remove `ensureDecisionEffects` function** -- replace with `ensureDecisionSetState` that:
+- Checks for `set_state` on each choice
+- If missing but `effects` exists, converts deltas to absolute values (backward compat for existing courses)
+- If both missing, generates default set_state values (0-100) for all parameters
 
-After receiving AI data, add a post-processing step for `lesson_content`:
-- If the content has zero `---` separators, automatically chunk it by splitting on `## ` headings and rejoining with `---`
-- This guarantees multiple slides even if the AI ignores the separator instruction
+**Rewrite `handleDecision`:**
+- Instead of `prev[key] + delta`, build new state from `choice.set_state`
+- For any slider NOT in `set_state`, keep its current value
+- Clamp all values between 0 and 100
 
-### 3. Post-Processing: Guarantee Decision Effects
-**File:** `supabase/functions/generate-course/index.ts`
+### 2. `supabase/functions/generate-course/index.ts` (Backend)
 
-The existing fallback logic already handles empty effects, but strengthen it:
-- After fixing empty effects, validate that every choice has at least one non-zero numeric delta
-- Log a warning if auto-repair was needed (for debugging)
+**Update AI prompt:**
+- Replace all mentions of `effects` with `set_state`
+- Instruct AI: each choice must have `set_state` with ALL slider names mapped to integers 0-100
+- Update example to use `set_state`
 
-### 4. No Frontend Changes Needed
-- `LessonSlides.tsx` already splits on `\n---\n` and renders pagination -- it works correctly when slides are properly separated
-- `InteractiveLab.tsx` already applies decision effects to slider values via the `handleDecision` function -- it works correctly when effects have numeric values
+**Update fallback data:**
+- All hardcoded fallback decisions use `set_state` instead of `effects`
+- Each choice sets ALL three sliders (Understanding, Application, Confidence)
+
+**Update post-processing repair logic:**
+- Convert any `effects` found to `set_state` absolute values
+- Ensure every choice has `set_state` with all parameter names
+- Fill missing sliders with 50 (midpoint default)
 
 ## Technical Details
 
-The key prompt update will include an explicit example like:
-```
-LESSON FORMAT (CRITICAL):
-- 4-6 slides per module
-- Separate EVERY slide with a line containing ONLY "---"
-- Example lesson_content:
-  "## Slide 1 Title\n\nParagraph...\n\n---\n\n## Slide 2 Title\n\nParagraph...\n\n---\n\n## Slide 3 Title\n\nParagraph..."
-
-SIMULATION DECISIONS (CRITICAL):
-- 2-3 scenario questions per lab
-- Every choice MUST have effects with numeric values
-- Example: effects: {"Temperature": 15, "Pressure": -10}
-- NEVER use effects: {}
-```
-
-The post-processing chunking logic:
+### InteractiveLab.tsx -- handleDecision rewrite:
 ```typescript
-// If no --- separators found, split by headings
-if (!mod.lesson_content.includes('\n---\n')) {
-  const sections = mod.lesson_content.split(/(?=^## )/m).filter(Boolean);
-  if (sections.length > 1) {
-    mod.lesson_content = sections.join('\n\n---\n\n');
+const handleDecision = (dIdx: number, cIdx: number) => {
+  if (answered[dIdx] !== undefined) return;
+  const choice = decisions[dIdx]?.choices[cIdx];
+  if (!choice) return;
+
+  setValues((prev) => {
+    const next = { ...prev };
+    const setState = choice.set_state || {};
+    for (const p of parameters) {
+      next[p.name] = Math.max(0, Math.min(100,
+        setState[p.name] ?? prev[p.name] ?? p.default
+      ));
+    }
+    return next;
+  });
+
+  setAnswered((prev) => ({ ...prev, [dIdx]: cIdx }));
+};
+```
+
+### Edge function prompt change (key section):
+```
+SIMULATION LAB REQUIREMENTS:
+- Every choice MUST have "set_state" (NOT "effects")
+- set_state maps ALL slider names to exact integer values 0-100
+- Example: {"set_state": {"Understanding": 85, "Application": 60, "Confidence": 70}}
+- NEVER use delta values, NEVER use "effects"
+- Each choice must set ALL sliders, modifying at least 2
+```
+
+### Edge function fallback decisions example:
+```typescript
+choices: [
+  { text: "Deep dive into theory first",
+    explanation: "Strong foundation approach.",
+    set_state: { Understanding: 80, Application: 40, Confidence: 55 } },
+  { text: "Jump into practice problems",
+    explanation: "Hands-on learning approach.",
+    set_state: { Understanding: 45, Application: 85, Confidence: 65 } },
+]
+```
+
+### Backward compatibility for existing courses:
+The frontend `ensureDecisionSetState` will detect old `effects`-based data and convert it:
+```typescript
+// If choice has effects but no set_state, convert
+if (choice.effects && !choice.set_state) {
+  const setState: Record<string, number> = {};
+  for (const p of parameters) {
+    const delta = choice.effects[p.name] ?? 0;
+    setState[p.name] = Math.max(0, Math.min(100, p.default + delta));
   }
+  choice.set_state = setState;
 }
 ```
 
