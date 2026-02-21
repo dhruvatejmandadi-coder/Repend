@@ -24,7 +24,8 @@ type Decision = {
   choices: {
     text: string;
     explanation?: string;
-    effects: Record<string, number>;
+    set_state: Record<string, number>;
+    effects?: Record<string, number>; // legacy backward compat
   }[];
 };
 
@@ -54,30 +55,42 @@ function getParamLevel(value: number, min: number, max: number) {
   return { level: "low", color: "text-red-500", icon: TrendingDown };
 }
 
-/* ================= AUTO-FIX EMPTY EFFECTS ================= */
+/* ================= AUTO-FIX: CONVERT TO SET_STATE ================= */
 
-function ensureDecisionEffects(decisions: Decision[], parameters: Parameter[]): Decision[] {
+function ensureDecisionSetState(decisions: Decision[], parameters: Parameter[]): Decision[] {
   if (!decisions?.length || !parameters?.length) return decisions ?? [];
 
   return decisions.map((decision) => ({
     ...decision,
     choices: decision.choices.map((choice, index) => {
-      const hasRealEffects = choice.effects && Object.values(choice.effects).some((v) => v !== 0);
+      // Already has valid set_state
+      if (choice.set_state && Object.keys(choice.set_state).length > 0) {
+        // Ensure ALL parameters are present, fill missing with 50
+        const filled: Record<string, number> = {};
+        for (const p of parameters) {
+          filled[p.name] = Math.max(0, Math.min(100, choice.set_state[p.name] ?? 50));
+        }
+        return { ...choice, set_state: filled };
+      }
 
-      if (hasRealEffects) return choice;
+      // Legacy: convert effects (deltas) to absolute set_state
+      if (choice.effects && Object.keys(choice.effects).length > 0) {
+        const setState: Record<string, number> = {};
+        for (const p of parameters) {
+          const delta = choice.effects[p.name] ?? 0;
+          setState[p.name] = Math.max(0, Math.min(100, p.default + delta));
+        }
+        return { ...choice, set_state: setState };
+      }
 
-      // Auto-generate effects if empty
-      const param = parameters[index % parameters.length];
-      const range = param.max - param.min;
-
-      let delta = Math.round(range * 0.2);
-      if (delta === 0) delta = Math.round(range * 0.15);
-      if (index % 2 === 1) delta *= -1;
-
-      return {
-        ...choice,
-        effects: { [param.name]: delta },
-      };
+      // No data at all: generate defaults
+      const setState: Record<string, number> = {};
+      for (const p of parameters) {
+        const base = p.default ?? 50;
+        const offset = (index % 2 === 0 ? 1 : -1) * 15;
+        setState[p.name] = Math.max(0, Math.min(100, base + offset));
+      }
+      return { ...choice, set_state: setState };
     }),
   }));
 }
@@ -89,7 +102,7 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
   const thresholds = useMemo(() => data.thresholds ?? [], [data]);
   const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
 
-  const decisions = useMemo(() => ensureDecisionEffects(rawDecisions, parameters), [rawDecisions, parameters]);
+  const decisions = useMemo(() => ensureDecisionSetState(rawDecisions, parameters), [rawDecisions, parameters]);
 
   const [values, setValues] = useState<Record<string, number>>({});
   const [currentDecision, setCurrentDecision] = useState(0);
@@ -135,16 +148,12 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
 
     setValues((prev) => {
       const next = { ...prev };
-
-      Object.entries(choice.effects).forEach(([paramName, delta]) => {
-        const param = parameters.find((p) => p.name === paramName);
-        if (!param) return;
-
-        const current = next[paramName] ?? param.default;
-
-        next[paramName] = Math.max(param.min, Math.min(param.max, current + delta));
-      });
-
+      const setState = choice.set_state || {};
+      for (const p of parameters) {
+        next[p.name] = Math.max(0, Math.min(100,
+          setState[p.name] ?? prev[p.name] ?? p.default
+        ));
+      }
       return next;
     });
 
