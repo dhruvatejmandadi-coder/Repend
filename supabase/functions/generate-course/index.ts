@@ -20,7 +20,7 @@ const CourseSchema = z.object({
       lesson_content: z.string(),
       youtube_query: z.string().optional(),
       youtube_title: z.string().optional(),
-      lab_type: z.enum(["simulation", "classification"]),
+      lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
       lab_data: z.any(),
       quiz: z.array(
         z.object({
@@ -84,11 +84,37 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `
-You are an expert course architect.
+            content: `You are an expert course architect. Return structured JSON only via the function tool.
 
-Return structured JSON only via the function tool.
-Follow all schema rules exactly.
+COURSE STRUCTURE:
+- Generate 4-6 modules per course
+- Each module lesson_content must have 4-6 slides separated by "\\n---\\n"
+- Each slide starts with "## Heading"
+
+LAB TYPE SELECTION (CRITICAL - follow exactly):
+1. "math" — Use when topic involves equations, calculations, numeric answers, algebra, calculus, derivatives, integrals, unit conversions, word problems with computed results.
+2. "sorting" — Use when topic involves ordering steps, ranking, sequences, timelines, process flows, algorithm steps. ALSO use as the UNIVERSAL FALLBACK when topic doesn't clearly fit simulation, math, or classification.
+3. "classification" — Use when topic involves grouping concepts, categorizing examples, identifying types, sorting items into labeled categories.
+4. "simulation" — Use ONLY when topic benefits from cause-and-effect experimentation with tunable slider parameters and dynamic variable interactions.
+
+FALLBACK RULE: If unsure, use "sorting". Never leave lab_data empty. Never return {}.
+
+LAB DATA FORMATS (STRICT):
+
+If lab_type = "sorting":
+{ "title": string, "description": string, "items": [{ "text": string, "correct_position": number }] }
+- 4-8 items, correct_position must be unique sequential integers starting at 1.
+
+If lab_type = "math":
+{ "title": string, "description": string, "problems": [{ "question": string, "answer": number, "tolerance": number, "hint": string, "explanation": string }] }
+- 4-6 problems, answer must be a single number, tolerance defaults to 0.01.
+
+If lab_type = "classification":
+{ "title": string, "description": string, "categories": [{ "name": string, "emoji": string, "description": string }], "items": [{ "name": string, "correct_category": string, "hint": string }] }
+
+If lab_type = "simulation":
+{ "title": string, "description": string, "parameters": [{ "name": string, "icon": string, "unit": string, "min": 0, "max": 100, "default": number, "description": string }], "thresholds": [{ "label": string, "min_percent": number, "message": string }], "decisions": [{ "question": string, "emoji": string, "choices": [{ "text": string, "explanation": string, "set_state": { "<param_name>": integer_0_100 } }] }] }
+- Every choice set_state MUST include ALL parameter names with integer values 0-100.
 `,
           },
           { role: "user", content: `Create a course on: ${topic}` },
@@ -156,6 +182,23 @@ Follow all schema rules exactly.
         if (sections.length > 1) {
           lessonContent = sections.join("\n\n---\n\n");
         }
+      }
+
+      // Sorting: fix positions to be unique and sequential
+      if (mod.lab_type === "sorting" && mod.lab_data?.items) {
+        mod.lab_data.items = mod.lab_data.items.map((item: any, idx: number) => ({
+          ...item,
+          correct_position: item.correct_position ?? idx + 1,
+        }));
+      }
+
+      // Math: fix answer types and tolerance
+      if (mod.lab_type === "math" && mod.lab_data?.problems) {
+        mod.lab_data.problems = mod.lab_data.problems.map((p: any) => ({
+          ...p,
+          answer: typeof p.answer === "number" ? p.answer : parseFloat(p.answer) || 0,
+          tolerance: p.tolerance ?? 0.01,
+        }));
       }
 
       return {

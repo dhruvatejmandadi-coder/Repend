@@ -5,6 +5,8 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ClassificationLab from "./ClassificationLab";
+import SortingLab from "./SortingLab";
+import MathLab from "./MathLab";
 
 /* ================= TYPES ================= */
 
@@ -275,7 +277,7 @@ function LabEmptyState({ labType }: { labType?: string | null }) {
         <div className="text-4xl">🔬</div>
         <h3 className="font-bold text-lg">Lab Data Unavailable</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          The {labType === "classification" ? "classification" : "simulation"} lab for this module wasn't generated properly.
+          The lab for this module wasn't generated properly.
           Try regenerating the course to get interactive labs with scenarios and parameters.
         </p>
       </CardContent>
@@ -294,6 +296,16 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
     const hasClassificationData = labData?.items?.length > 0 && labData?.categories?.length > 0;
     if (!hasClassificationData) return <LabEmptyState labType={labType} />;
     return <ClassificationLab data={labData} />;
+  }
+
+  if (labType === "sorting") {
+    if (!labData?.items?.length) return <LabEmptyState labType={labType} />;
+    return <SortingLab data={labData} />;
+  }
+
+  if (labType === "math") {
+    if (!labData?.problems?.length) return <LabEmptyState labType={labType} />;
+    return <MathLab data={labData} />;
   }
 
   const hasSimulationData = labData?.parameters?.length > 0;
