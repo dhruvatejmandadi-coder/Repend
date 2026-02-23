@@ -277,7 +277,34 @@ Never return empty lab_data.
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
-                  modules: { type: "array" },
+                  modules: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        lesson_content: { type: "string", description: "4-6 slides separated by \\n---\\n, each starting with ## Heading" },
+                        youtube_query: { type: "string" },
+                        youtube_title: { type: "string" },
+                        lab_type: { type: "string", enum: ["simulation", "classification", "sorting", "math"] },
+                        lab_data: { type: "object" },
+                        quiz: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              question: { type: "string" },
+                              options: { type: "array", items: { type: "string" } },
+                              correct: { type: "number" },
+                              explanation: { type: "string" },
+                            },
+                            required: ["question", "options", "correct", "explanation"],
+                          },
+                        },
+                      },
+                      required: ["title", "lesson_content", "lab_type", "lab_data", "quiz"],
+                    },
+                  },
                 },
                 required: ["title", "description", "modules"],
               },
