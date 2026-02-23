@@ -1,101 +1,135 @@
 
+# Add Sorting Lab, Math Lab, and Intelligent Lab Selection
 
-# Switch Simulation Labs from Delta Effects to Set-State Model
+## Overview
+Create two new interactive lab components and update the AI to intelligently pick the best lab type per module, with sorting as the universal fallback.
 
-## What Changes
-Decision choices will set sliders to exact values (0-100) instead of adding/subtracting deltas. When you click a decision, every slider jumps to a precise position immediately.
+## New Files
 
-## Files to Modify
+### 1. `src/components/labs/SortingLab.tsx`
+Reorder component -- users arrange shuffled items into correct sequence using up/down buttons.
 
-### 1. `src/components/labs/InteractiveLab.tsx` (Frontend)
+- Items shuffled on mount
+- Up/down arrow buttons to swap adjacent items
+- "Check Order" button validates all positions
+- Green/red highlights for correct/incorrect
+- Score display and "Try Again" to re-shuffle
 
-**Type updates:**
-- Change `Decision.choices` from `effects: Record<string, number>` to `set_state: Record<string, number>`
-- Support legacy `effects` field as backward compatibility (convert to set_state on read)
-
-**Remove `ensureDecisionEffects` function** -- replace with `ensureDecisionSetState` that:
-- Checks for `set_state` on each choice
-- If missing but `effects` exists, converts deltas to absolute values (backward compat for existing courses)
-- If both missing, generates default set_state values (0-100) for all parameters
-
-**Rewrite `handleDecision`:**
-- Instead of `prev[key] + delta`, build new state from `choice.set_state`
-- For any slider NOT in `set_state`, keep its current value
-- Clamp all values between 0 and 100
-
-### 2. `supabase/functions/generate-course/index.ts` (Backend)
-
-**Update AI prompt:**
-- Replace all mentions of `effects` with `set_state`
-- Instruct AI: each choice must have `set_state` with ALL slider names mapped to integers 0-100
-- Update example to use `set_state`
-
-**Update fallback data:**
-- All hardcoded fallback decisions use `set_state` instead of `effects`
-- Each choice sets ALL three sliders (Understanding, Application, Confidence)
-
-**Update post-processing repair logic:**
-- Convert any `effects` found to `set_state` absolute values
-- Ensure every choice has `set_state` with all parameter names
-- Fill missing sliders with 50 (midpoint default)
-
-## Technical Details
-
-### InteractiveLab.tsx -- handleDecision rewrite:
-```typescript
-const handleDecision = (dIdx: number, cIdx: number) => {
-  if (answered[dIdx] !== undefined) return;
-  const choice = decisions[dIdx]?.choices[cIdx];
-  if (!choice) return;
-
-  setValues((prev) => {
-    const next = { ...prev };
-    const setState = choice.set_state || {};
-    for (const p of parameters) {
-      next[p.name] = Math.max(0, Math.min(100,
-        setState[p.name] ?? prev[p.name] ?? p.default
-      ));
-    }
-    return next;
-  });
-
-  setAnswered((prev) => ({ ...prev, [dIdx]: cIdx }));
-};
-```
-
-### Edge function prompt change (key section):
-```
-SIMULATION LAB REQUIREMENTS:
-- Every choice MUST have "set_state" (NOT "effects")
-- set_state maps ALL slider names to exact integer values 0-100
-- Example: {"set_state": {"Understanding": 85, "Application": 60, "Confidence": 70}}
-- NEVER use delta values, NEVER use "effects"
-- Each choice must set ALL sliders, modifying at least 2
-```
-
-### Edge function fallback decisions example:
-```typescript
-choices: [
-  { text: "Deep dive into theory first",
-    explanation: "Strong foundation approach.",
-    set_state: { Understanding: 80, Application: 40, Confidence: 55 } },
-  { text: "Jump into practice problems",
-    explanation: "Hands-on learning approach.",
-    set_state: { Understanding: 45, Application: 85, Confidence: 65 } },
-]
-```
-
-### Backward compatibility for existing courses:
-The frontend `ensureDecisionSetState` will detect old `effects`-based data and convert it:
-```typescript
-// If choice has effects but no set_state, convert
-if (choice.effects && !choice.set_state) {
-  const setState: Record<string, number> = {};
-  for (const p of parameters) {
-    const delta = choice.effects[p.name] ?? 0;
-    setState[p.name] = Math.max(0, Math.min(100, p.default + delta));
-  }
-  choice.set_state = setState;
+Data shape:
+```json
+{
+  "items": [
+    { "text": "Parentheses", "correct_position": 1 },
+    { "text": "Exponents", "correct_position": 2 }
+  ]
 }
 ```
 
+### 2. `src/components/labs/MathLab.tsx`
+Numeric problem-solving -- type answers, get instant feedback with explanations.
+
+- One problem at a time with numeric input
+- Hint toggle button
+- Check button with tolerance-based comparison
+- Shows explanation after answering
+- Final score at end, "Try Again" resets
+
+Data shape:
+```json
+{
+  "problems": [
+    { "question": "Solve x^2 - 4 = 0. Positive root?", "answer": 2, "tolerance": 0.01, "hint": "Factor", "explanation": "(x-2)(x+2)=0" }
+  ]
+}
+```
+
+## Modified Files
+
+### 3. `src/components/labs/InteractiveLab.tsx`
+- Import SortingLab and MathLab
+- Add routing for `labType === "sorting"` and `labType === "math"` with data validation
+- Update empty state message to list all four lab types
+
+### 4. `supabase/functions/generate-course/index.ts`
+
+**Zod schema:** Change line 23 from:
+```typescript
+lab_type: z.enum(["simulation", "classification"]),
+```
+to:
+```typescript
+lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
+```
+
+**System prompt:** Replace the minimal prompt with full deterministic lab selection rules:
+- "math" for equations, calculations, numeric answers, algebra, calculus
+- "sorting" for ordering, sequences, timelines, process flows -- AND as universal fallback
+- "classification" for grouping/categorizing
+- "simulation" only for cause-and-effect with tunable parameters
+- Include strict data format specs and examples for all four types
+- Include slide formatting rules (4-6 slides, `---` separators)
+- Include simulation set_state rules
+
+**Post-processing (lines 150-174):** Add validation for new lab types after the existing slide separator logic:
+- Sorting: ensure `correct_position` values are unique and sequential from 1
+- Math: ensure `answer` is a valid number, default `tolerance` to 0.01
+
+## Technical Details
+
+### SortingLab core:
+```typescript
+const moveItem = (index: number, direction: "up" | "down") => {
+  const newOrder = [...userOrder];
+  const swapIdx = direction === "up" ? index - 1 : index + 1;
+  if (swapIdx < 0 || swapIdx >= newOrder.length) return;
+  [newOrder[index], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[index]];
+  setUserOrder(newOrder);
+};
+
+const checkOrder = () => {
+  const score = userOrder.filter((item, idx) => item.correct_position === idx + 1).length;
+  setScore(score);
+  setChecked(true);
+};
+```
+
+### MathLab answer checking:
+```typescript
+const isCorrect = Math.abs(parseFloat(userAnswer) - problem.answer) <= (problem.tolerance ?? 0.01);
+```
+
+### InteractiveLab routing additions (after classification branch):
+```typescript
+if (labType === "sorting") {
+  if (!labData?.items?.length) return <LabEmptyState labType={labType} />;
+  return <SortingLab data={labData} />;
+}
+if (labType === "math") {
+  if (!labData?.problems?.length) return <LabEmptyState labType={labType} />;
+  return <MathLab data={labData} />;
+}
+```
+
+### Edge function post-processing additions:
+```typescript
+// Sorting: fix positions
+if (mod.lab_type === "sorting" && mod.lab_data?.items) {
+  mod.lab_data.items = mod.lab_data.items.map((item, idx) => ({
+    ...item,
+    correct_position: item.correct_position ?? idx + 1,
+  }));
+}
+// Math: fix answer types
+if (mod.lab_type === "math" && mod.lab_data?.problems) {
+  mod.lab_data.problems = mod.lab_data.problems.map((p) => ({
+    ...p,
+    answer: typeof p.answer === "number" ? p.answer : parseFloat(p.answer) || 0,
+    tolerance: p.tolerance ?? 0.01,
+  }));
+}
+```
+
+### Updated Zod schema:
+```typescript
+lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
+```
