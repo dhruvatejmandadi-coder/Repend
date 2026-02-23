@@ -4,29 +4,84 @@ import { z } from "https://esm.sh/zod@3.23.8";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 /* ===============================
-   🔒 SCHEMAS (TOLERANT)
+   🔒 STRICT SCHEMAS (MATCH FRONTEND)
 ================================ */
+
+// Simulation structures (must match InteractiveLab)
+const ParameterSchema = z.object({
+  name: z.string(),
+  icon: z.string(),
+  unit: z.string(),
+  min: z.number(),
+  max: z.number(),
+  default: z.number(),
+  description: z.string().optional(),
+});
+
+const DecisionSchema = z.object({
+  question: z.string(),
+  emoji: z.string().optional(),
+  choices: z.array(
+    z.object({
+      text: z.string(),
+      explanation: z.string().optional(),
+      set_state: z.record(z.number()).optional(),
+      effects: z.record(z.number()).optional(), // legacy support
+    }),
+  ),
+});
+
+const SimulationLabSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  parameters: z.array(ParameterSchema).min(1),
+  thresholds: z
+    .array(
+      z.object({
+        label: z.string(),
+        min_percent: z.number(),
+        message: z.string(),
+      }),
+    )
+    .min(1),
+  decisions: z.array(DecisionSchema).optional(),
+});
+
+const ClassificationLabSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  categories: z.array(z.string()).min(1),
+  items: z
+    .array(
+      z.object({
+        text: z.string(),
+        category: z.string(),
+      }),
+    )
+    .min(1),
+});
 
 const ModuleSchema = z.object({
   title: z.string(),
   lesson_content: z.string(),
   youtube_query: z.string().optional(),
   youtube_title: z.string().optional(),
-  lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
+  lab_type: z.enum(["simulation", "classification"]),
   lab_data: z.any(),
-  quiz: z.array(
-    z.object({
-      question: z.string(),
-      options: z.array(z.string()),
-      correct: z.number(),
-      explanation: z.string(),
-    })
-  ),
+  quiz: z
+    .array(
+      z.object({
+        question: z.string(),
+        options: z.array(z.string()),
+        correct: z.number(),
+        explanation: z.string(),
+      }),
+    )
+    .min(1),
 });
 
 const CourseSchema = z.object({
@@ -34,100 +89,6 @@ const CourseSchema = z.object({
   description: z.string(),
   modules: z.array(ModuleSchema).min(1),
 });
-
-/* ===============================
-   🛠️ POST-PROCESSING / REPAIR
-================================ */
-
-function repairModules(parsed: any): any {
-  if (!parsed?.modules || !Array.isArray(parsed.modules)) return parsed;
-
-  const paramNames = ["Understanding", "Application", "Confidence"];
-
-  for (const mod of parsed.modules) {
-    // Fix lesson_content: use any available text field
-    if (!mod.lesson_content) {
-      mod.lesson_content = mod.content || mod.lesson || mod.text || 
-        `## ${mod.title || "Lesson"}\n\nContent for this module.`;
-    }
-
-    // Force slide separators if missing
-    if (!mod.lesson_content.includes("\n---\n")) {
-      const sections = mod.lesson_content.split(/(?=^## )/m).filter(Boolean);
-      if (sections.length > 1) {
-        mod.lesson_content = sections.join("\n\n---\n\n");
-      }
-    }
-
-    // Fix lab_type
-    if (!mod.lab_type) {
-      const validTypes = ["simulation", "classification", "sorting", "math"];
-      mod.lab_type = validTypes.includes(mod.labType) ? mod.labType :
-                     validTypes.includes(mod.lab) ? mod.lab : "classification";
-    }
-
-    // Fix lab_data
-    if (!mod.lab_data) {
-      mod.lab_data = mod.labData || mod.lab_content || {};
-    }
-
-    // Ensure lab_data is not empty for simulation
-    if (mod.lab_type === "simulation") {
-      const ld = mod.lab_data;
-      if (!ld.parameters || !Array.isArray(ld.parameters) || ld.parameters.length === 0) {
-        ld.parameters = paramNames.map(n => ({ name: n, min: 0, max: 100, default: 50 }));
-      }
-      if (!ld.decisions || !Array.isArray(ld.decisions) || ld.decisions.length === 0) {
-        ld.decisions = [{
-          scenario: `Key decision for ${mod.title || "this topic"}`,
-          choices: [
-            { text: "Deep dive into theory first", explanation: "Strong foundation approach.",
-              set_state: { Understanding: 80, Application: 40, Confidence: 55 } },
-            { text: "Jump into practice problems", explanation: "Hands-on learning approach.",
-              set_state: { Understanding: 45, Application: 85, Confidence: 65 } },
-          ]
-        }];
-      }
-      // Repair decisions: convert effects to set_state, fill missing sliders
-      for (const dec of ld.decisions) {
-        if (!dec.choices || !Array.isArray(dec.choices)) continue;
-        for (const choice of dec.choices) {
-          if (!choice.set_state && choice.effects) {
-            choice.set_state = {};
-            for (const p of paramNames) {
-              const delta = choice.effects[p] ?? 0;
-              choice.set_state[p] = Math.max(0, Math.min(100, 50 + delta));
-            }
-            delete choice.effects;
-          }
-          if (!choice.set_state || typeof choice.set_state !== "object" || Object.keys(choice.set_state).length === 0) {
-            choice.set_state = { Understanding: 50, Application: 50, Confidence: 50 };
-          }
-          // Fill missing sliders
-          for (const p of paramNames) {
-            if (choice.set_state[p] === undefined) choice.set_state[p] = 50;
-            choice.set_state[p] = Math.max(0, Math.min(100, choice.set_state[p]));
-          }
-        }
-      }
-    }
-
-    // Fix quiz
-    if (!mod.quiz || !Array.isArray(mod.quiz)) {
-      mod.quiz = mod.questions || mod.quizzes || [];
-    }
-    if (mod.quiz.length === 0) {
-      mod.quiz = [{
-        question: `What is a key concept in ${mod.title || "this topic"}?`,
-        options: ["Option A", "Option B", "Option C", "Option D"],
-        correct: 0,
-        explanation: "This is the correct answer based on the lesson content."
-      }];
-    }
-  }
-
-  return parsed;
-}
 
 /* ===============================
    🚀 EDGE FUNCTION
@@ -142,11 +103,9 @@ serve(async (req) => {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header");
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
+      global: { headers: { Authorization: authHeader } },
+    });
 
     const {
       data: { user },
@@ -161,6 +120,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("Missing API key");
 
+    // Create placeholder course
     const { data: course } = await supabase
       .from("courses")
       .insert({
@@ -176,110 +136,86 @@ serve(async (req) => {
        🤖 AI CALL
     ================================= */
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-3-flash-preview",
-          temperature: 0.3,
-          messages: [
-            {
-              role: "system",
-              content: `Return structured JSON via the create_course tool call.
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        temperature: 0.3,
+        messages: [
+          {
+            role: "system",
+            content: `
+Return structured JSON only.
+Create exactly 4 modules.
 
-Generate exactly 4 modules.
+Each module must include:
+- lesson_content (4 slides separated by "\\n---\\n")
+- lab_type ("simulation" OR "classification" ONLY)
+- lab_data (NEVER EMPTY)
+- quiz (at least 1 question)
 
-LESSON FORMAT (CRITICAL):
-- Each module needs "lesson_content" (a string)
-- 4-6 slides per module separated by "\\n---\\n"
-- Example: "## Slide 1\\n\\nContent...\\n\\n---\\n\\n## Slide 2\\n\\nContent...\\n\\n---\\n\\n## Slide 3\\n\\nContent..."
+Simulation lab_data must include:
+- parameters (min 1)
+- thresholds (min 1)
+- optional decisions
 
-LAB TYPES: "simulation", "classification", "sorting", "math"
+Classification lab_data must include:
+- categories (min 1)
+- items (min 1)
 
-SIMULATION LAB REQUIREMENTS:
-- lab_data must have "parameters" array and "decisions" array
-- parameters: [{"name": "Understanding", "min": 0, "max": 100, "default": 50}, ...]
-- Every decision choice MUST have "set_state" (NOT "effects")
-- set_state maps ALL slider names to exact integer values 0-100
-- Example choice: {"text": "Option", "set_state": {"Understanding": 85, "Application": 60, "Confidence": 70}, "explanation": "Why"}
-- NEVER use "effects", delta values, or empty objects
-
-QUIZ: Each module needs a "quiz" array with 3-4 questions.
-Each question: {"question": "...", "options": ["A","B","C","D"], "correct": 0, "explanation": "..."}
-
-NEVER return empty or null for lesson_content, lab_type, lab_data, or quiz.`,
-            },
-            { role: "user", content: `Create a course on: ${topic}` },
-          ],
-          tools: [
-            {
-              type: "function",
-              function: {
-                name: "create_course",
-                parameters: {
-                  type: "object",
-                  properties: {
-                    title: { type: "string" },
-                    description: { type: "string" },
-                    modules: {
-                      type: "array",
-                      items: {
-                        type: "object",
-                        properties: {
-                          title: { type: "string" },
-                          lesson_content: { type: "string", description: "4-6 slides separated by \\n---\\n" },
-                          youtube_query: { type: "string" },
-                          youtube_title: { type: "string" },
-                          lab_type: { type: "string", enum: ["simulation", "classification", "sorting", "math"] },
-                          lab_data: { type: "object" },
-                          quiz: {
-                            type: "array",
-                            items: {
-                              type: "object",
-                              properties: {
-                                question: { type: "string" },
-                                options: { type: "array", items: { type: "string" } },
-                                correct: { type: "integer" },
-                                explanation: { type: "string" },
-                              },
-                              required: ["question", "options", "correct", "explanation"],
-                            },
-                          },
-                        },
-                        required: ["title", "lesson_content", "lab_type", "lab_data", "quiz"],
-                      },
-                    },
-                  },
-                  required: ["title", "description", "modules"],
+Never use any other lab_type.
+Never return empty arrays.
+`,
+          },
+          { role: "user", content: `Create a course on: ${topic}` },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "create_course",
+              parameters: {
+                type: "object",
+                properties: {
+                  title: { type: "string" },
+                  description: { type: "string" },
+                  modules: { type: "array" },
                 },
+                required: ["title", "description", "modules"],
               },
             },
-          ],
-          tool_choice: { type: "function", function: { name: "create_course" } },
-        }),
-      }
-    );
+          },
+        ],
+        tool_choice: "auto",
+      }),
+    });
 
     const aiData = await response.json();
-    console.log("AI response status:", response.status);
-    
     const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) {
-      console.error("No tool call in AI response:", JSON.stringify(aiData).slice(0, 500));
-      throw new Error("AI did not return a tool call");
-    }
+    if (!toolCall) throw new Error("AI failed");
 
-    let parsed = JSON.parse(toolCall.function.arguments);
-    
-    // Repair any missing/malformed fields before validation
-    parsed = repairModules(parsed);
-    
+    const parsed = JSON.parse(toolCall.function.arguments);
     const courseData = CourseSchema.parse(parsed);
+
+    /* ===============================
+       🔍 VALIDATE LAB DATA PER TYPE
+    ================================= */
+
+    const validatedModules = courseData.modules.map((mod) => {
+      if (mod.lab_type === "simulation") {
+        SimulationLabSchema.parse(mod.lab_data);
+      }
+
+      if (mod.lab_type === "classification") {
+        ClassificationLabSchema.parse(mod.lab_data);
+      }
+
+      return mod;
+    });
 
     /* ===============================
        💾 SAVE COURSE
@@ -294,14 +230,12 @@ NEVER return empty or null for lesson_content, lab_type, lab_data, or quiz.`,
       })
       .eq("id", course.id);
 
-    const modules = courseData.modules.map((mod, index) => ({
+    const modules = validatedModules.map((mod, index) => ({
       course_id: course.id,
       module_order: index + 1,
       title: mod.title,
       lesson_content: mod.lesson_content,
-      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(
-        mod.youtube_query || mod.title
-      )}`,
+      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
       youtube_title: mod.youtube_title || mod.title,
       lab_type: mod.lab_type,
       lab_data: mod.lab_data,
@@ -315,11 +249,12 @@ NEVER return empty or null for lesson_content, lab_type, lab_data, or quiz.`,
     });
   } catch (error) {
     console.error("COURSE GENERATION ERROR:", error);
+
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
       }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      { status: 500, headers: corsHeaders },
     );
   }
 });
