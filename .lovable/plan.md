@@ -1,116 +1,101 @@
 
 
-# Fix: Restore Decision Labs and Real Sorting Content
+# Switch Simulation Labs from Delta Effects to Set-State Model
 
-## Problem
-The strict Zod lab validation added in the last edit is too aggressive. When ANY field is missing (e.g., a simulation lab missing `description` or `emoji`), the entire lab gets replaced with generic placeholder sorting data ("Concept 1: Introduction", "Concept 2: Core Principle"...). This effectively destroys all simulation/decision labs and replaces real sorting labs with useless placeholders.
+## What Changes
+Decision choices will set sliders to exact values (0-100) instead of adding/subtracting deltas. When you click a decision, every slider jumps to a precise position immediately.
 
-## Root Cause
-`SimulationLabSchema` requires every nested field (`title`, `description`, `emoji`, `explanation`, `set_state`). The AI often omits optional fields like `emoji` or `description`, causing validation to fail and the fallback to trigger for every single module.
+## Files to Modify
 
-## Fix (1 file)
+### 1. `src/components/labs/InteractiveLab.tsx` (Frontend)
 
-### `supabase/functions/generate-course/index.ts`
+**Type updates:**
+- Change `Decision.choices` from `effects: Record<string, number>` to `set_state: Record<string, number>`
+- Support legacy `effects` field as backward compatibility (convert to set_state on read)
 
-1. Make non-critical fields optional in all lab Zod schemas:
-   - `SimulationLabSchema`: make `title`, `description`, `emoji`, `explanation` optional
-   - `SortingLabSchema`: make `title`, `description` optional
-   - `ClassificationLabSchema`: make `title`, `description`, `hint` optional
-   - `GraphLabSchema` (math): make `title`, `description`, `step` optional
+**Remove `ensureDecisionEffects` function** -- replace with `ensureDecisionSetState` that:
+- Checks for `set_state` on each choice
+- If missing but `effects` exists, converts deltas to absolute values (backward compat for existing courses)
+- If both missing, generates default set_state values (0-100) for all parameters
 
-2. Replace the "throw-away-and-use-placeholders" fallback with a **repair** approach:
-   - If simulation lab_data has `parameters` and `thresholds`, keep it (fill missing fields with defaults)
-   - If sorting lab_data has `items`, keep it (fill missing title/description)
-   - Only fall back to placeholder sorting if the data is truly empty or completely wrong type
+**Rewrite `handleDecision`:**
+- Instead of `prev[key] + delta`, build new state from `choice.set_state`
+- For any slider NOT in `set_state`, keep its current value
+- Clamp all values between 0 and 100
 
-3. The fallback sorting data should at minimum reference the module title instead of "Concept 1" placeholders -- but the real fix is to stop triggering the fallback unnecessarily.
+### 2. `supabase/functions/generate-course/index.ts` (Backend)
+
+**Update AI prompt:**
+- Replace all mentions of `effects` with `set_state`
+- Instruct AI: each choice must have `set_state` with ALL slider names mapped to integers 0-100
+- Update example to use `set_state`
+
+**Update fallback data:**
+- All hardcoded fallback decisions use `set_state` instead of `effects`
+- Each choice sets ALL three sliders (Understanding, Application, Confidence)
+
+**Update post-processing repair logic:**
+- Convert any `effects` found to `set_state` absolute values
+- Ensure every choice has `set_state` with all parameter names
+- Fill missing sliders with 50 (midpoint default)
 
 ## Technical Details
 
-### Schema changes (make non-critical fields optional):
-
+### InteractiveLab.tsx -- handleDecision rewrite:
 ```typescript
-const SimulationLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  parameters: z.array(z.object({
-    name: z.string(),
-    icon: z.string().optional().default(""),
-    unit: z.string().optional().default(""),
-    min: z.number(),
-    max: z.number(),
-    default: z.number(),
-    description: z.string().optional(),
-  })).min(1),
-  thresholds: z.array(z.object({
-    label: z.string(),
-    min_percent: z.number(),
-    message: z.string(),
-  })).min(1),
-  decisions: z.array(z.object({
-    question: z.string(),
-    emoji: z.string().optional(),
-    choices: z.array(z.object({
-      text: z.string(),
-      explanation: z.string().optional(),
-      set_state: z.record(z.number()).optional(),
-      effects: z.record(z.number()).optional(),
-    })).min(2),
-  })).optional(),
-});
+const handleDecision = (dIdx: number, cIdx: number) => {
+  if (answered[dIdx] !== undefined) return;
+  const choice = decisions[dIdx]?.choices[cIdx];
+  if (!choice) return;
+
+  setValues((prev) => {
+    const next = { ...prev };
+    const setState = choice.set_state || {};
+    for (const p of parameters) {
+      next[p.name] = Math.max(0, Math.min(100,
+        setState[p.name] ?? prev[p.name] ?? p.default
+      ));
+    }
+    return next;
+  });
+
+  setAnswered((prev) => ({ ...prev, [dIdx]: cIdx }));
+};
 ```
 
-Similar `.optional()` additions for `SortingLabSchema`, `ClassificationLabSchema`, and `GraphLabSchema` on non-critical string fields.
+### Edge function prompt change (key section):
+```
+SIMULATION LAB REQUIREMENTS:
+- Every choice MUST have "set_state" (NOT "effects")
+- set_state maps ALL slider names to exact integer values 0-100
+- Example: {"set_state": {"Understanding": 85, "Application": 60, "Confidence": 70}}
+- NEVER use delta values, NEVER use "effects"
+- Each choice must set ALL sliders, modifying at least 2
+```
 
-### Repair logic (replace the current catch block):
-
+### Edge function fallback decisions example:
 ```typescript
-courseData.modules.forEach((mod, idx) => {
-  try {
-    switch (mod.lab_type) {
-      case "simulation": SimulationLabSchema.parse(mod.lab_data); break;
-      case "sorting":    SortingLabSchema.parse(mod.lab_data); break;
-      case "classification": ClassificationLabSchema.parse(mod.lab_data); break;
-      case "math":       GraphLabSchema.parse(mod.lab_data); break;
-    }
-  } catch (labErr) {
-    console.warn(`Module ${idx} lab validation failed, attempting repair...`);
-    
-    // Try to salvage: if it has parameters/thresholds, treat as simulation
-    if (mod.lab_data?.parameters?.length && mod.lab_data?.thresholds?.length) {
-      mod.lab_type = "simulation";
-      return;
-    }
-    // If it has items array, treat as sorting
-    if (mod.lab_data?.items?.length) {
-      mod.lab_type = "sorting";
-      mod.lab_data.title = mod.lab_data.title || `Order: ${mod.title}`;
-      mod.lab_data.description = mod.lab_data.description || `Arrange in correct order.`;
-      return;
-    }
-    // If it has categories, treat as classification
-    if (mod.lab_data?.categories?.length && mod.lab_data?.items?.length) {
-      mod.lab_type = "classification";
-      return;
-    }
-    // True fallback: generate sorting from lesson content headings
-    mod.lab_type = "sorting";
-    const headings = mod.lesson_content
-      .split(/\n---\n/)
-      .map(s => s.match(/^##\s*(.+)/m)?.[1])
-      .filter(Boolean);
-    mod.lab_data = {
-      title: `Order the Key Concepts: ${mod.title}`,
-      description: `Arrange these concepts from ${mod.title} in the correct logical order.`,
-      items: (headings.length >= 2 ? headings : ["Introduction", "Core Concept", "Application", "Summary"])
-        .map((text, i) => ({ text, correct_position: i + 1 })),
-    };
+choices: [
+  { text: "Deep dive into theory first",
+    explanation: "Strong foundation approach.",
+    set_state: { Understanding: 80, Application: 40, Confidence: 55 } },
+  { text: "Jump into practice problems",
+    explanation: "Hands-on learning approach.",
+    set_state: { Understanding: 45, Application: 85, Confidence: 65 } },
+]
+```
+
+### Backward compatibility for existing courses:
+The frontend `ensureDecisionSetState` will detect old `effects`-based data and convert it:
+```typescript
+// If choice has effects but no set_state, convert
+if (choice.effects && !choice.set_state) {
+  const setState: Record<string, number> = {};
+  for (const p of parameters) {
+    const delta = choice.effects[p.name] ?? 0;
+    setState[p.name] = Math.max(0, Math.min(100, p.default + delta));
   }
-});
+  choice.set_state = setState;
+}
 ```
-
-This ensures:
-- Decision/simulation labs survive even with minor missing fields
-- Sorting labs keep their real AI-generated content
-- Only truly broken labs get a fallback, and even then it uses lesson headings instead of generic placeholders
 

@@ -11,135 +11,28 @@ const corsHeaders = {
    🔒 ZOD SCHEMA VALIDATION
 ================================ */
 
-const GraphLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  equation: z.string(),
-  parameters: z
-    .array(
-      z.object({
-        name: z.string(),
-        min: z.number(),
-        max: z.number(),
-        default: z.number(),
-        step: z.number().optional(),
-      }),
-    )
-    .min(1),
-  domain: z.object({
-    min: z.number(),
-    max: z.number(),
-    step: z.number().optional(),
-  }),
-});
-
-const SortingLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  items: z
-    .array(
-      z.object({
-        text: z.string(),
-        correct_position: z.number(),
-      }),
-    )
-    .min(2),
-});
-
-const ClassificationLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  categories: z
-    .array(
-      z.object({
-        name: z.string(),
-        emoji: z.string().optional(),
-        description: z.string().optional(),
-      }),
-    )
-    .min(2),
-  items: z
-    .array(
-      z.object({
-        name: z.string(),
-        correct_category: z.string(),
-        hint: z.string().optional(),
-      }),
-    )
-    .min(2),
-});
-
-const SimulationLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  parameters: z
-    .array(
-      z.object({
-        name: z.string(),
-        icon: z.string().optional(),
-        unit: z.string().optional(),
-        min: z.number(),
-        max: z.number(),
-        default: z.number(),
-        description: z.string().optional(),
-      }),
-    )
-    .min(1),
-  thresholds: z
-    .array(
-      z.object({
-        label: z.string(),
-        min_percent: z.number(),
-        message: z.string(),
-      }),
-    )
-    .min(1),
-  decisions: z
-    .array(
-      z.object({
-        question: z.string(),
-        emoji: z.string().optional(),
-        choices: z
-          .array(
-            z.object({
-              text: z.string(),
-              explanation: z.string().optional(),
-              set_state: z.record(z.number()).optional(),
-              effects: z.record(z.number()).optional(),
-            }),
-          )
-          .min(2),
-      }),
-    )
-    .optional(),
-});
-
-const ModuleSchema = z.object({
-  title: z.string(),
-  lesson_content: z.string(),
-  youtube_query: z.string().optional(),
-  youtube_title: z.string().optional(),
-  lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
-  lab_data: z.any(),
-  quiz: z.array(
-    z.object({
-      question: z.string(),
-      options: z.array(z.string()),
-      correct: z.number(),
-      explanation: z.string(),
-    }),
-  ),
-});
-
 const CourseSchema = z.object({
   title: z.string(),
   description: z.string(),
-  modules: z.array(ModuleSchema).min(1),
+  modules: z.array(
+    z.object({
+      title: z.string(),
+      lesson_content: z.string(),
+      youtube_query: z.string().optional(),
+      youtube_title: z.string().optional(),
+      lab_type: z.enum(["simulation", "classification"]),
+      lab_data: z.any(),
+      quiz: z.array(
+        z.object({
+          question: z.string(),
+          options: z.array(z.string()),
+          correct: z.number(),
+          explanation: z.string(),
+        }),
+      ),
+    }),
+  ),
 });
-
-/* ===============================
-   🚀 EDGE FUNCTION
-================================ */
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -167,7 +60,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    // Create initial course row
+    // Create course row
     const { data: course } = await supabase
       .from("courses")
       .insert({
@@ -178,10 +71,6 @@ serve(async (req) => {
       })
       .select()
       .single();
-
-    /* ===============================
-       🤖 AI CALL
-    ================================= */
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -198,72 +87,8 @@ serve(async (req) => {
             content: `
 You are an expert course architect.
 
-Return structured JSON ONLY via the function tool.
-
-COURSE STRUCTURE:
-- 4–6 modules
-- Each lesson_content must contain 4–6 slides separated by "\\n---\\n"
-- Each slide begins with "## Heading"
-
-LAB TYPE RULES:
-
-1) "math"
-Use when topic involves equations, algebra, calculus, graph behavior, transformations.
-FORMAT:
-{
-  "title": string,
-  "description": string,
-  "equation": string,
-  "parameters": [
-    {
-      "name": string,
-      "min": number,
-      "max": number,
-      "default": number,
-      "step": number
-    }
-  ],
-  "domain": {
-    "min": number,
-    "max": number,
-    "step": number
-  }
-}
-
-RULES:
-- equation MUST be valid JavaScript math using variable x
-- Use Math.sin, Math.cos, Math.exp, Math.log if needed
-- 2–5 parameters
-- domain required
-- DO NOT create numeric quiz problems
-
-2) "sorting"
-{
-  "title": string,
-  "description": string,
-  "items": [{ "text": string, "correct_position": number }]
-}
-
-3) "classification"
-{
-  "title": string,
-  "description": string,
-  "categories": [...],
-  "items": [...]
-}
-
-4) "simulation"
-{
-  "title": string,
-  "description": string,
-  "parameters": [...],
-  "thresholds": [...],
-  "decisions": [...]
-}
-
-FALLBACK RULE:
-If unsure → use "sorting"
-Never return empty lab_data.
+Return structured JSON only via the function tool.
+Follow all schema rules exactly.
 `,
           },
           { role: "user", content: `Create a course on: ${topic}` },
@@ -278,128 +103,37 @@ Never return empty lab_data.
                 properties: {
                   title: { type: "string" },
                   description: { type: "string" },
-                  modules: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        lesson_content: { type: "string", description: "4-6 slides separated by \\n---\\n, each starting with ## Heading" },
-                        youtube_query: { type: "string" },
-                        youtube_title: { type: "string" },
-                        lab_type: { type: "string", enum: ["simulation", "classification", "sorting", "math"] },
-                        lab_data: { type: "object" },
-                        quiz: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              question: { type: "string" },
-                              options: { type: "array", items: { type: "string" } },
-                              correct: { type: "number" },
-                              explanation: { type: "string" },
-                            },
-                            required: ["question", "options", "correct", "explanation"],
-                          },
-                        },
-                      },
-                      required: ["title", "lesson_content", "lab_type", "lab_data", "quiz"],
-                    },
-                  },
+                  modules: { type: "array" },
                 },
                 required: ["title", "description", "modules"],
               },
             },
           },
         ],
-        tool_choice: { type: "function", function: { name: "create_course" } },
-        max_tokens: 16000,
+        tool_choice: "auto",
       }),
     });
 
     const aiData = await response.json();
 
-    // Debug logging
-    const finishReason = aiData?.choices?.[0]?.finish_reason;
-    console.log("AI finish_reason:", finishReason);
-    console.log("AI usage:", JSON.stringify(aiData?.usage));
-
-    if (!response.ok) {
-      console.error("AI API error:", JSON.stringify(aiData));
-      throw new Error(`AI API returned ${response.status}`);
-    }
-
-    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall) {
-      const content = aiData?.choices?.[0]?.message?.content;
-      console.error("No tool call. Content:", content?.substring(0, 500));
-      console.error("Full response keys:", JSON.stringify(Object.keys(aiData || {})));
+    if (!aiData.choices?.length) {
       throw new Error("Empty AI response");
     }
 
+    const message = aiData.choices[0].message;
+    const toolCall = message?.tool_calls?.[0];
+
+    if (!toolCall) {
+      throw new Error("No function call returned by AI");
+    }
+
+    // 🔥 PARSE RAW JSON
     const parsed = JSON.parse(toolCall.function.arguments);
+
+    // 🔒 VALIDATE STRUCTURE (THIS IS THE NEW PART)
     const courseData = CourseSchema.parse(parsed);
 
-    /* ===============================
-       🔒 LAB VALIDATION & REPAIR
-    ================================= */
-
-    courseData.modules.forEach((mod, idx) => {
-      try {
-        switch (mod.lab_type) {
-          case "math":
-            GraphLabSchema.parse(mod.lab_data);
-            break;
-          case "sorting":
-            SortingLabSchema.parse(mod.lab_data);
-            break;
-          case "classification":
-            ClassificationLabSchema.parse(mod.lab_data);
-            break;
-          case "simulation":
-            SimulationLabSchema.parse(mod.lab_data);
-            break;
-        }
-      } catch (labErr) {
-        console.warn(`Module ${idx} (${mod.lab_type}) lab validation failed, attempting repair...`);
-
-        // Try to salvage: if it has parameters/thresholds, keep as simulation
-        if (mod.lab_data?.parameters?.length && mod.lab_data?.thresholds?.length) {
-          mod.lab_type = "simulation";
-          return;
-        }
-        // If it has categories and items, keep as classification
-        if (mod.lab_data?.categories?.length && mod.lab_data?.items?.length) {
-          mod.lab_type = "classification";
-          return;
-        }
-        // If it has items array, keep as sorting
-        if (mod.lab_data?.items?.length) {
-          mod.lab_type = "sorting";
-          mod.lab_data.title = mod.lab_data.title || `Order: ${mod.title}`;
-          mod.lab_data.description = mod.lab_data.description || `Arrange in correct order.`;
-          return;
-        }
-        // True fallback: generate sorting from lesson content headings
-        mod.lab_type = "sorting";
-        const headings = mod.lesson_content
-          .split(/\n---\n/)
-          .map((s: string) => s.match(/^##\s*(.+)/m)?.[1])
-          .filter(Boolean);
-        mod.lab_data = {
-          title: `Order the Key Concepts: ${mod.title}`,
-          description: `Arrange these concepts from ${mod.title} in the correct logical order.`,
-          items: (headings.length >= 2 ? headings : ["Introduction", "Core Concept", "Application", "Summary"])
-            .map((text: string, i: number) => ({ text, correct_position: i + 1 })),
-        };
-      }
-    });
-
-    /* ===============================
-       💾 SAVE COURSE
-    ================================= */
-
+    // If validation passes, continue safely
     await supabase
       .from("courses")
       .update({
@@ -409,12 +143,19 @@ Never return empty lab_data.
       })
       .eq("id", course.id);
 
-    const modules = courseData.modules.map((mod, index) => {
-      let lessonContent = mod.lesson_content;
+    /* ===============================
+       🔥 POST PROCESSING (YOUR LOGIC)
+    ================================= */
 
+    const modules = courseData.modules.map((mod: any, index: number) => {
+      let lessonContent = mod.lesson_content || "";
+
+      // Force slide separators
       if (!lessonContent.includes("\n---\n")) {
         const sections = lessonContent.split(/(?=^## )/m).filter(Boolean);
-        lessonContent = sections.join("\n---\n");
+        if (sections.length > 1) {
+          lessonContent = sections.join("\n\n---\n\n");
+        }
       }
 
       return {
@@ -439,6 +180,7 @@ Never return empty lab_data.
     });
   } catch (error) {
     console.error("COURSE GENERATION ERROR:", error);
+
     return new Response(
       JSON.stringify({
         error: error instanceof Error ? error.message : "Unknown error",
