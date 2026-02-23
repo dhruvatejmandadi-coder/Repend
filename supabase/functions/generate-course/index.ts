@@ -8,91 +8,31 @@ const corsHeaders = {
 };
 
 /* ===============================
-   🔒 STRICT SCHEMAS (MATCH FRONTEND)
+   🔒 ZOD SCHEMA VALIDATION
 ================================ */
-
-// Simulation structures (must match InteractiveLab)
-const ParameterSchema = z.object({
-  name: z.string(),
-  icon: z.string(),
-  unit: z.string(),
-  min: z.number(),
-  max: z.number(),
-  default: z.number(),
-  description: z.string().optional(),
-});
-
-const DecisionSchema = z.object({
-  question: z.string(),
-  emoji: z.string().optional(),
-  choices: z.array(
-    z.object({
-      text: z.string(),
-      explanation: z.string().optional(),
-      set_state: z.record(z.number()).optional(),
-      effects: z.record(z.number()).optional(), // legacy support
-    }),
-  ),
-});
-
-const SimulationLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  parameters: z.array(ParameterSchema).min(1),
-  thresholds: z
-    .array(
-      z.object({
-        label: z.string(),
-        min_percent: z.number(),
-        message: z.string(),
-      }),
-    )
-    .min(1),
-  decisions: z.array(DecisionSchema).optional(),
-});
-
-const ClassificationLabSchema = z.object({
-  title: z.string().optional(),
-  description: z.string().optional(),
-  categories: z.array(z.string()).min(1),
-  items: z
-    .array(
-      z.object({
-        text: z.string(),
-        category: z.string(),
-      }),
-    )
-    .min(1),
-});
-
-const ModuleSchema = z.object({
-  title: z.string(),
-  lesson_content: z.string(),
-  youtube_query: z.string().optional(),
-  youtube_title: z.string().optional(),
-  lab_type: z.enum(["simulation", "classification"]),
-  lab_data: z.any(),
-  quiz: z
-    .array(
-      z.object({
-        question: z.string(),
-        options: z.array(z.string()),
-        correct: z.number(),
-        explanation: z.string(),
-      }),
-    )
-    .min(1),
-});
 
 const CourseSchema = z.object({
   title: z.string(),
   description: z.string(),
-  modules: z.array(ModuleSchema).min(1),
+  modules: z.array(
+    z.object({
+      title: z.string(),
+      lesson_content: z.string(),
+      youtube_query: z.string().optional(),
+      youtube_title: z.string().optional(),
+      lab_type: z.enum(["simulation", "classification"]),
+      lab_data: z.any(),
+      quiz: z.array(
+        z.object({
+          question: z.string(),
+          options: z.array(z.string()),
+          correct: z.number(),
+          explanation: z.string(),
+        }),
+      ),
+    }),
+  ),
 });
-
-/* ===============================
-   🚀 EDGE FUNCTION
-================================ */
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -115,12 +55,12 @@ serve(async (req) => {
     if (authError || !user) throw new Error("Unauthorized");
 
     const { topic } = await req.json();
-    if (!topic?.trim()) throw new Error("Topic required");
+    if (!topic?.trim()) throw new Error("Topic is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("Missing API key");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    // Create placeholder course
+    // Create course row
     const { data: course } = await supabase
       .from("courses")
       .insert({
@@ -132,10 +72,6 @@ serve(async (req) => {
       .select()
       .single();
 
-    /* ===============================
-       🤖 AI CALL
-    ================================= */
-
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -144,31 +80,15 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
-        temperature: 0.3,
+        temperature: 0.4,
         messages: [
           {
             role: "system",
             content: `
-Return structured JSON only.
-Create exactly 4 modules.
+You are an expert course architect.
 
-Each module must include:
-- lesson_content (4 slides separated by "\\n---\\n")
-- lab_type ("simulation" OR "classification" ONLY)
-- lab_data (NEVER EMPTY)
-- quiz (at least 1 question)
-
-Simulation lab_data must include:
-- parameters (min 1)
-- thresholds (min 1)
-- optional decisions
-
-Classification lab_data must include:
-- categories (min 1)
-- items (min 1)
-
-Never use any other lab_type.
-Never return empty arrays.
+Return structured JSON only via the function tool.
+Follow all schema rules exactly.
 `,
           },
           { role: "user", content: `Create a course on: ${topic}` },
@@ -195,32 +115,25 @@ Never return empty arrays.
     });
 
     const aiData = await response.json();
-    const toolCall = aiData?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("AI failed");
 
+    if (!aiData.choices?.length) {
+      throw new Error("Empty AI response");
+    }
+
+    const message = aiData.choices[0].message;
+    const toolCall = message?.tool_calls?.[0];
+
+    if (!toolCall) {
+      throw new Error("No function call returned by AI");
+    }
+
+    // 🔥 PARSE RAW JSON
     const parsed = JSON.parse(toolCall.function.arguments);
+
+    // 🔒 VALIDATE STRUCTURE (THIS IS THE NEW PART)
     const courseData = CourseSchema.parse(parsed);
 
-    /* ===============================
-       🔍 VALIDATE LAB DATA PER TYPE
-    ================================= */
-
-    const validatedModules = courseData.modules.map((mod) => {
-      if (mod.lab_type === "simulation") {
-        SimulationLabSchema.parse(mod.lab_data);
-      }
-
-      if (mod.lab_type === "classification") {
-        ClassificationLabSchema.parse(mod.lab_data);
-      }
-
-      return mod;
-    });
-
-    /* ===============================
-       💾 SAVE COURSE
-    ================================= */
-
+    // If validation passes, continue safely
     await supabase
       .from("courses")
       .update({
@@ -230,17 +143,35 @@ Never return empty arrays.
       })
       .eq("id", course.id);
 
-    const modules = validatedModules.map((mod, index) => ({
-      course_id: course.id,
-      module_order: index + 1,
-      title: mod.title,
-      lesson_content: mod.lesson_content,
-      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
-      youtube_title: mod.youtube_title || mod.title,
-      lab_type: mod.lab_type,
-      lab_data: mod.lab_data,
-      quiz: mod.quiz,
-    }));
+    /* ===============================
+       🔥 POST PROCESSING (YOUR LOGIC)
+    ================================= */
+
+    const modules = courseData.modules.map((mod: any, index: number) => {
+      let lessonContent = mod.lesson_content || "";
+
+      // Force slide separators
+      if (!lessonContent.includes("\n---\n")) {
+        const sections = lessonContent.split(/(?=^## )/m).filter(Boolean);
+        if (sections.length > 1) {
+          lessonContent = sections.join("\n\n---\n\n");
+        }
+      }
+
+      return {
+        course_id: course.id,
+        module_order: index + 1,
+        title: mod.title,
+        lesson_content: lessonContent,
+        youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(
+          mod.youtube_query || mod.title,
+        )}`,
+        youtube_title: mod.youtube_title || mod.title,
+        lab_type: mod.lab_type,
+        lab_data: mod.lab_data,
+        quiz: mod.quiz,
+      };
+    });
 
     await supabase.from("course_modules").insert(modules);
 
