@@ -341,23 +341,39 @@ Never return empty lab_data.
     const courseData = CourseSchema.parse(parsed);
 
     /* ===============================
-       🔒 LAB VALIDATION
+       🔒 LAB VALIDATION & REPAIR
     ================================= */
 
-    courseData.modules.forEach((mod) => {
-      switch (mod.lab_type) {
-        case "math":
-          GraphLabSchema.parse(mod.lab_data);
-          break;
-        case "sorting":
-          SortingLabSchema.parse(mod.lab_data);
-          break;
-        case "classification":
-          ClassificationLabSchema.parse(mod.lab_data);
-          break;
-        case "simulation":
-          SimulationLabSchema.parse(mod.lab_data);
-          break;
+    courseData.modules.forEach((mod, idx) => {
+      try {
+        switch (mod.lab_type) {
+          case "math":
+            GraphLabSchema.parse(mod.lab_data);
+            break;
+          case "sorting":
+            SortingLabSchema.parse(mod.lab_data);
+            break;
+          case "classification":
+            ClassificationLabSchema.parse(mod.lab_data);
+            break;
+          case "simulation":
+            SimulationLabSchema.parse(mod.lab_data);
+            break;
+        }
+      } catch (labErr) {
+        console.warn(`Module ${idx} (${mod.lab_type}) lab_data invalid, falling back to sorting:`, labErr);
+        // Fallback: convert to a sorting lab with content from the module title
+        mod.lab_type = "sorting";
+        mod.lab_data = {
+          title: `Order the Key Concepts: ${mod.title}`,
+          description: `Arrange these concepts from ${mod.title} in the correct logical order.`,
+          items: [
+            { text: "Concept 1: Introduction", correct_position: 1 },
+            { text: "Concept 2: Core Principle", correct_position: 2 },
+            { text: "Concept 3: Application", correct_position: 3 },
+            { text: "Concept 4: Advanced Topic", correct_position: 4 },
+          ],
+        };
       }
     });
 
