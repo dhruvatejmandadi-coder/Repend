@@ -1,135 +1,116 @@
 
-# Add Sorting Lab, Math Lab, and Intelligent Lab Selection
 
-## Overview
-Create two new interactive lab components and update the AI to intelligently pick the best lab type per module, with sorting as the universal fallback.
+# Fix: Restore Decision Labs and Real Sorting Content
 
-## New Files
+## Problem
+The strict Zod lab validation added in the last edit is too aggressive. When ANY field is missing (e.g., a simulation lab missing `description` or `emoji`), the entire lab gets replaced with generic placeholder sorting data ("Concept 1: Introduction", "Concept 2: Core Principle"...). This effectively destroys all simulation/decision labs and replaces real sorting labs with useless placeholders.
 
-### 1. `src/components/labs/SortingLab.tsx`
-Reorder component -- users arrange shuffled items into correct sequence using up/down buttons.
+## Root Cause
+`SimulationLabSchema` requires every nested field (`title`, `description`, `emoji`, `explanation`, `set_state`). The AI often omits optional fields like `emoji` or `description`, causing validation to fail and the fallback to trigger for every single module.
 
-- Items shuffled on mount
-- Up/down arrow buttons to swap adjacent items
-- "Check Order" button validates all positions
-- Green/red highlights for correct/incorrect
-- Score display and "Try Again" to re-shuffle
+## Fix (1 file)
 
-Data shape:
-```json
-{
-  "items": [
-    { "text": "Parentheses", "correct_position": 1 },
-    { "text": "Exponents", "correct_position": 2 }
-  ]
-}
-```
+### `supabase/functions/generate-course/index.ts`
 
-### 2. `src/components/labs/MathLab.tsx`
-Numeric problem-solving -- type answers, get instant feedback with explanations.
+1. Make non-critical fields optional in all lab Zod schemas:
+   - `SimulationLabSchema`: make `title`, `description`, `emoji`, `explanation` optional
+   - `SortingLabSchema`: make `title`, `description` optional
+   - `ClassificationLabSchema`: make `title`, `description`, `hint` optional
+   - `GraphLabSchema` (math): make `title`, `description`, `step` optional
 
-- One problem at a time with numeric input
-- Hint toggle button
-- Check button with tolerance-based comparison
-- Shows explanation after answering
-- Final score at end, "Try Again" resets
+2. Replace the "throw-away-and-use-placeholders" fallback with a **repair** approach:
+   - If simulation lab_data has `parameters` and `thresholds`, keep it (fill missing fields with defaults)
+   - If sorting lab_data has `items`, keep it (fill missing title/description)
+   - Only fall back to placeholder sorting if the data is truly empty or completely wrong type
 
-Data shape:
-```json
-{
-  "problems": [
-    { "question": "Solve x^2 - 4 = 0. Positive root?", "answer": 2, "tolerance": 0.01, "hint": "Factor", "explanation": "(x-2)(x+2)=0" }
-  ]
-}
-```
-
-## Modified Files
-
-### 3. `src/components/labs/InteractiveLab.tsx`
-- Import SortingLab and MathLab
-- Add routing for `labType === "sorting"` and `labType === "math"` with data validation
-- Update empty state message to list all four lab types
-
-### 4. `supabase/functions/generate-course/index.ts`
-
-**Zod schema:** Change line 23 from:
-```typescript
-lab_type: z.enum(["simulation", "classification"]),
-```
-to:
-```typescript
-lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
-```
-
-**System prompt:** Replace the minimal prompt with full deterministic lab selection rules:
-- "math" for equations, calculations, numeric answers, algebra, calculus
-- "sorting" for ordering, sequences, timelines, process flows -- AND as universal fallback
-- "classification" for grouping/categorizing
-- "simulation" only for cause-and-effect with tunable parameters
-- Include strict data format specs and examples for all four types
-- Include slide formatting rules (4-6 slides, `---` separators)
-- Include simulation set_state rules
-
-**Post-processing (lines 150-174):** Add validation for new lab types after the existing slide separator logic:
-- Sorting: ensure `correct_position` values are unique and sequential from 1
-- Math: ensure `answer` is a valid number, default `tolerance` to 0.01
+3. The fallback sorting data should at minimum reference the module title instead of "Concept 1" placeholders -- but the real fix is to stop triggering the fallback unnecessarily.
 
 ## Technical Details
 
-### SortingLab core:
-```typescript
-const moveItem = (index: number, direction: "up" | "down") => {
-  const newOrder = [...userOrder];
-  const swapIdx = direction === "up" ? index - 1 : index + 1;
-  if (swapIdx < 0 || swapIdx >= newOrder.length) return;
-  [newOrder[index], newOrder[swapIdx]] = [newOrder[swapIdx], newOrder[index]];
-  setUserOrder(newOrder);
-};
+### Schema changes (make non-critical fields optional):
 
-const checkOrder = () => {
-  const score = userOrder.filter((item, idx) => item.correct_position === idx + 1).length;
-  setScore(score);
-  setChecked(true);
-};
+```typescript
+const SimulationLabSchema = z.object({
+  title: z.string().optional(),
+  description: z.string().optional(),
+  parameters: z.array(z.object({
+    name: z.string(),
+    icon: z.string().optional().default(""),
+    unit: z.string().optional().default(""),
+    min: z.number(),
+    max: z.number(),
+    default: z.number(),
+    description: z.string().optional(),
+  })).min(1),
+  thresholds: z.array(z.object({
+    label: z.string(),
+    min_percent: z.number(),
+    message: z.string(),
+  })).min(1),
+  decisions: z.array(z.object({
+    question: z.string(),
+    emoji: z.string().optional(),
+    choices: z.array(z.object({
+      text: z.string(),
+      explanation: z.string().optional(),
+      set_state: z.record(z.number()).optional(),
+      effects: z.record(z.number()).optional(),
+    })).min(2),
+  })).optional(),
+});
 ```
 
-### MathLab answer checking:
+Similar `.optional()` additions for `SortingLabSchema`, `ClassificationLabSchema`, and `GraphLabSchema` on non-critical string fields.
+
+### Repair logic (replace the current catch block):
+
 ```typescript
-const isCorrect = Math.abs(parseFloat(userAnswer) - problem.answer) <= (problem.tolerance ?? 0.01);
+courseData.modules.forEach((mod, idx) => {
+  try {
+    switch (mod.lab_type) {
+      case "simulation": SimulationLabSchema.parse(mod.lab_data); break;
+      case "sorting":    SortingLabSchema.parse(mod.lab_data); break;
+      case "classification": ClassificationLabSchema.parse(mod.lab_data); break;
+      case "math":       GraphLabSchema.parse(mod.lab_data); break;
+    }
+  } catch (labErr) {
+    console.warn(`Module ${idx} lab validation failed, attempting repair...`);
+    
+    // Try to salvage: if it has parameters/thresholds, treat as simulation
+    if (mod.lab_data?.parameters?.length && mod.lab_data?.thresholds?.length) {
+      mod.lab_type = "simulation";
+      return;
+    }
+    // If it has items array, treat as sorting
+    if (mod.lab_data?.items?.length) {
+      mod.lab_type = "sorting";
+      mod.lab_data.title = mod.lab_data.title || `Order: ${mod.title}`;
+      mod.lab_data.description = mod.lab_data.description || `Arrange in correct order.`;
+      return;
+    }
+    // If it has categories, treat as classification
+    if (mod.lab_data?.categories?.length && mod.lab_data?.items?.length) {
+      mod.lab_type = "classification";
+      return;
+    }
+    // True fallback: generate sorting from lesson content headings
+    mod.lab_type = "sorting";
+    const headings = mod.lesson_content
+      .split(/\n---\n/)
+      .map(s => s.match(/^##\s*(.+)/m)?.[1])
+      .filter(Boolean);
+    mod.lab_data = {
+      title: `Order the Key Concepts: ${mod.title}`,
+      description: `Arrange these concepts from ${mod.title} in the correct logical order.`,
+      items: (headings.length >= 2 ? headings : ["Introduction", "Core Concept", "Application", "Summary"])
+        .map((text, i) => ({ text, correct_position: i + 1 })),
+    };
+  }
+});
 ```
 
-### InteractiveLab routing additions (after classification branch):
-```typescript
-if (labType === "sorting") {
-  if (!labData?.items?.length) return <LabEmptyState labType={labType} />;
-  return <SortingLab data={labData} />;
-}
-if (labType === "math") {
-  if (!labData?.problems?.length) return <LabEmptyState labType={labType} />;
-  return <MathLab data={labData} />;
-}
-```
+This ensures:
+- Decision/simulation labs survive even with minor missing fields
+- Sorting labs keep their real AI-generated content
+- Only truly broken labs get a fallback, and even then it uses lesson headings instead of generic placeholders
 
-### Edge function post-processing additions:
-```typescript
-// Sorting: fix positions
-if (mod.lab_type === "sorting" && mod.lab_data?.items) {
-  mod.lab_data.items = mod.lab_data.items.map((item, idx) => ({
-    ...item,
-    correct_position: item.correct_position ?? idx + 1,
-  }));
-}
-// Math: fix answer types
-if (mod.lab_type === "math" && mod.lab_data?.problems) {
-  mod.lab_data.problems = mod.lab_data.problems.map((p) => ({
-    ...p,
-    answer: typeof p.answer === "number" ? p.answer : parseFloat(p.answer) || 0,
-    tolerance: p.tolerance ?? 0.01,
-  }));
-}
-```
-
-### Updated Zod schema:
-```typescript
-lab_type: z.enum(["simulation", "classification", "sorting", "math"]),
-```
