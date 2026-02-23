@@ -1,171 +1,121 @@
-import { useState } from "react";
-import { CheckCircle2, XCircle, Lightbulb, RotateCcw, ArrowRight } from "lucide-react";
+import { useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid } from "recharts";
 
-type Problem = {
-  question: string;
-  answer: number;
-  tolerance?: number;
-  hint?: string;
-  explanation?: string;
+type Parameter = {
+  name: string;
+  min: number;
+  max: number;
+  default: number;
+  step?: number;
 };
 
 type Props = {
   data: {
     title?: string;
     description?: string;
-    problems: Problem[];
+    equationTemplate: string;
+    // Example: "y = A * sin(Bx + C) + D"
+    parameters: Parameter[];
+    xMin?: number;
+    xMax?: number;
   };
 };
 
-export default function MathLab({ data }: Props) {
-  const problems = data.problems ?? [];
+export default function GraphMathLab({ data }: Props) {
+  const { title, description, equationTemplate, parameters, xMin = -10, xMax = 10 } = data;
 
-  const [current, setCurrent] = useState(0);
-  const [userAnswer, setUserAnswer] = useState("");
-  const [showHint, setShowHint] = useState(false);
-  const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
-  const [totalCorrect, setTotalCorrect] = useState(0);
-  const [finished, setFinished] = useState(false);
+  // State for parameters
+  const [values, setValues] = useState<Record<string, number>>(
+    Object.fromEntries(parameters.map((p) => [p.name, p.default])),
+  );
 
-  const problem = problems[current];
+  // Generate equation string dynamically
+  const equationString = useMemo(() => {
+    let eq = equationTemplate;
+    Object.entries(values).forEach(([key, val]) => {
+      eq = eq.replaceAll(key, val.toString());
+    });
+    return eq;
+  }, [equationTemplate, values]);
 
-  const checkAnswer = () => {
-    if (!problem || result) return;
-    const parsed = parseFloat(userAnswer);
-    if (isNaN(parsed)) return;
-    const correct = Math.abs(parsed - problem.answer) <= (problem.tolerance ?? 0.01);
-    setResult(correct ? "correct" : "incorrect");
-    if (correct) setTotalCorrect((p) => p + 1);
-  };
+  // Generate graph data points
+  const graphData = useMemo(() => {
+    const points = [];
+    for (let x = xMin; x <= xMax; x += 0.2) {
+      let y = 0;
 
-  const next = () => {
-    if (current + 1 >= problems.length) {
-      setFinished(true);
-      return;
+      // Safe dynamic evaluation
+      try {
+        const expr = equationTemplate
+          .replaceAll("sin", "Math.sin")
+          .replaceAll("cos", "Math.cos")
+          .replaceAll("tan", "Math.tan");
+
+        let evalExpr = expr;
+        Object.entries(values).forEach(([key, val]) => {
+          evalExpr = evalExpr.replaceAll(key, val.toString());
+        });
+
+        const fn = new Function("x", `return ${evalExpr.split("=")[1]}`);
+        y = fn(x);
+      } catch {
+        y = 0;
+      }
+
+      points.push({ x, y });
     }
-    setCurrent((p) => p + 1);
-    setUserAnswer("");
-    setShowHint(false);
-    setResult(null);
-  };
-
-  const reset = () => {
-    setCurrent(0);
-    setUserAnswer("");
-    setShowHint(false);
-    setResult(null);
-    setTotalCorrect(0);
-    setFinished(false);
-  };
-
-  if (finished) {
-    return (
-      <div className="space-y-4">
-        <Card>
-          <CardContent className="p-6 text-center space-y-3">
-            <div className="text-4xl">{totalCorrect === problems.length ? "🎉" : "📊"}</div>
-            <h3 className="font-bold text-xl">
-              {totalCorrect === problems.length ? "Perfect Score!" : "Results"}
-            </h3>
-            <p className="text-lg">
-              {totalCorrect} / {problems.length} correct
-            </p>
-            <Button variant="outline" onClick={reset}>
-              <RotateCcw className="w-4 h-4 mr-2" /> Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (!problem) return null;
+    return points;
+  }, [equationTemplate, values, xMin, xMax]);
 
   return (
-    <div className="space-y-4">
-      {(data.title || data.description) && (
+    <div className="space-y-6">
+      {(title || description) && (
         <div className="space-y-1">
-          {data.title && <h3 className="font-bold text-lg">{data.title}</h3>}
-          {data.description && <p className="text-sm text-muted-foreground">{data.description}</p>}
+          {title && <h3 className="font-bold text-lg">{title}</h3>}
+          {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
 
-      <Badge variant="outline">
-        Problem {current + 1} of {problems.length}
-      </Badge>
+      <Badge variant="outline">{equationString}</Badge>
 
       <Card>
-        <CardContent className="p-5 space-y-4">
-          <p className="font-medium">{problem.question}</p>
-
-          {!result && problem.hint && (
-            <Button size="sm" variant="ghost" onClick={() => setShowHint((p) => !p)}>
-              <Lightbulb className="w-4 h-4 mr-1" />
-              {showHint ? "Hide Hint" : "Show Hint"}
-            </Button>
-          )}
-
-          {showHint && !result && problem.hint && (
-            <p className="text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
-              💡 {problem.hint}
-            </p>
-          )}
-
-          <div className="flex gap-2">
-            <Input
-              type="number"
-              step="any"
-              placeholder="Your answer"
-              value={userAnswer}
-              onChange={(e) => setUserAnswer(e.target.value)}
-              disabled={!!result}
-              onKeyDown={(e) => e.key === "Enter" && checkAnswer()}
-              className="max-w-[200px]"
-            />
-            {!result && (
-              <Button onClick={checkAnswer} disabled={!userAnswer.trim()}>
-                Check
-              </Button>
-            )}
-          </div>
-
-          {result && (
-            <div
-              className={`flex items-start gap-2 p-3 rounded-lg ${
-                result === "correct" ? "bg-green-500/10 text-green-700 dark:text-green-400" : "bg-red-500/10 text-red-700 dark:text-red-400"
-              }`}
-            >
-              {result === "correct" ? (
-                <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />
-              ) : (
-                <XCircle className="w-5 h-5 shrink-0 mt-0.5" />
-              )}
-              <div className="space-y-1 text-sm">
-                <p className="font-medium">
-                  {result === "correct" ? "Correct!" : `Incorrect. Answer: ${problem.answer}`}
-                </p>
-                {problem.explanation && <p>{problem.explanation}</p>}
-              </div>
-            </div>
-          )}
-
-          {result && (
-            <Button onClick={next}>
-              {current + 1 < problems.length ? (
-                <>
-                  Next <ArrowRight className="w-4 h-4 ml-1" />
-                </>
-              ) : (
-                "See Results"
-              )}
-            </Button>
-          )}
+        <CardContent className="p-4 h-[350px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={graphData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="x" type="number" domain={[xMin, xMax]} />
+              <YAxis />
+              <Line type="monotone" dataKey="y" dot={false} strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <div className="space-y-4">
+        {parameters.map((param) => (
+          <div key={param.name} className="space-y-2">
+            <div className="flex justify-between text-sm font-medium">
+              <span>{param.name}</span>
+              <span>{values[param.name]}</span>
+            </div>
+            <Slider
+              min={param.min}
+              max={param.max}
+              step={param.step ?? 0.1}
+              value={[values[param.name]]}
+              onValueChange={(val) =>
+                setValues((prev) => ({
+                  ...prev,
+                  [param.name]: val[0],
+                }))
+              }
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
