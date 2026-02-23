@@ -12,8 +12,8 @@ const corsHeaders = {
 ================================ */
 
 const GraphLabSchema = z.object({
-  title: z.string(),
-  description: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
   equation: z.string(),
   parameters: z
     .array(
@@ -29,13 +29,13 @@ const GraphLabSchema = z.object({
   domain: z.object({
     min: z.number(),
     max: z.number(),
-    step: z.number(),
+    step: z.number().optional(),
   }),
 });
 
 const SortingLabSchema = z.object({
-  title: z.string(),
-  description: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
   items: z
     .array(
       z.object({
@@ -47,14 +47,14 @@ const SortingLabSchema = z.object({
 });
 
 const ClassificationLabSchema = z.object({
-  title: z.string(),
-  description: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
   categories: z
     .array(
       z.object({
         name: z.string(),
-        emoji: z.string(),
-        description: z.string(),
+        emoji: z.string().optional(),
+        description: z.string().optional(),
       }),
     )
     .min(2),
@@ -63,25 +63,25 @@ const ClassificationLabSchema = z.object({
       z.object({
         name: z.string(),
         correct_category: z.string(),
-        hint: z.string(),
+        hint: z.string().optional(),
       }),
     )
     .min(2),
 });
 
 const SimulationLabSchema = z.object({
-  title: z.string(),
-  description: z.string(),
+  title: z.string().optional(),
+  description: z.string().optional(),
   parameters: z
     .array(
       z.object({
         name: z.string(),
-        icon: z.string(),
-        unit: z.string(),
+        icon: z.string().optional(),
+        unit: z.string().optional(),
         min: z.number(),
         max: z.number(),
         default: z.number(),
-        description: z.string(),
+        description: z.string().optional(),
       }),
     )
     .min(1),
@@ -98,19 +98,20 @@ const SimulationLabSchema = z.object({
     .array(
       z.object({
         question: z.string(),
-        emoji: z.string(),
+        emoji: z.string().optional(),
         choices: z
           .array(
             z.object({
               text: z.string(),
-              explanation: z.string(),
-              set_state: z.record(z.number()),
+              explanation: z.string().optional(),
+              set_state: z.record(z.number()).optional(),
+              effects: z.record(z.number()).optional(),
             }),
           )
           .min(2),
       }),
     )
-    .min(1),
+    .optional(),
 });
 
 const ModuleSchema = z.object({
@@ -361,18 +362,36 @@ Never return empty lab_data.
             break;
         }
       } catch (labErr) {
-        console.warn(`Module ${idx} (${mod.lab_type}) lab_data invalid, falling back to sorting:`, labErr);
-        // Fallback: convert to a sorting lab with content from the module title
+        console.warn(`Module ${idx} (${mod.lab_type}) lab validation failed, attempting repair...`);
+
+        // Try to salvage: if it has parameters/thresholds, keep as simulation
+        if (mod.lab_data?.parameters?.length && mod.lab_data?.thresholds?.length) {
+          mod.lab_type = "simulation";
+          return;
+        }
+        // If it has categories and items, keep as classification
+        if (mod.lab_data?.categories?.length && mod.lab_data?.items?.length) {
+          mod.lab_type = "classification";
+          return;
+        }
+        // If it has items array, keep as sorting
+        if (mod.lab_data?.items?.length) {
+          mod.lab_type = "sorting";
+          mod.lab_data.title = mod.lab_data.title || `Order: ${mod.title}`;
+          mod.lab_data.description = mod.lab_data.description || `Arrange in correct order.`;
+          return;
+        }
+        // True fallback: generate sorting from lesson content headings
         mod.lab_type = "sorting";
+        const headings = mod.lesson_content
+          .split(/\n---\n/)
+          .map((s: string) => s.match(/^##\s*(.+)/m)?.[1])
+          .filter(Boolean);
         mod.lab_data = {
           title: `Order the Key Concepts: ${mod.title}`,
           description: `Arrange these concepts from ${mod.title} in the correct logical order.`,
-          items: [
-            { text: "Concept 1: Introduction", correct_position: 1 },
-            { text: "Concept 2: Core Principle", correct_position: 2 },
-            { text: "Concept 3: Application", correct_position: 3 },
-            { text: "Concept 4: Advanced Topic", correct_position: 4 },
-          ],
+          items: (headings.length >= 2 ? headings : ["Introduction", "Core Concept", "Application", "Summary"])
+            .map((text: string, i: number) => ({ text, correct_position: i + 1 })),
         };
       }
     });
