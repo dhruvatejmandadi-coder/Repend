@@ -1,306 +1,222 @@
-import { useState, useMemo, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
-import ClassificationLab from "./ClassificationLab";
+import React, { useState, useMemo, useEffect } from "react";
 
-/* ============================================================
+/* ===========================
    TYPES
-============================================================ */
+=========================== */
 
 type Parameter = {
   name: string;
-  icon: string;
-  unit: string;
   min: number;
   max: number;
   default: number;
-  weight?: number; // weighted impact on total score
-  description?: string;
+  weight: number;
 };
 
-type Decision = {
+type Scenario = {
+  id: string;
   question: string;
-  emoji?: string;
-  choices: {
-    text: string;
-    explanation?: string;
-    set_state: Record<string, number>;
-  }[];
+  impact: Record<string, number>;
 };
 
-type SimulationData = {
-  title?: string;
-  description?: string;
+type Threshold = {
+  label: string;
+  min_percent: number;
+  message: string;
+};
+
+type LabData = {
+  topic: string;
   parameters: Parameter[];
-  thresholds: {
-    label: string;
-    min_percent: number;
-    message: string;
-  }[];
-  decisions?: Decision[];
+  scenarios: Scenario[];
+  thresholds: Threshold[];
 };
 
 type Props = {
-  labType?: string | null;
-  labData?: any;
-  labTitle?: string | null;
-  labDescription?: string | null;
+  labData: LabData;
 };
 
-/* ============================================================
-   HELPERS
-============================================================ */
+/* ===========================
+   COMPONENT
+=========================== */
 
-function getParamLevel(value: number, min: number, max: number) {
-  const pct = ((value - min) / (max - min)) * 100;
-  if (pct >= 75) return { color: "text-green-500", icon: TrendingUp };
-  if (pct >= 35) return { color: "text-yellow-500", icon: Minus };
-  return { color: "text-red-500", icon: TrendingDown };
-}
-
-function ensureSetState(decisions: Decision[], parameters: Parameter[]): Decision[] {
-  if (!decisions?.length || !parameters?.length) return decisions ?? [];
-
-  return decisions.map((decision) => ({
-    ...decision,
-    choices: decision.choices.map((choice) => {
-      const complete: Record<string, number> = {};
-
-      for (const p of parameters) {
-        const raw = choice.set_state?.[p.name] ?? p.default;
-
-        complete[p.name] = Math.max(p.min, Math.min(p.max, raw));
-      }
-
-      return {
-        ...choice,
-        set_state: complete,
-      };
-    }),
-  }));
-}
-
-/* ============================================================
-   SIMULATION COMPONENT
-============================================================ */
-
-function SimulationLabInline({ data }: { data: SimulationData }) {
-  const parameters = useMemo(() => data.parameters ?? [], [data]);
-  const thresholds = useMemo(() => data.thresholds ?? [], [data]);
-  const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
-
-  const decisions = useMemo(() => ensureSetState(rawDecisions, parameters), [rawDecisions, parameters]);
+export default function InteractiveLab({ labData }: Props) {
+  const { parameters, scenarios, thresholds } = labData;
 
   const [values, setValues] = useState<Record<string, number>>({});
-  const [currentScenario, setCurrentScenario] = useState(0);
-  const [answered, setAnswered] = useState<Record<number, number>>({});
+  const [scenarioIndex, setScenarioIndex] = useState<number>(0);
+  const [answered, setAnswered] = useState<number[]>([]);
 
-  /* ---------------- RESET ON LAB CHANGE ---------------- */
+  /* ===========================
+     INIT DEFAULT VALUES
+  =========================== */
 
   useEffect(() => {
-    const initial = Object.fromEntries(parameters.map((p) => [p.name, p.default]));
+    const initial: Record<string, number> = {};
+    parameters.forEach((p) => {
+      initial[p.name] = p.default;
+    });
     setValues(initial);
-    setCurrentScenario(0);
-    setAnswered({});
-  }, [data, parameters]);
+  }, [parameters]);
 
-  /* ---------------- WEIGHTED TOTAL ---------------- */
+  /* ===========================
+     WEIGHTED TOTAL
+  =========================== */
 
   const totalPercent = useMemo(() => {
-    if (!parameters.length) return 0;
+    let weightedScore = 0;
+    let totalWeight = 0;
 
-    const totalWeight = parameters.reduce((sum, p) => sum + (p.weight ?? 1), 0);
+    parameters.forEach((p) => {
+      const value = values[p.name] ?? p.default;
+      const normalized = (value - p.min) / (p.max - p.min);
 
-    const score = parameters.reduce((sum, p) => {
-      const normalized = ((values[p.name] ?? p.default) - p.min) / (p.max - p.min);
-
-      return sum + normalized * (p.weight ?? 1);
-    }, 0);
-
-    return Math.round((score / totalWeight) * 100);
-  }, [values, parameters]);
-
-  const threshold = useMemo(() => {
-    if (!thresholds.length) return null;
-
-    const sorted = [...thresholds].sort((a, b) => b.min_percent - a.min_percent);
-
-    return sorted.find((t) => totalPercent >= t.min_percent) || sorted[sorted.length - 1];
-  }, [thresholds, totalPercent]);
-
-  /* ---------------- DECISION HANDLER ---------------- */
-
-  const handleDecision = (scenarioIdx: number, choiceIdx: number) => {
-    if (answered[scenarioIdx] !== undefined) return;
-
-    const choice = decisions[scenarioIdx]?.choices[choiceIdx];
-    if (!choice) return;
-
-    setValues((prev) => {
-      const next: Record<string, number> = {};
-
-      for (const p of parameters) {
-        next[p.name] = Math.max(p.min, Math.min(p.max, choice.set_state[p.name] ?? prev[p.name] ?? p.default));
-      }
-
-      return next;
+      weightedScore += normalized * p.weight;
+      totalWeight += p.weight;
     });
 
-    setAnswered((prev) => ({
-      ...prev,
-      [scenarioIdx]: choiceIdx,
-    }));
+    if (totalWeight === 0) return 0;
+    return Math.round((weightedScore / totalWeight) * 100);
+  }, [values, parameters]);
 
-    // Auto-progress
-    setTimeout(() => {
-      setCurrentScenario((prev) => prev + 1);
-    }, 500);
+  /* ===========================
+     OUTCOME
+  =========================== */
+
+  const outcome = useMemo(() => {
+    const sorted = [...thresholds].sort((a, b) => b.min_percent - a.min_percent);
+
+    return sorted.find((t) => totalPercent >= t.min_percent) ?? sorted[sorted.length - 1];
+  }, [totalPercent, thresholds]);
+
+  /* ===========================
+     APPLY SCENARIO
+  =========================== */
+
+  const applyScenario = (scenario: Scenario) => {
+    setValues((prev) => {
+      const updated = { ...prev };
+
+      Object.entries(scenario.impact).forEach(([key, delta]) => {
+        const current = prev[key] ?? 50;
+        const newValue = Math.max(0, Math.min(100, current + delta));
+        updated[key] = newValue;
+      });
+
+      return updated;
+    });
+
+    setAnswered((prev) => [...prev, scenarioIndex]);
   };
 
-  const allDone = currentScenario >= decisions.length;
-
-  /* ---------------- API SYNC ---------------- */
-
-  useEffect(() => {
-    if (!parameters.length) return;
-
-    const controller = new AbortController();
-
-    async function sync() {
-      try {
-        await fetch("/api/simulation/update", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            state: values,
-            totalPercent,
-            scenario: currentScenario,
-          }),
-          signal: controller.signal,
-        });
-      } catch (err: any) {
-        if (err.name !== "AbortError") {
-          console.error("Simulation sync error:", err);
-        }
-      }
-    }
-
-    sync();
-    return () => controller.abort();
-  }, [values, totalPercent, currentScenario, parameters]);
-
-  /* ---------------- UI ---------------- */
+  /* ===========================
+     RENDER
+  =========================== */
 
   return (
-    <div className="space-y-6">
-      {/* SCENARIOS */}
-      {decisions.length > 0 && !allDone && (
-        <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-6 space-y-4">
-            <div className="flex items-center gap-2">
-              <MessageCircleQuestion className="w-5 h-5 text-primary" />
-              <h3 className="font-bold">
-                Scenario {currentScenario + 1} of {decisions.length}
-              </h3>
-            </div>
+    <div style={{ maxWidth: 700, margin: "0 auto", padding: 20 }}>
+      {/* ===== SCENARIO ===== */}
 
-            <p>
-              {decisions[currentScenario].emoji ?? "🔬"} {decisions[currentScenario].question}
-            </p>
+      {scenarioIndex < scenarios.length && (
+        <div
+          style={{
+            border: "1px solid #ccc",
+            padding: 16,
+            marginBottom: 20,
+            borderRadius: 8,
+          }}
+        >
+          <h3>
+            Scenario {scenarioIndex + 1} of {scenarios.length}
+          </h3>
 
-            {decisions[currentScenario].choices.map((c, i) => {
-              const isAnswered = answered[currentScenario] !== undefined;
-              const isChosen = answered[currentScenario] === i;
+          <p>{scenarios[scenarioIndex].question}</p>
 
-              return (
-                <button
-                  key={i}
-                  onClick={() => handleDecision(currentScenario, i)}
-                  disabled={isAnswered}
-                  className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
-                    isChosen ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  {c.text}
-                </button>
-              );
-            })}
-          </CardContent>
-        </Card>
+          <button
+            onClick={() => applyScenario(scenarios[scenarioIndex])}
+            disabled={answered.includes(scenarioIndex)}
+            style={{ marginRight: 10 }}
+          >
+            Apply Decision
+          </button>
+
+          {answered.includes(scenarioIndex) && scenarioIndex < scenarios.length - 1 && (
+            <button onClick={() => setScenarioIndex((prev) => prev + 1)}>Next →</button>
+          )}
+        </div>
       )}
 
-      {/* PARAMETERS */}
-      {parameters.map((p) => {
-        const value = values[p.name] ?? p.default;
-        const { color, icon: Icon } = getParamLevel(value, p.min, p.max);
+      {/* ===== PARAMETERS ===== */}
+
+      {parameters.map((param) => {
+        const value = values[param.name] ?? param.default;
 
         return (
-          <Card key={p.name}>
-            <CardContent className="p-4 space-y-3">
-              <div className="flex justify-between items-center">
-                <div className="flex gap-2 items-center">
-                  <span>{p.icon}</span>
-                  <span>{p.name}</span>
-                </div>
+          <div
+            key={param.name}
+            style={{
+              marginBottom: 20,
+              padding: 12,
+              border: "1px solid #ddd",
+              borderRadius: 8,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <strong>{param.name}</strong>
+              <span>{value}</span>
+            </div>
 
-                <div className="flex items-center gap-2">
-                  <Icon className={`w-4 h-4 ${color}`} />
-                  <Badge variant="outline">
-                    {value} {p.unit}
-                  </Badge>
-                </div>
-              </div>
-
-              <Slider
-                value={[value]}
-                min={p.min}
-                max={p.max}
-                step={1}
-                onValueChange={([v]) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    [p.name]: v,
-                  }))
-                }
-              />
-            </CardContent>
-          </Card>
+            <input
+              type="range"
+              min={param.min}
+              max={param.max}
+              value={value}
+              onChange={(e) =>
+                setValues((prev) => ({
+                  ...prev,
+                  [param.name]: Number(e.target.value),
+                }))
+              }
+              style={{ width: "100%" }}
+            />
+          </div>
         );
       })}
 
-      {/* OUTCOME */}
-      <Card>
-        <CardContent className="p-5">
-          <div className="flex justify-between mb-2">
-            <span className="font-bold">{threshold?.label ?? "Outcome"}</span>
-            <Badge>{totalPercent}%</Badge>
-          </div>
+      {/* ===== OUTCOME ===== */}
 
-          <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all" style={{ width: `${totalPercent}%` }} />
-          </div>
+      <div
+        style={{
+          padding: 16,
+          border: "2px solid #000",
+          borderRadius: 8,
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <strong>{outcome?.label ?? "Outcome"}</strong>
+          <strong>{totalPercent}%</strong>
+        </div>
 
-          <p className="text-sm text-muted-foreground mt-2">{threshold?.message}</p>
-        </CardContent>
-      </Card>
+        <div
+          style={{
+            height: 10,
+            background: "#eee",
+            borderRadius: 5,
+            marginTop: 10,
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              width: `${totalPercent}%`,
+              height: "100%",
+              background: "black",
+              transition: "width 0.3s ease",
+            }}
+          />
+        </div>
+
+        <p style={{ marginTop: 10 }}>{outcome?.message}</p>
+      </div>
     </div>
   );
-}
-
-/* ============================================================
-   MAIN EXPORT
-============================================================ */
-
-export default function InteractiveLab({ labType, labData }: Props) {
-  if (!labData || Object.keys(labData).length === 0) {
-    return null;
-  }
-
-  if (labType === "classification") {
-    return <ClassificationLab data={labData} />;
-  }
-
-  return <SimulationLabInline data={labData} />;
 }
