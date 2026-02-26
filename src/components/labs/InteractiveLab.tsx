@@ -5,9 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MessageCircleQuestion } from "lucide-react";
 
-/* ===========================
-   TYPES
-=========================== */
+/* ================= TYPES ================= */
 
 type Parameter = {
   name: string;
@@ -15,153 +13,165 @@ type Parameter = {
   min: number;
   max: number;
   default: number;
-  weight: number;
+  weight?: number;
 };
 
 type Scenario = {
   id: string;
   question: string;
-  emoji: string;
+  emoji?: string;
   impact: Record<string, number>;
 };
 
-type Threshold = {
-  label: string;
-  min_percent: number;
-  message: string;
-};
-
-type LabData = {
+type SimulationData = {
   topic: string;
   parameters: Parameter[];
   scenarios: Scenario[];
-  thresholds: Threshold[];
+  thresholds: {
+    label: string;
+    min_percent: number;
+    message: string;
+  }[];
 };
 
-/* ===========================
-   COMPONENT
-=========================== */
+type Props = {
+  labData: SimulationData;
+};
 
-export default function InteractiveLab({ labData }: { labData: LabData }) {
+/* ================= COMPONENT ================= */
+
+export default function InteractiveLab({ labData }: Props) {
   const { topic, parameters, scenarios, thresholds } = labData;
 
   const [values, setValues] = useState<Record<string, number>>({});
-  const [scenarioIndex, setScenarioIndex] = useState(0);
+  const [currentScenario, setCurrentScenario] = useState(0);
   const [answered, setAnswered] = useState<number[]>([]);
 
-  /* ===========================
-     INITIALIZE DEFAULT VALUES
-  =========================== */
+  /* ================= INIT ================= */
 
   useEffect(() => {
-    const initialValues: Record<string, number> = {};
-    parameters.forEach((param) => {
-      initialValues[param.name] = param.default;
-    });
-    setValues(initialValues);
-  }, [parameters]);
+    const initial = Object.fromEntries(parameters.map((p) => [p.name, p.default]));
+    setValues(initial);
+  }, [labData]);
 
-  /* ===========================
-     WEIGHTED TOTAL CALCULATION
-  =========================== */
+  /* ================= WEIGHTED TOTAL ================= */
 
   const totalPercent = useMemo(() => {
-    let weightedScore = 0;
     let totalWeight = 0;
+    let weightedScore = 0;
 
-    parameters.forEach((param) => {
-      const value = values[param.name] ?? param.default;
-      const normalized = (value - param.min) / (param.max - param.min);
+    parameters.forEach((p) => {
+      const weight = p.weight ?? 1;
+      totalWeight += weight;
 
-      weightedScore += normalized * param.weight;
-      totalWeight += param.weight;
+      const normalized = ((values[p.name] ?? p.default) - p.min) / (p.max - p.min);
+
+      weightedScore += normalized * weight;
     });
 
     return Math.round((weightedScore / totalWeight) * 100);
   }, [values, parameters]);
 
-  /* ===========================
-     THRESHOLD MATCHING
-  =========================== */
-
-  const outcome = useMemo(() => {
+  const threshold = useMemo(() => {
     const sorted = [...thresholds].sort((a, b) => b.min_percent - a.min_percent);
-
     return sorted.find((t) => totalPercent >= t.min_percent) ?? sorted[sorted.length - 1];
   }, [totalPercent, thresholds]);
 
-  /* ===========================
-     SCENARIO APPLY
-  =========================== */
+  /* ================= API CALLBACK ================= */
 
-  const applyScenario = (scenario: Scenario) => {
+  useEffect(() => {
+    async function updateAPI() {
+      try {
+        await fetch("/api/lab/update", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic,
+            values,
+            total: totalPercent,
+          }),
+        });
+      } catch (err) {
+        console.error("API update failed");
+      }
+    }
+
+    updateAPI();
+  }, [values, totalPercent, topic]);
+
+  /* ================= SCENARIO APPLY ================= */
+
+  const applyScenario = async (scenario: Scenario) => {
     setValues((prev) => {
       const updated = { ...prev };
-
       Object.entries(scenario.impact).forEach(([key, delta]) => {
-        const current = prev[key] ?? 50;
-        const newValue = Math.max(0, Math.min(100, current + delta));
-        updated[key] = newValue;
+        updated[key] = Math.max(0, Math.min(100, (prev[key] ?? 50) + delta));
       });
-
       return updated;
     });
 
-    setAnswered((prev) => [...prev, scenarioIndex]);
+    setAnswered((prev) => [...prev, currentScenario]);
+
+    try {
+      await fetch("/api/lab/scenario", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topic,
+          scenarioId: scenario.id,
+        }),
+      });
+    } catch (err) {
+      console.error("Scenario API failed");
+    }
   };
 
-  /* ===========================
-     UI
-  =========================== */
+  /* ================= UI ================= */
 
   return (
     <div className="space-y-6">
-      {/* ===== SCENARIO SECTION ===== */}
-
-      {scenarioIndex < scenarios.length && (
+      {/* ===== SCENARIO BOX ===== */}
+      {currentScenario < scenarios.length && (
         <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="p-6 space-y-4">
+          <CardContent className="p-5 space-y-4">
             <div className="flex items-center gap-2">
               <MessageCircleQuestion className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">
-                Scenario {scenarioIndex + 1} of {scenarios.length}
+              <h3 className="font-bold">
+                Scenario {currentScenario + 1} of {scenarios.length}
               </h3>
             </div>
 
-            <p className="text-sm">
-              {scenarios[scenarioIndex].emoji} {scenarios[scenarioIndex].question}
+            <p>
+              {scenarios[currentScenario].emoji ?? "📌"} {scenarios[currentScenario].question}
             </p>
 
-            <div className="flex gap-3 pt-2">
-              <Button
-                onClick={() => applyScenario(scenarios[scenarioIndex])}
-                disabled={answered.includes(scenarioIndex)}
-              >
-                Apply Decision
-              </Button>
+            <Button
+              onClick={() => applyScenario(scenarios[currentScenario])}
+              disabled={answered.includes(currentScenario)}
+            >
+              Apply Decision
+            </Button>
 
-              {answered.includes(scenarioIndex) && scenarioIndex < scenarios.length - 1 && (
-                <Button variant="outline" onClick={() => setScenarioIndex((prev) => prev + 1)}>
-                  Next →
-                </Button>
-              )}
-            </div>
+            {answered.includes(currentScenario) && currentScenario < scenarios.length - 1 && (
+              <Button variant="outline" onClick={() => setCurrentScenario((prev) => prev + 1)}>
+                Next →
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* ===== PARAMETERS ===== */}
-
       {parameters.map((param) => {
         const value = values[param.name] ?? param.default;
 
         return (
           <Card key={param.name}>
-            <CardContent className="p-5 space-y-3">
-              <div className="flex justify-between items-center">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex justify-between">
                 <div className="flex items-center gap-2">
                   <span>{param.icon}</span>
-                  <span className="font-medium">{param.name}</span>
+                  <span>{param.name}</span>
                 </div>
 
                 <Badge variant="outline">{value}</Badge>
@@ -172,10 +182,10 @@ export default function InteractiveLab({ labData }: { labData: LabData }) {
                 min={param.min}
                 max={param.max}
                 step={1}
-                onValueChange={([newValue]) =>
+                onValueChange={([v]) =>
                   setValues((prev) => ({
                     ...prev,
-                    [param.name]: newValue,
+                    [param.name]: v,
                   }))
                 }
               />
@@ -185,19 +195,18 @@ export default function InteractiveLab({ labData }: { labData: LabData }) {
       })}
 
       {/* ===== OUTCOME ===== */}
-
       <Card>
-        <CardContent className="p-6 space-y-4">
-          <div className="flex justify-between items-center">
-            <span className="font-semibold">{outcome?.label ?? "Outcome"}</span>
+        <CardContent className="p-5 space-y-3">
+          <div className="flex justify-between">
+            <span className="font-bold">{threshold?.label ?? "Outcome"}</span>
             <Badge>{totalPercent}%</Badge>
           </div>
 
           <div className="h-2 bg-secondary rounded-full overflow-hidden">
-            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${totalPercent}%` }} />
+            <div className="h-full bg-primary transition-all" style={{ width: `${totalPercent}%` }} />
           </div>
 
-          <p className="text-sm text-muted-foreground">{outcome?.message}</p>
+          <p className="text-sm text-muted-foreground">{threshold?.message}</p>
         </CardContent>
       </Card>
     </div>
