@@ -34,6 +34,115 @@ const CourseSchema = z.object({
   ),
 });
 
+/* ===============================
+   🔧 REPAIR MODULES
+================================ */
+
+function repairModules(parsed: any) {
+  if (!parsed?.modules || !Array.isArray(parsed.modules)) return parsed;
+
+  for (const mod of parsed.modules) {
+    // Recover lesson_content from alternative field names
+    if (!mod.lesson_content) {
+      mod.lesson_content = mod.content || mod.lesson || mod.text || "## Lesson Content\n\nContent is being prepared.";
+    }
+
+    // Force slide separators
+    if (mod.lesson_content && !mod.lesson_content.includes("\n---\n")) {
+      const sections = mod.lesson_content.split(/(?=^## )/m).filter(Boolean);
+      if (sections.length > 1) {
+        mod.lesson_content = sections.join("\n\n---\n\n");
+      }
+    }
+
+    // Default lab_type
+    if (!mod.lab_type) {
+      mod.lab_type = "simulation";
+    }
+
+    // Default quiz
+    if (!mod.quiz || !Array.isArray(mod.quiz)) {
+      mod.quiz = [
+        {
+          question: `What is a key concept from "${mod.title || "this module"}"?`,
+          options: ["Option A", "Option B", "Option C", "Option D"],
+          correct: 0,
+          explanation: "Review the lesson content for details.",
+        },
+      ];
+    }
+
+    // Repair simulation lab_data
+    if (mod.lab_type === "simulation" && mod.lab_data) {
+      const ld = mod.lab_data;
+
+      // Ensure parameters exist
+      if (!ld.parameters || !Array.isArray(ld.parameters) || ld.parameters.length === 0) {
+        ld.parameters = [
+          { name: "Factor A", icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
+          { name: "Factor B", icon: "📈", unit: "%", min: 0, max: 100, default: 50 },
+          { name: "Factor C", icon: "📉", unit: "%", min: 0, max: 100, default: 50 },
+        ];
+      }
+
+      // Normalize parameters to 0-100 range
+      for (const p of ld.parameters) {
+        p.min = 0;
+        p.max = 100;
+        if (typeof p.default !== "number" || p.default < 0 || p.default > 100) p.default = 50;
+      }
+
+      const paramNames = ld.parameters.map((p: any) => p.name);
+
+      // Ensure thresholds
+      if (!ld.thresholds || !Array.isArray(ld.thresholds) || ld.thresholds.length === 0) {
+        ld.thresholds = [
+          { label: "Excellent", min_percent: 75, message: "Outstanding performance across all factors." },
+          { label: "Good", min_percent: 50, message: "Solid results with room for improvement." },
+          { label: "Needs Work", min_percent: 0, message: "Consider revisiting your approach." },
+        ];
+      }
+
+      // Repair decisions: convert effects → set_state, fill missing params
+      if (ld.decisions && Array.isArray(ld.decisions)) {
+        for (const decision of ld.decisions) {
+          if (!decision.choices || !Array.isArray(decision.choices)) continue;
+          for (const choice of decision.choices) {
+            // Convert legacy effects to set_state
+            if (choice.effects && !choice.set_state) {
+              const setState: Record<string, number> = {};
+              for (const pName of paramNames) {
+                const delta = choice.effects[pName] ?? 0;
+                setState[pName] = Math.max(0, Math.min(100, 50 + delta));
+              }
+              choice.set_state = setState;
+              delete choice.effects;
+            }
+
+            // Fill missing params in set_state
+            if (choice.set_state) {
+              for (const pName of paramNames) {
+                if (typeof choice.set_state[pName] !== "number") {
+                  choice.set_state[pName] = 50;
+                }
+                choice.set_state[pName] = Math.max(0, Math.min(100, choice.set_state[pName]));
+              }
+            } else {
+              // No state at all, generate defaults
+              choice.set_state = {};
+              for (const pName of paramNames) {
+                choice.set_state[pName] = 50;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return parsed;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -84,12 +193,59 @@ serve(async (req) => {
         messages: [
           {
             role: "system",
-            content: `
-You are an expert course architect.
+            content: `You are an expert course architect. Return structured JSON only via the function tool.
 
-Return structured JSON only via the function tool.
-Follow all schema rules exactly.
-`,
+CRITICAL MODULE STRUCTURE — every module MUST have ALL of these fields:
+- title: string
+- lesson_content: string (markdown with "---" slide separators between sections, use ## headings)
+- youtube_query: string (search query to find a relevant video)
+- youtube_title: string
+- lab_type: "simulation" or "classification"
+- lab_data: object (see below)
+- quiz: array of {question, options: string[4], correct: number 0-3, explanation}
+
+SIMULATION LAB (lab_type: "simulation") — lab_data format:
+{
+  "title": "...",
+  "description": "...",
+  "parameters": [
+    {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
+  ],
+  "thresholds": [
+    {"label": "Excellent", "min_percent": 75, "message": "..."},
+    {"label": "Good", "min_percent": 50, "message": "..."},
+    {"label": "Needs Work", "min_percent": 0, "message": "..."}
+  ],
+  "decisions": [
+    {
+      "question": "Scenario question?",
+      "emoji": "🔬",
+      "choices": [
+        {"text": "Choice A", "explanation": "Why this matters", "set_state": {"<Factor1>": 80, "<Factor2>": 40, "<Factor3>": 55}},
+        {"text": "Choice B", "explanation": "Why this matters", "set_state": {"<Factor1>": 45, "<Factor2>": 85, "<Factor3>": 65}}
+      ]
+    }
+  ]
+}
+
+CRITICAL SIMULATION RULES:
+- Parameter names MUST be relevant to the course topic (e.g. for Economics: "GDP Growth", "Inflation Rate", "Employment"; for Biology: "Cell Health", "Mutation Rate", "Immune Response")
+- NEVER use generic names like "Understanding", "Application", "Confidence" — always use domain-specific factors
+- Every parameter must use min:0, max:100, default:50, unit:"%"
+- Use 3 parameters per simulation
+- Every choice MUST have "set_state" (NOT "effects") mapping ALL parameter names to integers 0-100
+- Each choice must set ALL parameters
+- Include 2-3 decisions per simulation with 2 choices each
+
+CLASSIFICATION LAB (lab_type: "classification") — lab_data format:
+{
+  "title": "...",
+  "description": "...",
+  "categories": [{"name": "Cat A", "description": "...", "color": "#hex"}],
+  "items": [{"content": "...", "correctCategory": "Cat A", "explanation": "..."}]
+}
+
+Generate 4-6 modules. Mix simulation and classification labs across modules.`,
           },
           { role: "user", content: `Create a course on: ${topic}` },
         ],
@@ -101,16 +257,44 @@ Follow all schema rules exactly.
               parameters: {
                 type: "object",
                 properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  modules: { type: "array" },
+                  title: { type: "string", description: "Course title" },
+                  description: { type: "string", description: "Course description" },
+                  modules: {
+                    type: "array",
+                    description: "Array of course modules",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        lesson_content: { type: "string", description: "Markdown lesson with --- slide separators" },
+                        youtube_query: { type: "string" },
+                        youtube_title: { type: "string" },
+                        lab_type: { type: "string", enum: ["simulation", "classification"] },
+                        lab_data: { type: "object", description: "Lab configuration object" },
+                        quiz: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              question: { type: "string" },
+                              options: { type: "array", items: { type: "string" } },
+                              correct: { type: "number" },
+                              explanation: { type: "string" },
+                            },
+                            required: ["question", "options", "correct", "explanation"],
+                          },
+                        },
+                      },
+                      required: ["title", "lesson_content", "lab_type", "lab_data", "quiz"],
+                    },
+                  },
                 },
                 required: ["title", "description", "modules"],
               },
             },
           },
         ],
-        tool_choice: "auto",
+        tool_choice: { type: "function", function: { name: "create_course" } },
       }),
     });
 
@@ -127,13 +311,14 @@ Follow all schema rules exactly.
       throw new Error("No function call returned by AI");
     }
 
-    // 🔥 PARSE RAW JSON
+    // Parse and repair
     const parsed = JSON.parse(toolCall.function.arguments);
+    const repaired = repairModules(parsed);
 
-    // 🔒 VALIDATE STRUCTURE (THIS IS THE NEW PART)
-    const courseData = CourseSchema.parse(parsed);
+    // Validate
+    const courseData = CourseSchema.parse(repaired);
 
-    // If validation passes, continue safely
+    // Update course
     await supabase
       .from("courses")
       .update({
@@ -144,7 +329,7 @@ Follow all schema rules exactly.
       .eq("id", course.id);
 
     /* ===============================
-       🔥 POST PROCESSING (YOUR LOGIC)
+       🔥 POST PROCESSING
     ================================= */
 
     const modules = courseData.modules.map((mod: any, index: number) => {
