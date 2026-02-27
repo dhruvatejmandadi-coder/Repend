@@ -1,10 +1,12 @@
 import { useState, useMemo, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import ClassificationLab from "./ClassificationLab";
+import PolicyOptimizationLab from "./PolicyOptimizationLab";
+import EthicalDilemmaLab from "./EthicalDilemmaLab";
 
 /* ================= TYPES ================= */
 
@@ -25,7 +27,6 @@ type Decision = {
     text: string;
     explanation?: string;
     set_state: Record<string, number>;
-    // No legacy effects — architecture uses set_state only
   }[];
 };
 
@@ -48,10 +49,8 @@ type Props = {
 
 function getParamLevel(value: number, min: number, max: number) {
   const pct = ((value - min) / (max - min)) * 100;
-
   if (pct >= 75) return { level: "high", color: "text-green-500", icon: TrendingUp };
   if (pct >= 35) return { level: "mid", color: "text-yellow-500", icon: Minus };
-
   return { level: "low", color: "text-red-500", icon: TrendingDown };
 }
 
@@ -64,7 +63,6 @@ function ensureDecisionSetState(decisions: Decision[], parameters: Parameter[]):
     ...decision,
     choices: decision.choices.map((choice) => {
       if (choice.set_state && Object.keys(choice.set_state).length > 0) {
-        // Validate: ALL parameters must be present
         const filled: Record<string, number> = {};
         for (const p of parameters) {
           if (typeof choice.set_state[p.name] !== "number") {
@@ -75,7 +73,6 @@ function ensureDecisionSetState(decisions: Decision[], parameters: Parameter[]):
         return { ...choice, set_state: filled };
       }
 
-      // No valid set_state — this is an error per architecture
       console.error("[SimLab] Choice missing set_state entirely:", choice.text);
       const setState: Record<string, number> = {};
       for (const p of parameters) {
@@ -92,48 +89,36 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
   const parameters = useMemo(() => data.parameters ?? [], [data]);
   const thresholds = useMemo(() => data.thresholds ?? [], [data]);
   const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
-
   const decisions = useMemo(() => ensureDecisionSetState(rawDecisions, parameters), [rawDecisions, parameters]);
 
   const [values, setValues] = useState<Record<string, number>>({});
   const [currentDecision, setCurrentDecision] = useState(0);
   const [answered, setAnswered] = useState<Record<number, number>>({});
 
-  /* RESET WHEN LAB CHANGES */
   useEffect(() => {
     const initial = Object.fromEntries(parameters.map((p) => [p.name, p.default]));
-
     setValues(initial);
     setCurrentDecision(0);
     setAnswered({});
   }, [data, parameters]);
 
-  /* ================= OUTCOME ================= */
-
   const totalPercent = useMemo(() => {
     if (!parameters.length) return 0;
-
     const total = parameters.reduce((sum, p) => {
       const pct = ((values[p.name] ?? p.default) - p.min) / (p.max - p.min);
       return sum + pct;
     }, 0);
-
     return Math.round((total / parameters.length) * 100);
   }, [values, parameters]);
 
   const threshold = useMemo(() => {
     if (!thresholds.length) return null;
-
     const sorted = [...thresholds].sort((a, b) => b.min_percent - a.min_percent);
-
     return sorted.find((t) => totalPercent >= t.min_percent) || sorted[sorted.length - 1];
   }, [totalPercent, thresholds]);
 
-  /* ================= DECISION CLICK ================= */
-
   const handleDecision = (dIdx: number, cIdx: number) => {
     if (answered[dIdx] !== undefined) return;
-
     const choice = decisions[dIdx]?.choices[cIdx];
     if (!choice) return;
 
@@ -151,7 +136,12 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
 
   const allDone = decisions.length > 0 && Object.keys(answered).length === decisions.length;
 
-  /* ================= UI ================= */
+  const reset = () => {
+    const initial = Object.fromEntries(parameters.map((p) => [p.name, p.default]));
+    setValues(initial);
+    setCurrentDecision(0);
+    setAnswered({});
+  };
 
   return (
     <div className="space-y-5">
@@ -165,15 +155,10 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
                 Scenario {currentDecision + 1} of {decisions.length}
               </h3>
             </div>
-
-            <p>
-              {decisions[currentDecision].emoji ?? "🔬"} {decisions[currentDecision].question}
-            </p>
-
+            <p>{decisions[currentDecision].emoji ?? "🔬"} {decisions[currentDecision].question}</p>
             {decisions[currentDecision].choices.map((c, i) => {
               const isChosen = answered[currentDecision] === i;
               const isAnswered = answered[currentDecision] !== undefined;
-
               return (
                 <div key={i} className="space-y-1">
                   <button
@@ -193,7 +178,6 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
                 </div>
               );
             })}
-
             {answered[currentDecision] !== undefined && currentDecision < decisions.length - 1 && (
               <Button size="sm" variant="outline" onClick={() => setCurrentDecision((prev) => prev + 1)}>
                 Next →
@@ -207,7 +191,6 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
       {parameters.map((p) => {
         const value = values[p.name] ?? p.default;
         const { color, icon: Icon } = getParamLevel(value, p.min, p.max);
-
         return (
           <Card key={p.name}>
             <CardContent className="p-4 space-y-3">
@@ -216,23 +199,12 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
                   <span>{p.icon}</span>
                   <span>{p.name}</span>
                 </div>
-
                 <div className="flex items-center gap-2">
                   <Icon className={`w-4 h-4 ${color}`} />
-                  <Badge variant="outline">
-                    {value} {p.unit}
-                  </Badge>
+                  <Badge variant="outline">{value} {p.unit}</Badge>
                 </div>
               </div>
-
-              <Slider
-                value={[value]}
-                min={p.min}
-                max={p.max}
-                step={1}
-                disabled
-                className="pointer-events-none"
-              />
+              <Slider value={[value]} min={p.min} max={p.max} step={1} disabled className="pointer-events-none" />
             </CardContent>
           </Card>
         );
@@ -245,14 +217,19 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
             <span className="font-bold">{threshold?.label ?? "Outcome"}</span>
             <Badge>{totalPercent}%</Badge>
           </div>
-
           <div className="h-2 bg-secondary rounded-full overflow-hidden">
             <div className="h-full bg-primary transition-all" style={{ width: `${totalPercent}%` }} />
           </div>
-
           <p className="text-sm text-muted-foreground mt-2">{threshold?.message}</p>
         </CardContent>
       </Card>
+
+      {/* Reset button */}
+      {allDone && (
+        <Button variant="outline" onClick={reset}>
+          <RotateCcw className="w-4 h-4 mr-1" /> Replay Simulation
+        </Button>
+      )}
     </div>
   );
 }
@@ -266,27 +243,43 @@ function LabEmptyState({ labType }: { labType?: string | null }) {
         <div className="text-4xl">🔬</div>
         <h3 className="font-bold text-lg">Lab Data Unavailable</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          The {labType === "classification" ? "classification" : "simulation"} lab for this module wasn't generated
-          properly. Try regenerating the course to get interactive labs with scenarios and parameters.
+          The {labType || "simulation"} lab for this module wasn't generated properly.
+          Try regenerating the course to get interactive labs.
         </p>
       </CardContent>
     </Card>
   );
 }
 
-/* ================= MAIN ================= */
+/* ================= MAIN ROUTER ================= */
 
 export default function InteractiveLab({ labType, labData, labTitle, labDescription }: Props) {
   if (!labData || (typeof labData === "object" && Object.keys(labData).length === 0)) {
     return <LabEmptyState labType={labType} />;
   }
 
+  // Classification
   if (labType === "classification") {
-    const hasClassificationData = labData?.items?.length > 0 && labData?.categories?.length > 0;
-    if (!hasClassificationData) return <LabEmptyState labType={labType} />;
+    const hasData = labData?.items?.length > 0 && labData?.categories?.length > 0;
+    if (!hasData) return <LabEmptyState labType={labType} />;
     return <ClassificationLab data={labData} />;
   }
 
+  // Policy Optimization
+  if (labType === "policy_optimization") {
+    const hasData = labData?.parameters?.length > 0 && labData?.constraints?.length > 0;
+    if (!hasData) return <LabEmptyState labType={labType} />;
+    return <PolicyOptimizationLab data={labData} />;
+  }
+
+  // Ethical Dilemma
+  if (labType === "ethical_dilemma") {
+    const hasData = labData?.dimensions?.length > 0 && labData?.decisions?.length > 0;
+    if (!hasData) return <LabEmptyState labType={labType} />;
+    return <EthicalDilemmaLab data={labData} />;
+  }
+
+  // Default: Simulation
   const hasSimulationData = labData?.parameters?.length > 0;
   if (!hasSimulationData) return <LabEmptyState labType={labType} />;
   return <SimulationLabInline data={labData} />;
