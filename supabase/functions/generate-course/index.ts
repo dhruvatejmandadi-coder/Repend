@@ -188,7 +188,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "openai/gpt-4o-mini",
+        model: "google/gemini-3-flash-preview",
         temperature: 0.4,
         messages: [
           {
@@ -209,7 +209,7 @@ SIMULATION LAB (lab_type: "simulation") — lab_data format:
   "title": "...",
   "description": "...",
   "parameters": [
-    {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 0}
+    {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
   ],
   "thresholds": [
     {"label": "Excellent", "min_percent": 75, "message": "..."},
@@ -231,7 +231,7 @@ SIMULATION LAB (lab_type: "simulation") — lab_data format:
 CRITICAL SIMULATION RULES:
 - Parameter names MUST be relevant to the course topic (e.g. for Economics: "GDP Growth", "Inflation Rate", "Employment"; for Biology: "Cell Health", "Mutation Rate", "Immune Response")
 - NEVER use generic names like "Understanding", "Application", "Confidence" — always use domain-specific factors
-- Every parameter must use min:0, max:100, default:0, unit:"%"
+- Every parameter must use min:0, max:100, default:50, unit:"%"
 - Use 3 parameters per simulation
 - Every choice MUST have "set_state" (NOT "effects") mapping ALL parameter names to integers 0-100
 - Each choice must set ALL parameters
@@ -368,10 +368,10 @@ Generate 4-6 modules. Mix simulation and classification labs across modules.`,
 
     if (error instanceof z.ZodError) {
       console.error("ZOD VALIDATION DETAILS:", JSON.stringify(error.issues, null, 2));
-      return new Response(JSON.stringify({ error: "Course generation produced invalid data. Please try again." }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return new Response(
+        JSON.stringify({ error: "Course generation produced invalid data. Please try again." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     return new Response(
