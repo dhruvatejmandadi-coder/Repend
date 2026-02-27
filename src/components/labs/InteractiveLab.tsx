@@ -175,16 +175,22 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
               const isAnswered = answered[currentDecision] !== undefined;
 
               return (
-                <button
-                  key={i}
-                  onClick={() => handleDecision(currentDecision, i)}
-                  disabled={isAnswered}
-                  className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
-                    isChosen ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  {c.text}
-                </button>
+                <div key={i} className="space-y-1">
+                  <button
+                    onClick={() => handleDecision(currentDecision, i)}
+                    disabled={isAnswered}
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
+                      isChosen ? "border-primary bg-primary/10" : isAnswered ? "opacity-50 border-border" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {c.text}
+                  </button>
+                  {isChosen && c.explanation && (
+                    <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/50 rounded-md">
+                      💡 {c.explanation}
+                    </p>
+                  )}
+                </div>
               );
             })}
 
