@@ -25,7 +25,7 @@ type Decision = {
     text: string;
     explanation?: string;
     set_state: Record<string, number>;
-    effects?: Record<string, number>; // legacy backward compat
+    // No legacy effects — architecture uses set_state only
   }[];
 };
 
