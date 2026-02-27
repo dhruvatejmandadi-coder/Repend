@@ -25,7 +25,7 @@ type Decision = {
     text: string;
     explanation?: string;
     set_state: Record<string, number>;
-    effects?: Record<string, number>; // legacy backward compat
+    // No legacy effects — architecture uses set_state only
   }[];
 };
 
@@ -62,33 +62,24 @@ function ensureDecisionSetState(decisions: Decision[], parameters: Parameter[]):
 
   return decisions.map((decision) => ({
     ...decision,
-    choices: decision.choices.map((choice, index) => {
-      // Already has valid set_state
+    choices: decision.choices.map((choice) => {
       if (choice.set_state && Object.keys(choice.set_state).length > 0) {
-        // Ensure ALL parameters are present, fill missing with 50
+        // Validate: ALL parameters must be present
         const filled: Record<string, number> = {};
         for (const p of parameters) {
+          if (typeof choice.set_state[p.name] !== "number") {
+            console.error(`[SimLab] Missing slider "${p.name}" in set_state. Defaulting to 50.`);
+          }
           filled[p.name] = Math.max(0, Math.min(100, choice.set_state[p.name] ?? 50));
         }
         return { ...choice, set_state: filled };
       }
 
-      // Legacy: convert effects (deltas) to absolute set_state
-      if (choice.effects && Object.keys(choice.effects).length > 0) {
-        const setState: Record<string, number> = {};
-        for (const p of parameters) {
-          const delta = choice.effects[p.name] ?? 0;
-          setState[p.name] = Math.max(0, Math.min(100, p.default + delta));
-        }
-        return { ...choice, set_state: setState };
-      }
-
-      // No data at all: generate defaults
+      // No valid set_state — this is an error per architecture
+      console.error("[SimLab] Choice missing set_state entirely:", choice.text);
       const setState: Record<string, number> = {};
       for (const p of parameters) {
-        const base = p.default ?? 50;
-        const offset = (index % 2 === 0 ? 1 : -1) * 15;
-        setState[p.name] = Math.max(0, Math.min(100, base + offset));
+        setState[p.name] = p.default ?? 50;
       }
       return { ...choice, set_state: setState };
     }),
@@ -184,16 +175,22 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
               const isAnswered = answered[currentDecision] !== undefined;
 
               return (
-                <button
-                  key={i}
-                  onClick={() => handleDecision(currentDecision, i)}
-                  disabled={isAnswered}
-                  className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
-                    isChosen ? "border-primary bg-primary/10" : "border-border hover:border-primary/40"
-                  }`}
-                >
-                  {c.text}
-                </button>
+                <div key={i} className="space-y-1">
+                  <button
+                    onClick={() => handleDecision(currentDecision, i)}
+                    disabled={isAnswered}
+                    className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition ${
+                      isChosen ? "border-primary bg-primary/10" : isAnswered ? "opacity-50 border-border" : "border-border hover:border-primary/40"
+                    }`}
+                  >
+                    {c.text}
+                  </button>
+                  {isChosen && c.explanation && (
+                    <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/50 rounded-md">
+                      💡 {c.explanation}
+                    </p>
+                  )}
+                </div>
               );
             })}
 
@@ -233,12 +230,8 @@ function SimulationLabInline({ data }: { data: SimulationData }) {
                 min={p.min}
                 max={p.max}
                 step={1}
-                onValueChange={([v]) =>
-                  setValues((prev) => ({
-                    ...prev,
-                    [p.name]: v,
-                  }))
-                }
+                disabled
+                className="pointer-events-none"
               />
             </CardContent>
           </Card>

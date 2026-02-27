@@ -4,10 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, RotateCcw, ArrowRight } from "lucide-react";
 
+type RawItem = {
+  name?: string;
+  content?: string;
+  correct_category?: string;
+  correctCategory?: string;
+  hint?: string;
+  explanation?: string;
+};
+
 type Item = {
   name: string;
   correct_category: string;
   hint?: string;
+};
+
+type RawCategory = {
+  name: string;
+  emoji?: string;
+  description?: string;
+  color?: string;
 };
 
 type Category = {
@@ -24,8 +40,17 @@ type ClassificationData = {
 };
 
 export default function ClassificationLab({ data }: { data: ClassificationData }) {
-  const items = data?.items ?? [];
-  const categories = data?.categories ?? [];
+  // Normalize field names from AI output to component format
+  const items: Item[] = (data?.items ?? []).map((raw: RawItem) => ({
+    name: raw.name || raw.content || "Unknown item",
+    correct_category: raw.correct_category || raw.correctCategory || "",
+    hint: raw.hint || raw.explanation,
+  }));
+  const categories: Category[] = (data?.categories ?? []).map((raw: RawCategory) => ({
+    name: raw.name,
+    emoji: raw.emoji || "📂",
+    description: raw.description || "",
+  }));
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [currentItem, setCurrentItem] = useState(0);
   const [submitted, setSubmitted] = useState(false);
