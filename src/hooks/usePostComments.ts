@@ -9,6 +9,7 @@ export interface PostComment {
   author_name: string | null;
   content: string;
   created_at: string;
+  parent_id: string | null;
 }
 
 export function usePostComments(postId: string) {
