@@ -1,8 +1,9 @@
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, MessageCircle, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Plus, MessageCircle, Loader2, Search } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Input } from "@/components/ui/input";
 import { CreatePostModal } from "@/components/community/CreatePostModal";
 import { PostCard } from "@/components/community/PostCard";
 import { useAuth } from "@/hooks/useAuth";
