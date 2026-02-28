@@ -112,9 +112,9 @@ export default function Community() {
             </CardContent>
           </Card>
         ) : (
-          <ScrollArea className="h-[calc(100vh-14rem)]">
+          <ScrollArea className="h-[calc(100vh-18rem)]">
             <div className="space-y-4 pr-4">
-              {posts.map((post) => (
+              {filteredPosts.map((post) => (
                 <PostCard
                   key={post.id}
                   post={post}
