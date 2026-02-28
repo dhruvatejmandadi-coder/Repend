@@ -51,7 +51,7 @@ export function usePostComments(postId: string) {
   }, [postId, fetchComments]);
 
   const addComment = useCallback(
-    async (content: string) => {
+    async (content: string, parentId?: string | null) => {
       if (!user || !content.trim()) return null;
       const authorName = user.user_metadata?.full_name || user.email || "Anonymous";
       const { data, error } = await supabase
@@ -61,6 +61,7 @@ export function usePostComments(postId: string) {
           user_id: user.id,
           author_name: authorName,
           content: content.trim(),
+          parent_id: parentId || null,
         })
         .select()
         .single();
