@@ -439,12 +439,60 @@ serve(async (req) => {
 
 CRITICAL MODULE STRUCTURE — every module MUST have ALL of these fields:
 - title: string
-- lesson_content: string (markdown with "---" slide separators between sections, use ## headings)
+- lesson_content: string (slide-based markdown, see LESSON CONTENT FORMAT below)
 - youtube_query: string (search query to find a relevant video)
 - youtube_title: string
 - lab_type: one of "simulation", "classification", "policy_optimization", "ethical_dilemma"
 - lab_data: object (format depends on lab_type, see below)
 - quiz: array of {question, options: string[4], correct: number 0-3, explanation}
+
+=== LESSON CONTENT FORMAT — CRITICAL ===
+Each slide is separated by "---". Each slide MUST follow this exact format:
+
+<!-- type: [concept|example|case_study|comparison|quick_think|myth_vs_reality|process|interactive_predict|key_takeaways] -->
+## Slide Title
+
+- Bullet point 1
+- Bullet point 2
+- Bullet point 3
+- Bullet point 4
+
+SLIDE RULES:
+- 4-8 slides per module
+- 4-7 bullets per slide, each under 15 words
+- NO paragraphs — bullets ONLY
+- Do NOT repeat the slide title in bullets
+- No more than 2 slides of the same type per module
+- At least 1 applied slide (example, case_study, comparison)
+- At least 1 interactive slide (quick_think or interactive_predict)
+- Final slide MUST be <!-- type: key_takeaways --> and must synthesize the module
+
+TOPIC RELEVANCE:
+- Every slide must directly relate to the module title
+- Every bullet must progress the learner toward the course objective
+- Avoid generic filler, unrelated examples, or repeated ideas
+- Before writing each slide, ask: "Does this move the learner closer to mastering this topic?"
+
+SLIDE TYPE ROTATION:
+- concept: explain core idea
+- example: real-world example
+- process: step breakdown
+- comparison: pros vs cons or before vs after
+- case_study: short scenario
+- quick_think: reflection question for the learner
+- myth_vs_reality: correct a common misconception
+- interactive_predict: ask learner to predict an outcome
+- key_takeaways: final summary slide
+
+=== QUIZ RULES ===
+- 6-8 questions per module
+- Include 2 conceptual questions (test understanding of core ideas)
+- Include 2 applied reasoning questions (apply concepts to new situations)
+- Include 2 scenario-based questions (given a scenario, what happens?)
+- Optionally include 1 advanced challenge question
+- No definition-only questions, no trivia, no "All of the above"
+- No repeating slide bullets verbatim as answer options
+- Each question must connect to the module's learning objective
 
 === INTELLIGENT LAB ASSIGNMENT ===
 Choose lab_type based on the topic's cognitive nature:
