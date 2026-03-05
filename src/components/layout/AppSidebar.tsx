@@ -7,6 +7,7 @@ import {
   LogIn,
   MessageSquare,
   Sparkles,
+  Shield,
 } from "lucide-react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 
 const guestItems = [
   { title: "Try AI Course", url: "/courses", icon: BookOpen },
@@ -45,6 +47,7 @@ export function AppSidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
+  const { isAdmin } = useAdmin();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -87,6 +90,36 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {user && isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className={cn(collapsed && "sr-only")}>
+              Admin
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive("/admin")}
+                    tooltip="Admin"
+                  >
+                    <NavLink
+                      to="/admin"
+                      className={cn(
+                        "flex items-center gap-3",
+                        isActive("/admin") && "text-primary"
+                      )}
+                    >
+                      <Shield className="w-4 h-4 flex-shrink-0" />
+                      <span>Admin</span>
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {user && (
           <SidebarGroup>
