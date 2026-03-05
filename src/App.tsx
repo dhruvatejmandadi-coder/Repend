@@ -13,6 +13,7 @@ import Challenges from "./pages/Challenges";
 import ProgressPage from "./pages/ProgressPage";
 
 import Profile from "./pages/Profile";
+import Pricing from "./pages/Pricing";
 import Waitlist from "./pages/Waitlist";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/challenges" element={<Challenges />} />
             
             <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/pricing" element={<Pricing />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/login" element={<Login />} />
