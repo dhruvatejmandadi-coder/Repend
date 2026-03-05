@@ -34,11 +34,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if ((event === "SIGNED_IN" || event === "USER_UPDATED") && session?.user) {
         const created = new Date(session.user.created_at).getTime();
         const now = Date.now();
-        const isRecentSignup = now - created < 60000; // within 1 minute
+        const isRecentSignup = now - created < 60000;
         const onboarded = localStorage.getItem(`${ONBOARDED_KEY}_${session.user.id}`);
         if (!onboarded && isRecentSignup) {
           setIsNewUser(true);
         }
+        // Check for pending admin invite
+        supabase.functions.invoke("accept-admin-invite").catch(() => {});
       }
 
       if (event === "SIGNED_OUT") {
