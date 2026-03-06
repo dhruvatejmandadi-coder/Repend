@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 /* ===============================
-   🔒 ZOD SCHEMA VALIDATION
+   🔧 ZOD SCHEMAS & VALIDATORS
 ================================ */
 
 const CourseSchema = z.object({
@@ -229,7 +229,6 @@ function generateEthicalDilemmaFallback(title: string) {
     { name: "Sustainability", icon: "🌱", description: `Long-term viability of ${t.toLowerCase()} decisions` },
   ];
   const dn = dims.map(d => d.name);
-  // Rotating tradeoff pattern
   const patterns = [
     [{ [dn[0]]: 15, [dn[1]]: -10, [dn[2]]: 0 }, { [dn[0]]: -10, [dn[1]]: 15, [dn[2]]: 0 }],
     [{ [dn[0]]: 0, [dn[1]]: 15, [dn[2]]: -10 }, { [dn[0]]: 0, [dn[1]]: -10, [dn[2]]: 15 }],
@@ -276,15 +275,12 @@ function repairModules(parsed: any) {
   if (!parsed?.modules || !Array.isArray(parsed.modules)) return parsed;
 
   for (const mod of parsed.modules) {
-    // Initialize lab_data
     mod.lab_data = mod.lab_data ?? {};
 
-    // Recover lesson_content from alternative field names
     if (!mod.lesson_content) {
       mod.lesson_content = mod.content || mod.lesson || mod.text || "## Lesson Content\n\nContent is being prepared.";
     }
 
-    // Force slide separators
     if (mod.lesson_content && !mod.lesson_content.includes("\n---\n")) {
       const sections = mod.lesson_content.split(/(?=^## )/m).filter(Boolean);
       if (sections.length > 1) {
@@ -292,7 +288,6 @@ function repairModules(parsed: any) {
       }
     }
 
-    // --- Slide-level repair ---
     if (mod.lesson_content) {
       const slides = mod.lesson_content.split(/\n---\n/).map((s: string) => s.trim()).filter(Boolean);
       const repairedSlides: string[] = [];
@@ -300,7 +295,6 @@ function repairModules(parsed: any) {
       for (let si = 0; si < slides.length; si++) {
         let slide = slides[si];
 
-        // Convert paragraph lines to bullets
         const lines = slide.split("\n");
         const repaired: string[] = [];
         for (const line of lines) {
@@ -309,7 +303,6 @@ function repairModules(parsed: any) {
           if (trimmed.startsWith("#") || trimmed.startsWith("<!--") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
             repaired.push(line);
           } else if (trimmed.length > 10 && !trimmed.startsWith("#")) {
-            // Convert paragraph text to bullet
             repaired.push(`- ${trimmed}`);
           } else {
             repaired.push(line);
@@ -317,7 +310,6 @@ function repairModules(parsed: any) {
         }
         slide = repaired.join("\n");
 
-        // Inject type comment if missing
         if (!slide.includes("<!-- type:")) {
           if (si === slides.length - 1 && slide.toLowerCase().includes("takeaway")) {
             slide = `<!-- type: key_takeaways -->\n${slide}`;
@@ -329,7 +321,6 @@ function repairModules(parsed: any) {
         repairedSlides.push(slide);
       }
 
-      // Ensure last slide is key_takeaways
       if (repairedSlides.length > 0) {
         const last = repairedSlides[repairedSlides.length - 1];
         if (!last.includes("<!-- type: key_takeaways -->")) {
@@ -337,7 +328,6 @@ function repairModules(parsed: any) {
         }
       }
 
-      // Cap at 8 slides by merging smallest adjacent
       while (repairedSlides.length > 8) {
         let minLen = Infinity, minIdx = 0;
         for (let i = 0; i < repairedSlides.length - 1; i++) {
@@ -351,12 +341,10 @@ function repairModules(parsed: any) {
       mod.lesson_content = repairedSlides.join("\n\n---\n\n");
     }
 
-    // Default lab_type
     if (!mod.lab_type) {
       mod.lab_type = "simulation";
     }
 
-    // Default quiz
     if (!mod.quiz || !Array.isArray(mod.quiz)) {
       mod.quiz = [
         {
@@ -368,7 +356,6 @@ function repairModules(parsed: any) {
       ];
     }
 
-    // --- Type-specific validation + fallback ---
     const ld = mod.lab_data;
     const title = mod.title || "Topic";
 
@@ -377,7 +364,6 @@ function repairModules(parsed: any) {
         console.warn(`[RepairModules] simulation fallback generated for: "${title}"`);
         mod.lab_data = generateSimulationFallback(title);
       } else {
-        // Patch: clamp values, fill missing set_state keys
         const paramNames = ld.parameters.map((p: any) => p.name);
         for (const p of ld.parameters) {
           p.min = 0; p.max = 100;
@@ -444,6 +430,58 @@ function repairModules(parsed: any) {
   return parsed;
 }
 
+/* ===============================
+   📄 FILE CONTENT EXTRACTION
+================================ */
+
+async function extractFileContent(filePath: string, supabaseAdmin: any): Promise<{ text?: string; imageBase64?: string; mimeType?: string }> {
+  const { data, error } = await supabaseAdmin.storage.from("course-uploads").download(filePath);
+  if (error || !data) {
+    console.error("Failed to download file:", error);
+    return {};
+  }
+
+  const ext = filePath.split(".").pop()?.toLowerCase() || "";
+  const imageExts = ["png", "jpg", "jpeg", "webp"];
+  const textExts = ["txt", "md", "csv"];
+
+  if (imageExts.includes(ext)) {
+    const buffer = await data.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    const mimeMap: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp" };
+    return { imageBase64: base64, mimeType: mimeMap[ext] || "image/png" };
+  }
+
+  if (textExts.includes(ext)) {
+    const text = await data.text();
+    return { text: text.slice(0, 50000) }; // Cap at 50k chars
+  }
+
+  if (ext === "pdf") {
+    // For PDFs, read as text (basic extraction — works for text-based PDFs)
+    try {
+      const text = await data.text();
+      // If it looks like binary PDF content, extract what we can
+      const cleaned = text.replace(/[^\x20-\x7E\n\r\t]/g, " ").replace(/\s{3,}/g, " ").trim();
+      if (cleaned.length > 100) {
+        return { text: cleaned.slice(0, 50000) };
+      }
+      // Fallback: send as image-like content for Gemini multimodal
+      const buffer = await data.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(buffer)));
+      return { imageBase64: base64, mimeType: "application/pdf" };
+    } catch {
+      return {};
+    }
+  }
+
+  return {};
+}
+
+/* ===============================
+   🚀 MAIN HANDLER
+================================ */
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -464,11 +502,19 @@ serve(async (req) => {
 
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { topic } = await req.json();
+    const { topic, filePath } = await req.json();
     if (!topic?.trim()) throw new Error("Topic is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
+    // Extract file content if provided
+    let fileContent: { text?: string; imageBase64?: string; mimeType?: string } = {};
+    if (filePath) {
+      const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      fileContent = await extractFileContent(filePath, supabaseAdmin);
+      console.log(`[FileUpload] Extracted content from: ${filePath}, hasText: ${!!fileContent.text}, hasImage: ${!!fileContent.imageBase64}`);
+    }
 
     // Create course row
     const { data: course } = await supabase
@@ -481,6 +527,28 @@ serve(async (req) => {
       })
       .select()
       .single();
+
+    // Build user message content
+    let userContent: any;
+    const topicMessage = fileContent.text
+      ? `Create a course on: ${topic}\n\nSOURCE MATERIAL (use this as the primary basis for the course content — all lessons, labs, and quizzes should be grounded in this material):\n\n${fileContent.text}`
+      : `Create a course on: ${topic}`;
+
+    if (fileContent.imageBase64 && fileContent.mimeType) {
+      // Multimodal: send image + text
+      userContent = [
+        {
+          type: "image_url",
+          image_url: { url: `data:${fileContent.mimeType};base64,${fileContent.imageBase64}` },
+        },
+        {
+          type: "text",
+          text: `Create a course on: ${topic}\n\nThe attached image/document is the SOURCE MATERIAL. Use it as the primary basis for the course content — all lessons, labs, and quizzes should be grounded in this material.`,
+        },
+      ];
+    } else {
+      userContent = topicMessage;
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -639,9 +707,10 @@ lab_data format:
 }
 RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve at least one dimension AND harm at least one other. Use "impacts" (deltas, -50 to +50), NOT "set_state". Student is scored on BALANCE across dimensions.
 
+${filePath ? "IMPORTANT: The user has uploaded SOURCE MATERIAL. You MUST base the course content directly on the material provided. Extract key concepts, facts, and structure from the source material. Do NOT generate generic content — every lesson, lab scenario, and quiz question should reference or build upon the uploaded material." : ""}
 Generate 4-6 modules with a good mix of lab types.`,
           },
-          { role: "user", content: `Create a course on: ${topic}` },
+          { role: "user", content: userContent },
         ],
         tools: [
           {
@@ -748,6 +817,30 @@ Generate 4-6 modules with a good mix of lab types.`,
     });
 
     await supabase.from("course_modules").insert(modules);
+
+    // Track file-based course generation
+    if (filePath) {
+      const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM
+      const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      
+      const { data: existing } = await supabaseAdmin
+        .from("usage_tracking")
+        .select("id, file_courses_generated")
+        .eq("user_id", user.id)
+        .eq("month", currentMonth)
+        .single();
+
+      if (existing) {
+        await supabaseAdmin
+          .from("usage_tracking")
+          .update({ file_courses_generated: (existing.file_courses_generated || 0) + 1 })
+          .eq("id", existing.id);
+      } else {
+        await supabaseAdmin
+          .from("usage_tracking")
+          .insert({ user_id: user.id, month: currentMonth, file_courses_generated: 1, courses_generated: 1 });
+      }
+    }
 
     return new Response(JSON.stringify({ courseId: course.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
