@@ -10,7 +10,7 @@ export const PLAN_CONFIG = {
     price_id: "price_PRO_PLACEHOLDER",
     product_id: "prod_PRO_PLACEHOLDER",
     name: "Pro",
-    price: 7.99,
+    price: 5.99,
     coursesPerMonth: 10,
     fileUploadsPerMonth: 3,
   },

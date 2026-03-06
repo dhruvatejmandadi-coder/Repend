@@ -41,7 +41,7 @@ const tiers: {
   {
     plan: "pro",
     name: "Pro",
-    price: "$7.99",
+    price: "$5.99",
     description: "Unlock the full learning experience",
     icon: Sparkles,
     highlight: true,
