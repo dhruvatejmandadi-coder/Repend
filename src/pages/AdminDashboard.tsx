@@ -137,9 +137,29 @@ export default function AdminDashboard() {
     setLoading(false);
   };
 
+  // Load all data on mount so stats are accurate
   useEffect(() => {
-    if (isAdmin) fetchData(activeTab);
-  }, [isAdmin, activeTab]);
+    if (!isAdmin) return;
+    const loadAll = async () => {
+      setLoading(true);
+      try {
+        const [usersRes, surveysRes, salesRes, challengesRes] = await Promise.all([
+          callAdmin("get_users"),
+          callAdmin("get_surveys"),
+          callAdmin("get_sales"),
+          callAdmin("get_challenges"),
+        ]);
+        setUsers(usersRes.users || []);
+        setSurveys(surveysRes.surveys || []);
+        setSales(salesRes.sales || []);
+        setChallenges(challengesRes.challenges || []);
+      } catch (err: any) {
+        toast({ title: "Error loading data", description: err.message, variant: "destructive" });
+      }
+      setLoading(false);
+    };
+    loadAll();
+  }, [isAdmin]);
 
   const handleInvite = async () => {
     if (!inviteEmail) return;
