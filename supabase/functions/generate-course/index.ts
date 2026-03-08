@@ -119,6 +119,16 @@ function isValidEthicalDilemma(ld: any): boolean {
   return true;
 }
 
+function isValidDecisionLab(ld: any): boolean {
+  if (!ld || typeof ld !== "object") return false;
+  if (typeof ld.scenario !== "string" || ld.scenario.length < 20) return false;
+  if (!Array.isArray(ld.constraints) || ld.constraints.length < 2) return false;
+  if (typeof ld.decision_prompt !== "string") return false;
+  if (typeof ld.twist !== "string" || ld.twist.length < 10) return false;
+  if (typeof ld.reflection_question !== "string") return false;
+  return true;
+}
+
 /* ===============================
    🔧 FALLBACK GENERATORS
 ================================ */
