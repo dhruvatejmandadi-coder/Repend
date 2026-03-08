@@ -857,6 +857,8 @@ Choose lab_type based on the topic's cognitive nature:
 
 MATH LAB RULE: If the course topic is math-related, use "math_lab" for ALL modules. Math topics include algebra, geometry, calculus, statistics, trigonometry, equations, graphing, number theory, etc.
 MATH LAB DIVERSITY RULE: Across math modules, rotate visual_type intentionally. Use at least 3 different visual types when possible (graph, geometry, solution_steps, chart), and never make every module use the same visual_type.
+
+For math_lab, lab_data format:
 {
   "title": "Lab title",
   "objective": "What math skill the student will practice",
