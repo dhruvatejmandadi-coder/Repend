@@ -181,6 +181,7 @@ export type Database = {
           is_daily: boolean
           title: string
           updated_at: string
+          user_id: string | null
           youtube_url: string | null
         }
         Insert: {
@@ -191,6 +192,7 @@ export type Database = {
           is_daily?: boolean
           title: string
           updated_at?: string
+          user_id?: string | null
           youtube_url?: string | null
         }
         Update: {
@@ -201,6 +203,7 @@ export type Database = {
           is_daily?: boolean
           title?: string
           updated_at?: string
+          user_id?: string | null
           youtube_url?: string | null
         }
         Relationships: []
