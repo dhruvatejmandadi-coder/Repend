@@ -144,7 +144,7 @@ export default function ProgressPage() {
                 { label: "Complete daily challenge", pts: "+100 pts" },
                 { label: "Complete a challenge", pts: "+50 pts" },
                 { label: "Create a community post", pts: "+25 pts" },
-                { label: "AI tutor session", pts: "+15 pts" },
+                
                 { label: "Daily streak bonus", pts: "+20 pts/day" },
               ].map((item) => (
                 <div key={item.label} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
