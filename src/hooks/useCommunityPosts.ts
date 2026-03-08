@@ -58,6 +58,21 @@ export function useCommunityPosts() {
       userLikes = (userLikesData || []).map((l) => l.post_id);
     }
 
+    // Fetch author avatars
+    const authorUserIds = [...new Set(rawPosts.map((p) => p.user_id).filter(Boolean))] as string[];
+    let avatarMap: Record<string, string> = {};
+    if (authorUserIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, avatar_url")
+        .in("user_id", authorUserIds);
+      if (profiles) {
+        for (const p of profiles) {
+          if (p.avatar_url) avatarMap[p.user_id] = p.avatar_url;
+        }
+      }
+    }
+
     const likesMap: Record<string, number> = {};
     const commentsMap: Record<string, number> = {};
     (likesData || []).forEach((l) => {
@@ -73,6 +88,7 @@ export function useCommunityPosts() {
       content: p.content,
       image_url: p.image_url,
       author_name: p.author_name,
+      author_avatar_url: p.user_id ? avatarMap[p.user_id] || null : null,
       user_id: p.user_id,
       created_at: p.created_at,
       likes_count: likesMap[p.id] || 0,
