@@ -20,8 +20,7 @@ export default function ProgressPage() {
   const pointsProgress = Math.min((totalPoints / nextPointsMilestone) * 100, 100);
 
   return (
-    <DashboardLayout>
-      <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6">
         <div>
           <h1 className="font-display text-2xl font-bold">Your Progress</h1>
           <p className="text-muted-foreground mt-1">Track your learning journey and achievements</p>
