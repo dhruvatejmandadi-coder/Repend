@@ -54,14 +54,23 @@ export function ChallengeComments({ challengeId }: ChallengeCommentsProps) {
     }
 
     setSubmitting(true);
+
+    let authorName = "User";
     const payload: any = {
       challenge_id: challengeId,
       content: newComment.trim(),
     };
 
     if (user) {
+      // Fetch profile name to stay consistent with community posts
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+      authorName = profile?.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
       payload.user_id = user.id;
-      payload.author_name = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+      payload.author_name = authorName;
     } else {
       payload.author_name = guestName.trim();
     }
