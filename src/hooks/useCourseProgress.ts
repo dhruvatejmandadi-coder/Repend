@@ -1,15 +1,14 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { usePoints } from "@/hooks/usePoints";
 import { useToast } from "@/hooks/use-toast";
 
-// Section completion tracked per module: { [moduleId]: { lesson: bool, lab: bool, quiz: bool } }
 export type SectionStatus = { lesson: boolean; lab: boolean; quiz: boolean };
 
 export interface CourseProgressData {
   id?: string;
-  completedLessons: string[]; // module IDs fully completed (all 3 sections)
+  completedLessons: string[];
   sectionStatus: Record<string, SectionStatus>;
   completed: boolean;
   completedAt: string | null;
@@ -28,6 +27,11 @@ export function useCourseProgress(courseId: string | undefined) {
   const [loading, setLoading] = useState(true);
   const [justCompleted, setJustCompleted] = useState(false);
 
+  // Use a ref to track the DB row id to avoid race conditions
+  const rowIdRef = useRef<string | undefined>(undefined);
+  const persistingRef = useRef(false);
+  const pendingPersistRef = useRef<CourseProgressData | null>(null);
+
   // Fetch progress from DB
   useEffect(() => {
     if (!user || !courseId) {
@@ -43,14 +47,11 @@ export function useCourseProgress(courseId: string | undefined) {
         .maybeSingle();
 
       if (data) {
-        const completedLessons = Array.isArray(data.completed_lessons) ? data.completed_lessons as string[] : [];
-        // Try to parse section status from completed_lessons JSON structure
-        // We store section status in a special key within the JSON
+        rowIdRef.current = data.id;
         let sectionStatus: Record<string, SectionStatus> = {};
         const raw = data.completed_lessons as any;
         if (raw && typeof raw === "object" && !Array.isArray(raw) && raw._sections) {
           sectionStatus = raw._sections;
-          // completedLessons are the keys where all 3 are true
           const moduleIds = Object.keys(sectionStatus).filter(
             (id) => sectionStatus[id]?.lesson && sectionStatus[id]?.lab && sectionStatus[id]?.quiz
           );
@@ -62,7 +63,7 @@ export function useCourseProgress(courseId: string | undefined) {
             completedAt: data.completed_at,
           });
         } else {
-          // Legacy: array of module IDs
+          const completedLessons = Array.isArray(raw) ? raw as string[] : [];
           const sections: Record<string, SectionStatus> = {};
           for (const id of completedLessons) {
             sections[id] = { lesson: true, lab: true, quiz: true };
@@ -80,17 +81,23 @@ export function useCourseProgress(courseId: string | undefined) {
     })();
   }, [user, courseId]);
 
-  // Persist to DB
+  // Persist to DB with queue to avoid race conditions
   const persistProgress = useCallback(
     async (newProgress: CourseProgressData) => {
       if (!user || !courseId) return;
-      try {
-        // Store section status + completed module IDs together
-        const payload = {
-          _sections: newProgress.sectionStatus,
-        };
 
-        if (newProgress.id) {
+      // If already persisting, queue this update
+      if (persistingRef.current) {
+        pendingPersistRef.current = newProgress;
+        return;
+      }
+
+      persistingRef.current = true;
+
+      try {
+        const payload = { _sections: newProgress.sectionStatus };
+
+        if (rowIdRef.current) {
           await supabase
             .from("course_progress")
             .update({
@@ -98,7 +105,7 @@ export function useCourseProgress(courseId: string | undefined) {
               completed: newProgress.completed,
               completed_at: newProgress.completedAt,
             })
-            .eq("id", newProgress.id);
+            .eq("id", rowIdRef.current);
         } else {
           const { data } = await supabase
             .from("course_progress")
@@ -112,17 +119,26 @@ export function useCourseProgress(courseId: string | undefined) {
             .select("id")
             .single();
           if (data) {
+            rowIdRef.current = data.id;
             setProgress((p) => ({ ...p, id: data.id }));
           }
         }
       } catch (err) {
         console.error("Failed to save progress:", err);
+      } finally {
+        persistingRef.current = false;
+
+        // Process queued update
+        if (pendingPersistRef.current) {
+          const pending = pendingPersistRef.current;
+          pendingPersistRef.current = null;
+          await persistProgress(pending);
+        }
       }
     },
     [user, courseId]
   );
 
-  // Complete a specific section of a module
   const completeSection = useCallback(
     async (moduleId: string, section: keyof SectionStatus, totalModules: number) => {
       if (!user || !courseId) return;
@@ -132,7 +148,6 @@ export function useCourseProgress(courseId: string | undefined) {
         const newStatus = { ...currentStatus, [section]: true };
         const newSections = { ...prev.sectionStatus, [moduleId]: newStatus };
 
-        // Module is complete when all 3 sections are done
         const moduleComplete = newStatus.lesson && newStatus.lab && newStatus.quiz;
         const wasAlreadyComplete = prev.completedLessons.includes(moduleId);
 
@@ -151,12 +166,11 @@ export function useCourseProgress(courseId: string | undefined) {
           completedAt: allDone ? new Date().toISOString() : prev.completedAt,
         };
 
-        // Persist async
-        persistProgress(updated);
+        // Persist outside of setState
+        setTimeout(() => persistProgress(updated), 0);
 
-        // Handle course completion
         if (allDone && !prev.completed) {
-          (async () => {
+          setTimeout(async () => {
             addPoints(POINTS_VALUES.COURSE_COMPLETION, "course_completion");
 
             const { data: badge } = await supabase
@@ -185,7 +199,7 @@ export function useCourseProgress(courseId: string | undefined) {
             });
 
             setJustCompleted(true);
-          })();
+          }, 0);
         }
 
         return updated;
@@ -194,14 +208,12 @@ export function useCourseProgress(courseId: string | undefined) {
     [user, courseId, persistProgress, addPoints, POINTS_VALUES]
   );
 
-  // Uncomplete a section (e.g., quiz retry)
   const uncompleteSection = useCallback(
     (moduleId: string, section: keyof SectionStatus) => {
       setProgress((prev) => {
         const currentStatus = prev.sectionStatus[moduleId] || { lesson: false, lab: false, quiz: false };
         const newStatus = { ...currentStatus, [section]: false };
         const newSections = { ...prev.sectionStatus, [moduleId]: newStatus };
-
         const newCompletedLessons = prev.completedLessons.filter((id) => id !== moduleId);
 
         const updated: CourseProgressData = {
@@ -210,14 +222,13 @@ export function useCourseProgress(courseId: string | undefined) {
           completedLessons: newCompletedLessons,
         };
 
-        persistProgress(updated);
+        setTimeout(() => persistProgress(updated), 0);
         return updated;
       });
     },
     [persistProgress]
   );
 
-  // Legacy toggle (kept for backward compat but not used anymore)
   const toggleLesson = useCallback(
     async (moduleId: string, totalModules: number) => {
       const isComplete = progress.completedLessons.includes(moduleId);
