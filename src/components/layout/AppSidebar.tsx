@@ -111,7 +111,7 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {user && isAdmin && (
+        {showAuthedUI && isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel className={cn("text-[11px] uppercase tracking-widest text-muted-foreground/60 font-medium", collapsed && "sr-only")}>
               Admin
