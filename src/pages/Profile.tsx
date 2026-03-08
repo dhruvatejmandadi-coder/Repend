@@ -150,7 +150,6 @@ export default function Profile() {
       title: "Profile updated",
       description: "Your changes have been saved.",
     });
-    }, 300);
   };
 
   const userName = fullName || user?.user_metadata?.full_name || "Learner";
