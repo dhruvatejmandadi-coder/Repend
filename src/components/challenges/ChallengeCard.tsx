@@ -29,22 +29,8 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
+      <CardContent className="pt-0">
         <p className="text-sm text-muted-foreground line-clamp-2">{challenge.description}</p>
-
-        <div className="flex items-center justify-between">
-          <div className="flex gap-2">
-            {labTypeLabel && (
-              <Badge variant="outline" className="capitalize text-xs">
-                <Gamepad2 className="w-3 h-3 mr-1" />
-                {labTypeLabel}
-              </Badge>
-            )}
-          </div>
-          <Button variant="ghost" size="sm" className="group-hover:text-primary transition-colors">
-            Play <ArrowRight className="w-4 h-4 ml-1" />
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
