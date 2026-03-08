@@ -328,7 +328,7 @@ export default function CourseView() {
               )}
 
               {/* Quiz */}
-              {activeContent === "quiz" && (
+              {activeContent === "quiz" && !loadingQuizAttempt && (
                 <div className="space-y-4">
                   {getSectionDone(mod.id, "quiz") && !quizSubmitted && (
                     <Card className="border-green-500/20 bg-green-500/[0.04]">
