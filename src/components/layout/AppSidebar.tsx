@@ -195,7 +195,7 @@ export function AppSidebar() {
             </SidebarMenuItem>
           )}
           <SidebarMenuItem>
-            {user ? (
+            {showAuthedUI ? (
               <SidebarMenuButton
                 tooltip="Sign Out"
                 onClick={handleSignOut}
