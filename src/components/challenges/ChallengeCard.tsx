@@ -2,20 +2,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
+import { MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { ChallengeComments } from "./ChallengeComments";
 import { usePoints } from "@/hooks/usePoints";
 import { useToast } from "@/hooks/use-toast";
-
-interface Challenge {
-  id: string;
-  title: string;
-  description: string;
-  youtube_url: string | null;
-  is_daily: boolean;
-  participants: number;
-  comments_count: number;
-}
+import type { Challenge } from "@/hooks/useChallenges";
 
 interface ChallengeCardProps {
   challenge: Challenge;
@@ -56,20 +47,9 @@ export function ChallengeCard({ challenge }: ChallengeCardProps) {
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground line-clamp-2">{challenge.description}</p>
 
-        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4" />
-            <span>{challenge.participants} joined</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <MessageCircle className="w-4 h-4" />
-            <span>{challenge.comments_count}</span>
-          </div>
-        </div>
-
         <div className="flex gap-2">
           <Button
-            variant={isCompleted ? "secondary" : isJoined ? "accent" : "hero"}
+            variant={isCompleted ? "secondary" : isJoined ? "default" : "default"}
             size="sm"
             className="flex-1"
             onClick={handleJoin}
