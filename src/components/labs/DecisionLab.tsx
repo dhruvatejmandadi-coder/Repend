@@ -38,7 +38,7 @@ type Phase = "scenario" | "respond" | "feedback" | "twist" | "twist_feedback" | 
 
 /* ===== COMPONENT ===== */
 
-export default function DecisionLab({ data, onComplete }: { data: DecisionLabData; onComplete?: () => void }) {
+export default function DecisionLab({ data, onComplete, isCompleted }: { data: DecisionLabData; onComplete?: () => void; isCompleted?: boolean }) {
   const [phase, setPhase] = useState<Phase>("scenario");
   const [response, setResponse] = useState<StudentResponse>({ strategy: "", core_assumption: "", biggest_risk: "" });
   const [twistResponse, setTwistResponse] = useState("");

@@ -88,7 +88,7 @@ function ensureDecisionSetState(decisions: Decision[], parameters: Parameter[]):
 
 /* ================= SIMULATION ================= */
 
-function SimulationLabInline({ data, onComplete }: { data: SimulationData; onComplete?: () => void }) {
+function SimulationLabInline({ data, onComplete, isCompleted }: { data: SimulationData; onComplete?: () => void; isCompleted?: boolean }) {
   const parameters = useMemo(() => data.parameters ?? [], [data]);
   const thresholds = useMemo(() => data.thresholds ?? [], [data]);
   const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
