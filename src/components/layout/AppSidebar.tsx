@@ -48,8 +48,17 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const { isAdmin } = useAdmin();
+  const { user, loading: authLoading } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+
+  // Use cached/previous state while loading to prevent flicker
+  const effectiveUser = authLoading ? null : user;
+  // During auth loading, assume user is logged in if we're on a dashboard route
+  // to prevent sidebar flash
+  const isDashboardRoute = ["/courses", "/challenges", "/community", "/progress", "/profile", "/admin", "/pricing"].some(
+    (p) => location.pathname.startsWith(p)
+  );
+  const showAuthedUI = user || (authLoading && isDashboardRoute);
 
   const isActive = (path: string) => location.pathname === path;
 
