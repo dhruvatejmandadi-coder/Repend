@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -7,6 +7,9 @@ import rependLogo from "@/assets/repend-logo.png";
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isLanding = location.pathname === "/";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,8 +29,15 @@ export function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <a
-            href="#"
-            onClick={(e) => { e.preventDefault(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              if (isLanding) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              } else {
+                navigate("/");
+              }
+            }}
             className="flex items-center"
           >
             <img
