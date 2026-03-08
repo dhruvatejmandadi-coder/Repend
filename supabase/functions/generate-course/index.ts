@@ -301,10 +301,177 @@ function generateDecisionLabFallback(title: string) {
    REPAIR MODULES
 ================================ */
 
+const MATH_VISUAL_TYPES = ["graph", "geometry", "solution_steps", "chart"] as const;
+type MathVisualType = (typeof MATH_VISUAL_TYPES)[number];
+
+function isMathVisualType(value: unknown): value is MathVisualType {
+  return typeof value === "string" && MATH_VISUAL_TYPES.includes(value as MathVisualType);
+}
+
+function hashString(input: string): number {
+  let hash = 0;
+  for (let i = 0; i < input.length; i++) {
+    hash = (hash * 31 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function pickMathVisualType(title: string, moduleIndex: number): MathVisualType {
+  const base = hashString((title || "math").toLowerCase());
+  return MATH_VISUAL_TYPES[(base + moduleIndex) % MATH_VISUAL_TYPES.length];
+}
+
+function generateMathLabFallback(title: string, visualType: MathVisualType) {
+  const t = title || "Math Topic";
+
+  const shared = {
+    title: t,
+    objective: `Practice ${t} through an interactive ${visualType.replace("_", " ")} lab.`,
+    concept_overview: `This lab helps you apply ${t} using visual reasoning and structured problem solving.`,
+    scenario: `You are applying ${t} to solve a practical classroom challenge with clear numeric constraints.`,
+    instructions: "Complete each task in order, show your reasoning, and verify your final answer.",
+    tasks: [
+      { id: 1, description: `Identify what the problem is asking in this ${t} scenario.`, type: "explanation", correct_answer: "" },
+      { id: 2, description: "Compute the required value step by step.", type: "input", correct_answer: "" },
+      { id: 3, description: "Explain why your method is valid.", type: "explanation", correct_answer: "" },
+    ],
+    hints: ["Identify known values first.", "Keep units and signs consistent.", "Check your answer against the visual."],
+    solution: "Use the concept overview and visual to compute and verify the final value.",
+    solution_explanation: `Break ${t} into smaller steps, compute carefully, then validate the result with the provided visual representation.`,
+  };
+
+  if (visualType === "graph") {
+    return {
+      ...shared,
+      visual_type: "graph",
+      graph_data: {
+        type: "function",
+        equation: "a*x^2 + b*x + c",
+        x_label: "x",
+        y_label: "y",
+        x_range: [-10, 10],
+        y_range: [-20, 20],
+        key_points: [{ x: 0, y: 0, label: "Origin" }],
+      },
+      interactive_params: [
+        { name: "a", label: "Quadratic coefficient", min: -5, max: 5, step: 1, default: 1 },
+        { name: "b", label: "Linear coefficient", min: -10, max: 10, step: 1, default: 0 },
+        { name: "c", label: "Constant", min: -10, max: 10, step: 1, default: 0 },
+      ],
+    };
+  }
+
+  if (visualType === "geometry") {
+    return {
+      ...shared,
+      visual_type: "geometry",
+      geometry: [
+        {
+          type: "triangle",
+          points: [
+            { x: 2, y: 2, label: "A" },
+            { x: 8, y: 2, label: "B" },
+            { x: 5, y: 7, label: "C" },
+          ],
+          measurements: { AB: "6", BC: "5", AC: "5" },
+        },
+      ],
+    };
+  }
+
+  if (visualType === "chart") {
+    return {
+      ...shared,
+      visual_type: "chart",
+      graph_data: {
+        type: "bar",
+        data_labels: ["Set A", "Set B", "Set C", "Set D"],
+        data_values: [12, 18, 9, 15],
+        x_label: "Set",
+        y_label: "Value",
+      },
+    };
+  }
+
+  return {
+    ...shared,
+    visual_type: "solution_steps",
+    solution_steps: [
+      { step: 1, expression: "Identify knowns and unknowns", explanation: "List all given values and define the target variable." },
+      { step: 2, expression: "Choose and apply formula", explanation: "Substitute values carefully and simplify." },
+      { step: 3, expression: "Verify and interpret", explanation: "Check arithmetic and explain what the result means." },
+    ],
+  };
+}
+
+function normalizeMathLabData(labData: any, title: string, moduleIndex: number) {
+  const preferredVisual = pickMathVisualType(title, moduleIndex);
+  const requestedVisual = isMathVisualType(labData?.visual_type) ? labData.visual_type : preferredVisual;
+  const fallback = generateMathLabFallback(title, requestedVisual);
+
+  const normalized: any = {
+    ...fallback,
+    ...(labData && typeof labData === "object" ? labData : {}),
+    visual_type: requestedVisual,
+  };
+
+  if (!Array.isArray(normalized.tasks) || normalized.tasks.length === 0) {
+    normalized.tasks = fallback.tasks;
+  }
+
+  normalized.tasks = normalized.tasks.map((task: any, i: number) => {
+    const nextTask: any = {
+      id: typeof task?.id === "number" ? task.id : i + 1,
+      description: typeof task?.description === "string" && task.description.trim().length > 0
+        ? task.description
+        : `Solve task ${i + 1} for ${title}.`,
+      type: task?.type === "choice" || task?.type === "explanation" || task?.type === "input" ? task.type : "input",
+      correct_answer: typeof task?.correct_answer === "string" ? task.correct_answer : "",
+    };
+
+    if (Array.isArray(task?.options) && task.options.length > 0) {
+      nextTask.options = task.options;
+    } else if (nextTask.type === "choice") {
+      nextTask.options = ["Option A", "Option B", "Option C"];
+    }
+
+    return nextTask;
+  });
+
+  if (!Array.isArray(normalized.hints) || normalized.hints.length === 0) {
+    normalized.hints = fallback.hints;
+  }
+
+  if (!normalized.instructions) normalized.instructions = fallback.instructions;
+  if (!normalized.objective) normalized.objective = fallback.objective;
+  if (!normalized.concept_overview) normalized.concept_overview = fallback.concept_overview;
+  if (!normalized.solution) normalized.solution = fallback.solution;
+  if (!normalized.solution_explanation) normalized.solution_explanation = fallback.solution_explanation;
+
+  if ((normalized.visual_type === "graph" || normalized.visual_type === "chart") && !normalized.graph_data) {
+    normalized.graph_data = fallback.graph_data;
+  }
+
+  if (normalized.visual_type === "graph" && (!Array.isArray(normalized.interactive_params) || normalized.interactive_params.length === 0)) {
+    normalized.interactive_params = fallback.interactive_params;
+  }
+
+  if (normalized.visual_type === "geometry" && (!Array.isArray(normalized.geometry) || normalized.geometry.length === 0)) {
+    normalized.geometry = fallback.geometry;
+  }
+
+  if (normalized.visual_type === "solution_steps" && (!Array.isArray(normalized.solution_steps) || normalized.solution_steps.length === 0)) {
+    normalized.solution_steps = fallback.solution_steps;
+  }
+
+  return normalized;
+}
+
 function repairModules(parsed: any) {
   if (!parsed?.modules || !Array.isArray(parsed.modules)) return parsed;
 
-  for (const mod of parsed.modules) {
+  for (let moduleIndex = 0; moduleIndex < parsed.modules.length; moduleIndex++) {
+    const mod = parsed.modules[moduleIndex];
     mod.lab_data = mod.lab_data ?? {};
 
     if (!mod.lesson_content) {
@@ -442,35 +609,7 @@ function repairModules(parsed: any) {
         }
       }
     } else if (mod.lab_type === "math_lab") {
-      // Math lab — ensure required fields
-      const mld = mod.lab_data;
-      if (!mld || !mld.tasks || !Array.isArray(mld.tasks) || mld.tasks.length === 0) {
-        console.warn(`[RepairModules] math_lab fallback for: "${title}"`);
-        mod.lab_data = {
-          title: title,
-          objective: `Practice ${title} concepts`,
-          concept_overview: `This lab explores key concepts from ${title}.`,
-          visual_type: "solution_steps",
-          solution_steps: [
-            { step: 1, expression: "Step 1", explanation: "Set up the problem" },
-            { step: 2, expression: "Step 2", explanation: "Apply the concept" },
-            { step: 3, expression: "Step 3", explanation: "Solve for the answer" },
-          ],
-          instructions: "Follow the steps and complete all tasks below.",
-          tasks: [
-            { id: 1, description: `Identify the key concept in ${title}.`, type: "explanation", correct_answer: "" },
-            { id: 2, description: "Solve the problem step by step.", type: "input", correct_answer: "" },
-            { id: 3, description: "Explain why your answer is correct.", type: "explanation", correct_answer: "" },
-          ],
-          hints: ["Break the problem into smaller parts.", "Review the concept overview."],
-          solution: "See explanation.",
-          solution_explanation: `Review the ${title} concepts covered in the lesson.`,
-        };
-      } else {
-        if (!mld.title) mld.title = title;
-        if (!mld.visual_type) mld.visual_type = "solution_steps";
-        mld.tasks.forEach((t: any, i: number) => { if (!t.id) t.id = i + 1; });
-      }
+      mod.lab_data = normalizeMathLabData(mod.lab_data, title, moduleIndex);
     }
 
     // --- FINAL GUARD ---
@@ -486,6 +625,29 @@ function repairModules(parsed: any) {
       console.error(`[RepairModules] FINAL GUARD - Forced simulation for: "${title}"`);
       mod.lab_type = "simulation";
       mod.lab_data = generateSimulationFallback(title);
+    }
+  }
+
+  const mathModules = parsed.modules
+    .filter((mod: any) => mod.lab_type === "math_lab" && mod.lab_data)
+    .map((mod: any, idx: number) => ({ mod, idx }));
+
+  if (mathModules.length > 1) {
+    const uniqueVisualTypes = new Set(
+      mathModules
+        .map(({ mod }) => mod.lab_data?.visual_type)
+        .filter((v) => isMathVisualType(v)),
+    );
+
+    if (uniqueVisualTypes.size <= 1) {
+      mathModules.forEach(({ mod, idx }) => {
+        const forcedVisual = MATH_VISUAL_TYPES[idx % MATH_VISUAL_TYPES.length];
+        mod.lab_data = normalizeMathLabData(
+          { ...mod.lab_data, visual_type: forcedVisual },
+          mod.title || "Math Topic",
+          idx,
+        );
+      });
     }
   }
 
