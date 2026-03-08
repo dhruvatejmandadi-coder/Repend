@@ -44,6 +44,8 @@ type Props = {
   labData?: any;
   labTitle?: string | null;
   labDescription?: string | null;
+  onComplete?: () => void;
+  isCompleted?: boolean;
 };
 
 /* ================= HELPERS ================= */
