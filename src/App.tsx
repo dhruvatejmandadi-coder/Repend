@@ -11,6 +11,7 @@ import Courses from "./pages/Courses";
 import CourseView from "./pages/CourseView";
 import Community from "./pages/Community";
 import Challenges from "./pages/Challenges";
+import ChallengeView from "./pages/ChallengeView";
 import ProgressPage from "./pages/ProgressPage";
 
 import Profile from "./pages/Profile";
