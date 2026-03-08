@@ -8,6 +8,7 @@ import ClassificationLab from "./ClassificationLab";
 import PolicyOptimizationLab from "./PolicyOptimizationLab";
 import EthicalDilemmaLab from "./EthicalDilemmaLab";
 import DecisionLab from "./DecisionLab";
+import MathLab from "./MathLab";
 
 /* ================= TYPES ================= */
 
