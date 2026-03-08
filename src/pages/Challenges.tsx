@@ -45,8 +45,10 @@ export default function Challenges() {
         throw new Error(err.error || "Failed to generate challenge");
       }
 
+      const result = await resp.json();
       setPrompt("");
-      toast({ title: "Challenge created! 🎯", description: "Your personalized challenge is ready." });
+      toast({ title: "Challenge created! 🎯", description: "Your personalized interactive challenge is ready. +50 points!" });
+      addPoints(50, "create_challenge");
       refetch();
       setActiveTab("my");
     } catch (error) {
