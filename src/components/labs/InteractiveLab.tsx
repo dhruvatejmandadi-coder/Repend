@@ -156,6 +156,22 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
     setCompletionFired(false);
   };
 
+  // Show completed state when revisiting
+  if (isCompleted && !allDone) {
+    return (
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-6 text-center space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+          <h3 className="font-bold text-lg">Simulation Complete</h3>
+          <p className="text-sm text-muted-foreground">You've already completed this simulation.</p>
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Replay Simulation
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {/* DECISIONS */}
