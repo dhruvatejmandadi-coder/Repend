@@ -76,7 +76,7 @@ export default function Challenges() {
   }
 
   return (
-    <DashboardLayout>
+    <>
       <div className="page-container space-y-8">
         {/* Header + Generator */}
         <div className="max-w-2xl mx-auto text-center pt-2">
