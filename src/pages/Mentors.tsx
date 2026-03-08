@@ -64,8 +64,7 @@ export default function Mentors() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="max-w-3xl mx-auto text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6">
