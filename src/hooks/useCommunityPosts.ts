@@ -8,6 +8,7 @@ export interface CommunityPost {
   content: string;
   image_url: string | null;
   author_name: string | null;
+  author_avatar_url: string | null;
   user_id: string | null;
   created_at: string;
   likes_count: number;
