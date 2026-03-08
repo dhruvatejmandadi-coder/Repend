@@ -792,7 +792,7 @@ Generate 4-6 modules with a good mix of lab types. Include at least 1-2 decision
                         lesson_content: { type: "string", description: "Markdown lesson with --- slide separators" },
                         youtube_query: { type: "string" },
                         youtube_title: { type: "string" },
-                        lab_type: { type: "string", enum: ["simulation", "classification", "policy_optimization", "ethical_dilemma"] },
+                        lab_type: { type: "string", enum: ["simulation", "classification", "policy_optimization", "ethical_dilemma", "decision_lab"] },
                         lab_data: { type: "object", description: "Lab configuration object" },
                         quiz: {
                           type: "array",
