@@ -35,6 +35,7 @@ export function PostCard({ post, onLike, onDelete }: PostCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8">
+              <AvatarImage src={post.author_avatar_url || ""} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs">
                 {(post.author_name || "?").charAt(0).toUpperCase()}
               </AvatarFallback>
