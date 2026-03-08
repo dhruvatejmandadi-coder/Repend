@@ -289,19 +289,21 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const labTypes = ["simulation", "classification", "ethical_dilemma", "policy_optimization", "decision_lab"];
+    const labTypes = ["simulation", "classification", "ethical_dilemma", "policy_optimization", "decision_lab", "math_lab"];
     const diff = difficulty || "medium";
     const cType = challenge_type || "lab_interactive";
     const skillText = skill ? `\nSkill/concept: ${skill}` : "";
     const extraText = extra_prompt ? `\nAdditional instructions: ${extra_prompt}` : "";
 
+    const isMath = isMathTopic(mainTopic.trim() + " " + (skill || ""));
+
     const userPrompt = `Create an interactive learning challenge about: ${mainTopic.trim()}
 Difficulty: ${diff}
 Challenge type: ${cType}${skillText}${extraText}
-
+${isMath ? "\nThis is a MATH topic. You MUST use lab_type = 'math_lab' and include the appropriate visual representation (graph, geometry diagram, solution steps, or chart)." : ""}
 IMPORTANT: Generate a COMPLETE, PLAYABLE interactive lab with all required fields.`;
 
-    const systemPrompt = buildSystemPrompt(cType, labTypes);
+    const systemPrompt = buildSystemPrompt(cType, labTypes, isMath);
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
