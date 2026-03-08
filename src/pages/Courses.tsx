@@ -96,7 +96,8 @@ export default function Courses() {
   };
 
   const handleGenerate = async () => {
-    if (!topic.trim() || isGenerating) return;
+    const hasInput = topic.trim() || selectedFile;
+    if (!hasInput || isGenerating) return;
 
     if (!user) {
       setIsGenerating(true);
@@ -116,7 +117,7 @@ export default function Courses() {
         }
       }
 
-      const body: Record<string, string> = { topic: topic.trim() };
+      const body: Record<string, string> = { topic: topic.trim() || selectedFile?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document" };
       if (filePath) body.filePath = filePath;
 
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-course`, {
@@ -213,7 +214,7 @@ export default function Courses() {
               />
             </div>
 
-            <Button variant="hero" onClick={handleGenerate} disabled={!topic.trim() || isGenerating}>
+            <Button variant="hero" onClick={handleGenerate} disabled={(!topic.trim() && !selectedFile) || isGenerating}>
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
