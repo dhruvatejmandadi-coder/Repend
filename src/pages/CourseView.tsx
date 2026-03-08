@@ -17,7 +17,7 @@ import {
   Beaker,
   ClipboardList,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -50,12 +50,14 @@ type Course = {
 
 type ContentType = "lesson" | "lab" | "quiz";
 
+const PASS_THRESHOLD = 0.7;
+
 export default function CourseView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
-  const { progress, toggleLesson, justCompleted, dismissCompletion } = useCourseProgress(id);
+  const { progress, completeSection, uncompleteSection, justCompleted, dismissCompletion } = useCourseProgress(id);
 
   const [course, setCourse] = useState<Course | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
@@ -84,44 +86,75 @@ export default function CourseView() {
     setLoading(false);
   };
 
-  const handleToggleComplete = async (moduleId: string) => {
-    // Toggle in DB (legacy column)
-    const mod = modules.find((m) => m.id === moduleId);
-    if (!mod) return;
-    await supabase.from("course_modules").update({ completed: !mod.completed }).eq("id", moduleId);
-    setModules((prev) =>
-      prev.map((m) => (m.id === moduleId ? { ...m, completed: !m.completed } : m))
-    );
-    // Also track in course_progress
-    toggleLesson(moduleId, modules.length);
-  };
-
   const mod = modules[activeModule];
   const completedCount = progress.completedLessons.length;
   const progressPct = modules.length ? Math.round((completedCount / modules.length) * 100) : 0;
 
+  // Section status helpers
+  const getSectionDone = (moduleId: string, section: "lesson" | "lab" | "quiz") => {
+    return progress.sectionStatus[moduleId]?.[section] ?? false;
+  };
+
+  // Lesson auto-complete
+  const handleLessonComplete = useCallback(() => {
+    if (!mod) return;
+    completeSection(mod.id, "lesson", modules.length);
+  }, [mod, completeSection, modules.length]);
+
+  // Lab completion callback
+  const handleLabComplete = useCallback(() => {
+    if (!mod) return;
+    completeSection(mod.id, "lab", modules.length);
+  }, [mod, completeSection, modules.length]);
+
+  // Quiz submit
   const handleQuizSubmit = async () => {
+    if (!mod) return;
     setQuizSubmitted(true);
+
+    const quizQuestions = mod.quiz as any[];
+    const score = quizQuestions.filter((q: any, i: number) => quizAnswers[i] === q.correct).length;
+    const total = quizQuestions.length;
+    const pct = total > 0 ? score / total : 0;
+    const passed = pct >= PASS_THRESHOLD;
+
     // Save quiz attempt
-    if (user && mod) {
-      const score = (mod.quiz as any[]).filter((q: any, i: number) => quizAnswers[i] === q.correct).length;
+    if (user) {
       await supabase.from("quiz_attempts").insert({
         user_id: user.id,
         module_id: mod.id,
         answers: quizAnswers,
         score,
-        total: mod.quiz.length,
+        total,
+      });
+    }
+
+    if (passed) {
+      completeSection(mod.id, "quiz", modules.length);
+      toast({ title: `Quiz passed! ${Math.round(pct * 100)}%`, description: `${score}/${total} correct` });
+    } else {
+      toast({
+        title: `Score: ${Math.round(pct * 100)}% — Need 70% to pass`,
+        description: "Review the material and try again.",
+        variant: "destructive",
       });
     }
   };
 
-  const resetQuiz = () => { setQuizAnswers({}); setQuizSubmitted(false); };
+  const resetQuiz = () => {
+    setQuizAnswers({});
+    setQuizSubmitted(false);
+    // Uncomplete quiz section on retry
+    if (mod) uncompleteSection(mod.id, "quiz");
+  };
 
   const selectItem = (moduleIndex: number, content: ContentType) => {
     setActiveModule(moduleIndex);
     setActiveContent(content);
-    if (content !== "quiz") resetQuiz();
+    if (content !== "quiz") resetQuizState();
   };
+
+  const resetQuizState = () => { setQuizAnswers({}); setQuizSubmitted(false); };
 
   if (loading) {
     return (
@@ -132,6 +165,11 @@ export default function CourseView() {
       </DashboardLayout>
     );
   }
+
+  const quizScore = mod ? (mod.quiz as any[]).filter((q: any, i: number) => quizAnswers[i] === q.correct).length : 0;
+  const quizTotal = mod?.quiz?.length || 0;
+  const quizPct = quizTotal > 0 ? Math.round((quizScore / quizTotal) * 100) : 0;
+  const quizPassed = quizPct >= PASS_THRESHOLD * 100;
 
   return (
     <DashboardLayout>
@@ -167,12 +205,16 @@ export default function CourseView() {
           <div className="flex-1 overflow-y-auto">
             <Accordion type="multiple" defaultValue={[`module-0`]} className="w-full">
               {modules.map((m, i) => {
-                const isLessonDone = progress.completedLessons.includes(m.id);
+                const isModuleDone = progress.completedLessons.includes(m.id);
+                const lessonDone = getSectionDone(m.id, "lesson");
+                const labDone = getSectionDone(m.id, "lab");
+                const quizDone = getSectionDone(m.id, "quiz");
+
                 return (
                   <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/50">
                     <AccordionTrigger className="px-4 py-3 text-sm hover:no-underline hover:bg-secondary/30">
                       <div className="flex items-center gap-2 text-left">
-                        {isLessonDone ? (
+                        {isModuleDone ? (
                           <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                         ) : (
                           <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -183,10 +225,10 @@ export default function CourseView() {
                     <AccordionContent className="pb-1">
                       <div className="flex flex-col">
                         {[
-                          { key: "lesson" as ContentType, icon: FileText, label: "Lesson" },
-                          { key: "lab" as ContentType, icon: Beaker, label: "Lab" },
-                          { key: "quiz" as ContentType, icon: ClipboardList, label: "Quiz" },
-                        ].map(({ key, icon: Icon, label }) => (
+                          { key: "lesson" as ContentType, icon: FileText, label: "Lesson", done: lessonDone },
+                          { key: "lab" as ContentType, icon: Beaker, label: "Lab", done: labDone },
+                          { key: "quiz" as ContentType, icon: ClipboardList, label: "Quiz", done: quizDone },
+                        ].map(({ key, icon: Icon, label, done }) => (
                           <button
                             key={key}
                             onClick={() => selectItem(i, key)}
@@ -196,7 +238,11 @@ export default function CourseView() {
                                 : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
                             }`}
                           >
-                            <Icon className="w-3.5 h-3.5" />
+                            {done ? (
+                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                            ) : (
+                              <Icon className="w-3.5 h-3.5" />
+                            )}
                             {label}
                           </button>
                         ))}
@@ -219,13 +265,11 @@ export default function CourseView() {
                   <Badge variant="secondary" className="mb-2">Module {mod.module_order}</Badge>
                   <h1 className="font-display text-2xl font-bold">{mod.title}</h1>
                 </div>
-                <Button variant="outline" size="sm" onClick={() => handleToggleComplete(mod.id)}>
-                  {progress.completedLessons.includes(mod.id) ? (
-                    <><CheckCircle2 className="w-4 h-4 mr-1 text-green-500" /> Completed</>
-                  ) : (
-                    <><Circle className="w-4 h-4 mr-1" /> Mark Complete</>
-                  )}
-                </Button>
+                {progress.completedLessons.includes(mod.id) && (
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> All Complete
+                  </Badge>
+                )}
               </div>
 
               {/* Lesson */}
@@ -234,6 +278,8 @@ export default function CourseView() {
                   content={mod.lesson_content}
                   youtubeUrl={mod.youtube_url}
                   youtubeTitle={mod.youtube_title}
+                  onComplete={handleLessonComplete}
+                  isCompleted={getSectionDone(mod.id, "lesson")}
                 />
               )}
 
@@ -244,12 +290,23 @@ export default function CourseView() {
                   labData={mod.lab_data}
                   labTitle={mod.lab_title}
                   labDescription={mod.lab_description}
+                  onComplete={handleLabComplete}
+                  isCompleted={getSectionDone(mod.id, "lab")}
                 />
               )}
 
               {/* Quiz */}
               {activeContent === "quiz" && (
                 <div className="space-y-4">
+                  {getSectionDone(mod.id, "quiz") && !quizSubmitted && (
+                    <Card className="border-green-500/30 bg-green-500/5">
+                      <CardContent className="p-4 flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        <span className="text-sm font-medium">Quiz passed! You can retake it if you'd like.</span>
+                      </CardContent>
+                    </Card>
+                  )}
+
                   {(mod.quiz as any[])?.map((q: any, qi: number) => (
                     <Card key={qi}>
                       <CardContent className="p-6">
@@ -277,7 +334,6 @@ export default function CourseView() {
                             );
                           })}
                         </div>
-                        {/* Show explanation after submit */}
                         {quizSubmitted && q.explanation && (
                           <p className="mt-3 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
                             💡 {q.explanation}
@@ -286,20 +342,27 @@ export default function CourseView() {
                       </CardContent>
                     </Card>
                   ))}
-                  <div className="flex gap-3">
+
+                  <div className="flex items-center gap-3">
                     {!quizSubmitted ? (
-                      <Button variant="hero" onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < (mod.quiz?.length || 0)}>
+                      <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < (mod.quiz?.length || 0)}>
                         Submit Quiz
                       </Button>
                     ) : (
                       <Button variant="outline" onClick={resetQuiz}>Retry Quiz</Button>
                     )}
+
+                    {quizSubmitted && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant={quizPassed ? "default" : "destructive"}>
+                          {quizPct}% ({quizScore}/{quizTotal})
+                        </Badge>
+                        {!quizPassed && (
+                          <span className="text-sm text-muted-foreground">Need 70% to pass</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  {quizSubmitted && (
-                    <p className="text-sm font-medium">
-                      Score: {(mod.quiz as any[]).filter((q: any, i: number) => quizAnswers[i] === q.correct).length} / {mod.quiz?.length}
-                    </p>
-                  )}
                 </div>
               )}
             </div>

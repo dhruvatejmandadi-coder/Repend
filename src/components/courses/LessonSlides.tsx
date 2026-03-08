@@ -3,13 +3,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Youtube } from "lucide-react";
+import { ChevronLeft, ChevronRight, Youtube, CheckCircle2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface LessonSlidesProps {
   content: string;
   youtubeUrl?: string | null;
   youtubeTitle?: string | null;
+  onComplete?: () => void;
+  isCompleted?: boolean;
 }
 
 const SLIDE_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
@@ -27,37 +29,45 @@ const SLIDE_TYPE_CONFIG: Record<string, { label: string; className: string }> = 
 function parseSlide(raw: string) {
   const typeMatch = raw.match(/<!--\s*type:\s*(\w+)\s*-->/);
   const slideType = typeMatch?.[1] || null;
-
-  // Remove type comment
   let cleaned = raw.replace(/<!--\s*type:\s*\w+\s*-->\n?/, "").trim();
-
-  // Extract heading
   const headingMatch = cleaned.match(/^##\s+(.+)$/m);
   const title = headingMatch?.[1]?.trim() || null;
-
-  // Remove heading from body
-  if (headingMatch) {
-    cleaned = cleaned.replace(/^##\s+.+$/m, "").trim();
-  }
-
+  if (headingMatch) cleaned = cleaned.replace(/^##\s+.+$/m, "").trim();
   return { slideType, title, body: cleaned };
 }
 
-export default function LessonSlides({ content, youtubeUrl, youtubeTitle }: LessonSlidesProps) {
-  const slides = content
-    .split(/\n---\n/)
-    .map((s) => s.trim())
-    .filter(Boolean);
-
+export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComplete, isCompleted }: LessonSlidesProps) {
+  const slides = content.split(/\n---\n/).map((s) => s.trim()).filter(Boolean);
   const [current, setCurrent] = useState(0);
+  const [visitedSlides, setVisitedSlides] = useState<Set<number>>(new Set([0]));
   const total = slides.length;
   const isLast = current === total - 1;
 
-  const goNext = useCallback(() => setCurrent((c) => Math.min(c + 1, total - 1)), [total]);
+  const goNext = useCallback(() => {
+    setCurrent((c) => {
+      const next = Math.min(c + 1, total - 1);
+      setVisitedSlides((prev) => new Set(prev).add(next));
+      return next;
+    });
+  }, [total]);
+
   const goPrev = useCallback(() => setCurrent((c) => Math.max(c - 1, 0)), []);
+
+  // Track slide visits
+  useEffect(() => {
+    setVisitedSlides((prev) => new Set(prev).add(current));
+  }, [current]);
+
+  // Auto-complete when all slides visited
+  useEffect(() => {
+    if (visitedSlides.size >= total && !isCompleted && onComplete) {
+      onComplete();
+    }
+  }, [visitedSlides.size, total, isCompleted, onComplete]);
 
   useEffect(() => {
     setCurrent(0);
+    setVisitedSlides(new Set([0]));
   }, [content]);
 
   useEffect(() => {
@@ -78,19 +88,22 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle }: Less
       <Card className="overflow-hidden">
         <Progress value={progressPercent} className="h-1.5 rounded-none" />
         <CardContent className="p-6">
-          {/* Slide type badge + title */}
-          <div className="mb-4">
-            {typeConfig && (
-              <Badge variant="outline" className={`mb-2 text-xs font-medium ${typeConfig.className}`}>
-                {typeConfig.label}
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              {typeConfig && (
+                <Badge variant="outline" className={`mb-2 text-xs font-medium ${typeConfig.className}`}>
+                  {typeConfig.label}
+                </Badge>
+              )}
+              {title && <h2 className="font-display text-xl font-bold text-foreground">{title}</h2>}
+            </div>
+            {isCompleted && (
+              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
+                <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
               </Badge>
-            )}
-            {title && (
-              <h2 className="font-display text-xl font-bold text-foreground">{title}</h2>
             )}
           </div>
 
-          {/* Slide body */}
           <div
             key={current}
             className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground min-h-[300px] animate-fade-in"
@@ -98,41 +111,23 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle }: Less
             <ReactMarkdown>{body}</ReactMarkdown>
           </div>
 
-          {/* Navigation */}
           <div className="flex items-center justify-between mt-6 pt-4 border-t border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goPrev}
-              disabled={current === 0}
-            >
+            <Button variant="ghost" size="sm" onClick={goPrev} disabled={current === 0}>
               <ChevronLeft className="w-4 h-4 mr-1" /> Previous
             </Button>
-
-            {/* Progress dots */}
             <div className="flex items-center gap-1.5">
               {slides.map((_, i) => (
                 <button
                   key={i}
-                  onClick={() => setCurrent(i)}
+                  onClick={() => { setCurrent(i); setVisitedSlides((prev) => new Set(prev).add(i)); }}
                   className={`w-2 h-2 rounded-full transition-all ${
-                    i === current
-                      ? "bg-primary scale-125"
-                      : i < current
-                      ? "bg-primary/40"
-                      : "bg-muted-foreground/30"
+                    i === current ? "bg-primary scale-125" : visitedSlides.has(i) ? "bg-primary/40" : "bg-muted-foreground/30"
                   }`}
                   aria-label={`Go to slide ${i + 1}`}
                 />
               ))}
             </div>
-
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={goNext}
-              disabled={isLast}
-            >
+            <Button variant="ghost" size="sm" onClick={goNext} disabled={isLast}>
               Next <ChevronRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
