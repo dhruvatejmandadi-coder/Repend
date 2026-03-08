@@ -7,6 +7,9 @@ import rependLogo from "@/assets/repend-logo.png";
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isLanding = location.pathname === "/";
 
   useEffect(() => {
     const handleScroll = () => {
