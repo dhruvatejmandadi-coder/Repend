@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -39,8 +39,7 @@ type ClassificationData = {
   items: Item[];
 };
 
-export default function ClassificationLab({ data, onComplete }: { data: ClassificationData; onComplete?: () => void }) {
-  // Normalize field names from AI output to component format
+export default function ClassificationLab({ data, onComplete, isCompleted }: { data: ClassificationData; onComplete?: () => void; isCompleted?: boolean }) {
   const items: Item[] = (data?.items ?? []).map((raw: RawItem) => ({
     name: raw.name || raw.content || "Unknown item",
     correct_category: raw.correct_category || raw.correctCategory || "",
@@ -54,6 +53,7 @@ export default function ClassificationLab({ data, onComplete }: { data: Classifi
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [currentItem, setCurrentItem] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const [completionFired, setCompletionFired] = useState(false);
 
   const item = items[currentItem];
   const allAssigned = Object.keys(assignments).length === items.length;
@@ -69,12 +69,13 @@ export default function ClassificationLab({ data, onComplete }: { data: Classifi
     ? items.filter((it) => assignments[it.name] === it.correct_category).length
     : 0;
 
-  // Fire onComplete when submitted
-  const [completionFired, setCompletionFired] = useState(false);
-  if (submitted && !completionFired && onComplete) {
-    onComplete();
-    setCompletionFired(true);
-  }
+  // Fire onComplete via useEffect to avoid setState-during-render
+  useEffect(() => {
+    if (submitted && !completionFired && onComplete && !isCompleted) {
+      onComplete();
+      setCompletionFired(true);
+    }
+  }, [submitted, completionFired, onComplete, isCompleted]);
 
   const reset = () => {
     setAssignments({});
@@ -85,6 +86,22 @@ export default function ClassificationLab({ data, onComplete }: { data: Classifi
 
   if (!items.length || !categories.length) {
     return <Card><CardContent className="p-6 text-muted-foreground text-sm">No classification data available.</CardContent></Card>;
+  }
+
+  // Show completed state when revisiting
+  if (isCompleted && !submitted) {
+    return (
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-6 text-center space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+          <h3 className="font-bold text-lg">Classification Lab Complete</h3>
+          <p className="text-sm text-muted-foreground">You've already completed this classification exercise.</p>
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   if (submitted) {

@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -50,7 +50,7 @@ function checkConstraint(c: Constraint, value: number): boolean {
   }
 }
 
-export default function PolicyOptimizationLab({ data, onComplete }: { data: PolicyData; onComplete?: () => void }) {
+export default function PolicyOptimizationLab({ data, onComplete, isCompleted }: { data: PolicyData; onComplete?: () => void; isCompleted?: boolean }) {
   const parameters = data.parameters ?? [];
   const constraints = data.constraints ?? [];
   const decisions = data.decisions ?? [];
@@ -61,6 +61,7 @@ export default function PolicyOptimizationLab({ data, onComplete }: { data: Poli
   );
   const [decisionsMade, setDecisionsMade] = useState<number[]>([]);
   const [currentDecision, setCurrentDecision] = useState(0);
+  const [completionFired, setCompletionFired] = useState(false);
 
   const constraintResults = useMemo(() =>
     constraints.map((c) => ({
@@ -74,11 +75,13 @@ export default function PolicyOptimizationLab({ data, onComplete }: { data: Poli
   const allMet = constraintResults.every((c) => c.met);
   const isFinished = decisionsMade.length >= maxDecisions || decisionsMade.length >= decisions.length;
 
-  const [completionFired, setCompletionFired] = useState(false);
-  if (isFinished && !completionFired && onComplete) {
-    onComplete();
-    setCompletionFired(true);
-  }
+  // Fire onComplete via useEffect
+  useEffect(() => {
+    if (isFinished && !completionFired && onComplete && !isCompleted) {
+      onComplete();
+      setCompletionFired(true);
+    }
+  }, [isFinished, completionFired, onComplete, isCompleted]);
 
   const handleChoice = (choiceIdx: number) => {
     const choice = decisions[currentDecision]?.choices[choiceIdx];
@@ -102,7 +105,24 @@ export default function PolicyOptimizationLab({ data, onComplete }: { data: Poli
     setValues(Object.fromEntries(parameters.map((p) => [p.name, p.default])));
     setDecisionsMade([]);
     setCurrentDecision(0);
+    setCompletionFired(false);
   };
+
+  // Show completed state when revisiting
+  if (isCompleted && !isFinished) {
+    return (
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-6 text-center space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+          <h3 className="font-bold text-lg">Policy Optimization Complete</h3>
+          <p className="text-sm text-muted-foreground">You've already completed this optimization exercise.</p>
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-5">

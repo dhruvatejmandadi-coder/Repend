@@ -1,8 +1,8 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Scale, RotateCcw } from "lucide-react";
+import { Scale, RotateCcw, CheckCircle2 } from "lucide-react";
 
 type Dimension = {
   name: string;
@@ -16,7 +16,7 @@ type Decision = {
   choices: {
     text: string;
     explanation?: string;
-    impacts: Record<string, number>; // dimension name → delta (-50 to +50)
+    impacts: Record<string, number>;
   }[];
 };
 
@@ -27,7 +27,7 @@ type EthicalData = {
   decisions: Decision[];
 };
 
-export default function EthicalDilemmaLab({ data, onComplete }: { data: EthicalData; onComplete?: () => void }) {
+export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { data: EthicalData; onComplete?: () => void; isCompleted?: boolean }) {
   const dimensions = data.dimensions ?? [];
   const decisions = data.decisions ?? [];
 
@@ -36,14 +36,17 @@ export default function EthicalDilemmaLab({ data, onComplete }: { data: EthicalD
   );
   const [answered, setAnswered] = useState<Record<number, number>>({});
   const [currentDecision, setCurrentDecision] = useState(0);
+  const [completionFired, setCompletionFired] = useState(false);
 
   const allDone = Object.keys(answered).length === decisions.length;
 
-  const [completionFired, setCompletionFired] = useState(false);
-  if (allDone && !completionFired && onComplete) {
-    onComplete();
-    setCompletionFired(true);
-  }
+  // Fire onComplete via useEffect
+  useEffect(() => {
+    if (allDone && !completionFired && onComplete && !isCompleted) {
+      onComplete();
+      setCompletionFired(true);
+    }
+  }, [allDone, completionFired, onComplete, isCompleted]);
 
   const handleChoice = (choiceIdx: number) => {
     if (answered[currentDecision] !== undefined) return;
@@ -62,7 +65,6 @@ export default function EthicalDilemmaLab({ data, onComplete }: { data: EthicalD
     setAnswered((prev) => ({ ...prev, [currentDecision]: choiceIdx }));
   };
 
-  // Balance score: how close all dimensions are to each other (0-100)
   const balanceScore = useMemo(() => {
     if (dimensions.length < 2) return 100;
     const vals = dimensions.map((d) => scores[d.name] ?? 50);
@@ -75,7 +77,24 @@ export default function EthicalDilemmaLab({ data, onComplete }: { data: EthicalD
     setScores(Object.fromEntries(dimensions.map((d) => [d.name, 50])));
     setAnswered({});
     setCurrentDecision(0);
+    setCompletionFired(false);
   };
+
+  // Show completed state when revisiting
+  if (isCompleted && !allDone) {
+    return (
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-6 text-center space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+          <h3 className="font-bold text-lg">Ethical Dilemma Complete</h3>
+          <p className="text-sm text-muted-foreground">You've already completed this ethical dilemma exercise.</p>
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-5">
