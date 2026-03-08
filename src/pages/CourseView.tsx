@@ -88,7 +88,6 @@ export default function CourseView() {
 
   const mod = modules[activeModule];
 
-  // Granular progress: count each section (lesson, lab, quiz) individually
   const totalSections = modules.length * 3;
   const completedSections = modules.reduce((sum, m) => {
     const s = progress.sectionStatus[m.id];
@@ -97,24 +96,20 @@ export default function CourseView() {
   }, 0);
   const progressPct = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
 
-  // Section status helpers
   const getSectionDone = (moduleId: string, section: "lesson" | "lab" | "quiz") => {
     return progress.sectionStatus[moduleId]?.[section] ?? false;
   };
 
-  // Lesson auto-complete
   const handleLessonComplete = useCallback(() => {
     if (!mod) return;
     completeSection(mod.id, "lesson", modules.length);
   }, [mod, completeSection, modules.length]);
 
-  // Lab completion callback
   const handleLabComplete = useCallback(() => {
     if (!mod) return;
     completeSection(mod.id, "lab", modules.length);
   }, [mod, completeSection, modules.length]);
 
-  // Quiz submit
   const handleQuizSubmit = async () => {
     if (!mod) return;
     setQuizSubmitted(true);
@@ -125,7 +120,6 @@ export default function CourseView() {
     const pct = total > 0 ? score / total : 0;
     const passed = pct >= PASS_THRESHOLD;
 
-    // Save quiz attempt
     if (user) {
       await supabase.from("quiz_attempts").insert({
         user_id: user.id,
@@ -151,7 +145,6 @@ export default function CourseView() {
   const resetQuiz = () => {
     setQuizAnswers({});
     setQuizSubmitted(false);
-    // Uncomplete quiz section on retry
     if (mod) uncompleteSection(mod.id, "quiz");
   };
 
@@ -167,7 +160,7 @@ export default function CourseView() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-[60vh]">
-          <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
         </div>
       </DashboardLayout>
     );
@@ -193,19 +186,19 @@ export default function CourseView() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div className="flex h-[calc(100vh-3rem)]">
         {/* Sidebar */}
-        <aside className="w-80 border-r border-border bg-card/50 backdrop-blur-sm flex flex-col flex-shrink-0">
-          <div className="p-4 border-b border-border">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/courses")} className="-ml-2 mb-2 text-muted-foreground">
-              <ArrowLeft className="w-4 h-4 mr-1" /> Back to Courses
+        <aside className="w-72 border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0">
+          <div className="p-4 border-b border-border/40">
+            <Button variant="ghost" size="sm" onClick={() => navigate("/courses")} className="-ml-2 mb-2 text-muted-foreground text-[13px]">
+              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
             </Button>
-            <h2 className="font-display font-bold text-base line-clamp-2">{course?.title}</h2>
-            <div className="flex items-center gap-2 mt-2">
-              <div className="flex-1 h-1.5 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+            <h2 className="font-display font-semibold text-sm line-clamp-2">{course?.title}</h2>
+            <div className="flex items-center gap-2 mt-3">
+              <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
               </div>
-              <span className="text-xs text-muted-foreground font-medium">{progressPct}%</span>
+              <span className="text-[11px] text-muted-foreground font-medium tabular-nums">{progressPct}%</span>
             </div>
           </div>
 
@@ -218,13 +211,13 @@ export default function CourseView() {
                 const quizDone = getSectionDone(m.id, "quiz");
 
                 return (
-                  <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/50">
-                    <AccordionTrigger className="px-4 py-3 text-sm hover:no-underline hover:bg-secondary/30">
+                  <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/30">
+                    <AccordionTrigger className="px-4 py-2.5 text-[13px] hover:no-underline hover:bg-secondary/20">
                       <div className="flex items-center gap-2 text-left">
                         {isModuleDone ? (
-                          <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
                         ) : (
-                          <Circle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
                         )}
                         <span className="line-clamp-1 font-medium">{m.title}</span>
                       </div>
@@ -239,16 +232,16 @@ export default function CourseView() {
                           <button
                             key={key}
                             onClick={() => selectItem(i, key)}
-                            className={`flex items-center gap-2.5 pl-10 pr-4 py-2 text-sm transition-colors ${
+                            className={`flex items-center gap-2 pl-9 pr-4 py-1.5 text-[13px] transition-all duration-150 ${
                               activeModule === i && activeContent === key
-                                ? "bg-primary/10 text-primary border-l-2 border-primary"
-                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/30"
+                                ? "bg-primary/[0.08] text-primary border-l-2 border-primary font-medium"
+                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
                             }`}
                           >
                             {done ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
+                              <CheckCircle2 className="w-3 h-3 text-green-500" />
                             ) : (
-                              <Icon className="w-3.5 h-3.5" />
+                              <Icon className="w-3 h-3" />
                             )}
                             {label}
                           </button>
@@ -269,12 +262,12 @@ export default function CourseView() {
               {/* Header */}
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <Badge variant="secondary" className="mb-2">Module {mod.module_order}</Badge>
-                  <h1 className="font-display text-2xl font-bold">{mod.title}</h1>
+                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-widest mb-1.5">Module {mod.module_order}</p>
+                  <h1 className="font-display text-xl font-bold">{mod.title}</h1>
                 </div>
                 {progress.completedLessons.includes(mod.id) && (
-                  <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> All Complete
+                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20 text-[11px]">
+                    <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
                   </Badge>
                 )}
               </div>
@@ -306,35 +299,35 @@ export default function CourseView() {
               {activeContent === "quiz" && (
                 <div className="space-y-4">
                   {getSectionDone(mod.id, "quiz") && !quizSubmitted && (
-                    <Card className="border-green-500/30 bg-green-500/5">
+                    <Card className="border-green-500/20 bg-green-500/[0.04]">
                       <CardContent className="p-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-5 h-5 text-green-500" />
-                        <span className="text-sm font-medium">Quiz passed! You can retake it if you'd like.</span>
+                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                        <span className="text-[13px] font-medium">Quiz passed! You can retake it if you'd like.</span>
                       </CardContent>
                     </Card>
                   )}
 
                   {(mod.quiz as any[])?.map((q: any, qi: number) => (
-                    <Card key={qi}>
+                    <Card key={qi} className="border-border/50">
                       <CardContent className="p-6">
-                        <p className="font-medium mb-3">{qi + 1}. {q.question}</p>
+                        <p className="font-medium mb-3 text-[15px]">{qi + 1}. {q.question}</p>
                         <div className="space-y-2">
                           {q.options?.map((opt: string, oi: number) => {
                             const selected = quizAnswers[qi] === oi;
                             const isCorrect = oi === q.correct;
-                            let style = "border-border hover:border-primary/30";
+                            let style = "border-border/50 hover:border-primary/20";
                             if (quizSubmitted) {
-                              if (isCorrect) style = "border-green-500 bg-green-500/10";
-                              else if (selected && !isCorrect) style = "border-destructive bg-destructive/10";
+                              if (isCorrect) style = "border-green-500/40 bg-green-500/[0.06]";
+                              else if (selected && !isCorrect) style = "border-destructive/40 bg-destructive/[0.06]";
                             } else if (selected) {
-                              style = "border-primary bg-primary/10";
+                              style = "border-primary/40 bg-primary/[0.06]";
                             }
                             return (
                               <button
                                 key={oi}
                                 disabled={quizSubmitted}
                                 onClick={() => setQuizAnswers((prev) => ({ ...prev, [qi]: oi }))}
-                                className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-colors ${style}`}
+                                className={`w-full text-left px-4 py-3 rounded-lg border text-[13px] transition-all duration-150 ${style}`}
                               >
                                 {opt}
                               </button>
@@ -342,7 +335,7 @@ export default function CourseView() {
                           })}
                         </div>
                         {quizSubmitted && q.explanation && (
-                          <p className="mt-3 text-sm text-muted-foreground bg-secondary/50 p-3 rounded-lg">
+                          <p className="mt-3 text-[13px] text-muted-foreground bg-secondary/30 p-3 rounded-lg">
                             💡 {q.explanation}
                           </p>
                         )}
@@ -361,11 +354,11 @@ export default function CourseView() {
 
                     {quizSubmitted && (
                       <div className="flex items-center gap-2">
-                        <Badge variant={quizPassed ? "default" : "destructive"}>
+                        <Badge variant={quizPassed ? "default" : "destructive"} className="text-[11px]">
                           {quizPct}% ({quizScore}/{quizTotal})
                         </Badge>
                         {!quizPassed && (
-                          <span className="text-sm text-muted-foreground">Need 70% to pass</span>
+                          <span className="text-[13px] text-muted-foreground">Need 70% to pass</span>
                         )}
                       </div>
                     )}
