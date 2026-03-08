@@ -441,10 +441,35 @@ function repairModules(parsed: any) {
           if (!dim.description) dim.description = "";
         }
       }
-    } else if (mod.lab_type === "decision_lab") {
-      if (!isValidDecisionLab(ld)) {
-        console.warn(`[RepairModules] decision_lab fallback generated for: "${title}"`);
-        mod.lab_data = generateDecisionLabFallback(title);
+    } else if (mod.lab_type === "math_lab") {
+      // Math lab — ensure required fields
+      const mld = mod.lab_data;
+      if (!mld || !mld.tasks || !Array.isArray(mld.tasks) || mld.tasks.length === 0) {
+        console.warn(`[RepairModules] math_lab fallback for: "${title}"`);
+        mod.lab_data = {
+          title: title,
+          objective: `Practice ${title} concepts`,
+          concept_overview: `This lab explores key concepts from ${title}.`,
+          visual_type: "solution_steps",
+          solution_steps: [
+            { step: 1, expression: "Step 1", explanation: "Set up the problem" },
+            { step: 2, expression: "Step 2", explanation: "Apply the concept" },
+            { step: 3, expression: "Step 3", explanation: "Solve for the answer" },
+          ],
+          instructions: "Follow the steps and complete all tasks below.",
+          tasks: [
+            { id: 1, description: `Identify the key concept in ${title}.`, type: "explanation", correct_answer: "" },
+            { id: 2, description: "Solve the problem step by step.", type: "input", correct_answer: "" },
+            { id: 3, description: "Explain why your answer is correct.", type: "explanation", correct_answer: "" },
+          ],
+          hints: ["Break the problem into smaller parts.", "Review the concept overview."],
+          solution: "See explanation.",
+          solution_explanation: `Review the ${title} concepts covered in the lesson.`,
+        };
+      } else {
+        if (!mld.title) mld.title = title;
+        if (!mld.visual_type) mld.visual_type = "solution_steps";
+        mld.tasks.forEach((t: any, i: number) => { if (!t.id) t.id = i + 1; });
       }
     }
 
@@ -454,7 +479,8 @@ function repairModules(parsed: any) {
       (mod.lab_type === "classification" && isValidClassification(mod.lab_data)) ||
       (mod.lab_type === "policy_optimization" && isValidPolicyOptimization(mod.lab_data)) ||
       (mod.lab_type === "ethical_dilemma" && isValidEthicalDilemma(mod.lab_data)) ||
-      (mod.lab_type === "decision_lab" && isValidDecisionLab(mod.lab_data));
+      (mod.lab_type === "decision_lab" && isValidDecisionLab(mod.lab_data)) ||
+      (mod.lab_type === "math_lab" && mod.lab_data?.tasks?.length > 0);
 
     if (!finalValid) {
       console.error(`[RepairModules] FINAL GUARD - Forced simulation for: "${title}"`);
