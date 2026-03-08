@@ -1,1 +1,4 @@
 project_id = "upropcmmwapkgdhnkodd"
+
+[functions.generate-challenge]
+verify_jwt = false
