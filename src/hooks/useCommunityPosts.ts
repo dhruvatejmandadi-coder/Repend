@@ -127,7 +127,16 @@ export function useCommunityPosts() {
   const createPost = useCallback(
     async (post: { title: string; content: string; image_url: string | null }) => {
       if (!user) return null;
-      const authorName = user.user_metadata?.full_name || user.email || "Anonymous";
+
+      // Get name from profile (matches what's set on the Profile page)
+      let authorName = user.user_metadata?.full_name || user.email || "Anonymous";
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("user_id", user.id)
+        .single();
+      if (profile?.full_name) authorName = profile.full_name;
+
       const { data, error } = await supabase
         .from("community_posts")
         .insert({
