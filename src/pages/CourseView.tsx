@@ -87,8 +87,15 @@ export default function CourseView() {
   };
 
   const mod = modules[activeModule];
-  const completedCount = progress.completedLessons.length;
-  const progressPct = modules.length ? Math.round((completedCount / modules.length) * 100) : 0;
+
+  // Granular progress: count each section (lesson, lab, quiz) individually
+  const totalSections = modules.length * 3;
+  const completedSections = modules.reduce((sum, m) => {
+    const s = progress.sectionStatus[m.id];
+    if (!s) return sum;
+    return sum + (s.lesson ? 1 : 0) + (s.lab ? 1 : 0) + (s.quiz ? 1 : 0);
+  }, 0);
+  const progressPct = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
 
   // Section status helpers
   const getSectionDone = (moduleId: string, section: "lesson" | "lab" | "quiz") => {
