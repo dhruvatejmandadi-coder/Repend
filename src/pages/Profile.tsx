@@ -132,17 +132,24 @@ export default function Profile() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setLoading(true);
 
     localStorage.setItem(PROFILE_KEY, JSON.stringify({ fullName, bio }));
 
-    setTimeout(() => {
-      setLoading(false);
-      toast({
-        title: "Profile updated",
-        description: "Your changes have been saved.",
-      });
+    // Also save name to profiles table so it appears in Community & Challenges
+    if (user) {
+      await supabase
+        .from("profiles")
+        .update({ full_name: fullName })
+        .eq("user_id", user.id);
+    }
+
+    setLoading(false);
+    toast({
+      title: "Profile updated",
+      description: "Your changes have been saved.",
+    });
     }, 300);
   };
 
