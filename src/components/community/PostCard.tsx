@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Heart, MessageCircle, Trash2 } from "lucide-react";
 import { CommunityPost } from "@/hooks/useCommunityPosts";
 import { PostCommentsSection } from "./PostCommentsSection";
@@ -35,6 +35,7 @@ export function PostCard({ post, onLike, onDelete }: PostCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Avatar className="w-8 h-8">
+              <AvatarImage src={post.author_avatar_url || ""} />
               <AvatarFallback className="bg-primary/10 text-primary text-xs">
                 {(post.author_name || "?").charAt(0).toUpperCase()}
               </AvatarFallback>

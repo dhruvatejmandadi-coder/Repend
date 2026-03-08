@@ -13,6 +13,8 @@ export interface Challenge {
   user_id: string | null;
   lab_type: string | null;
   lab_data: any;
+  author_name?: string | null;
+  author_avatar_url?: string | null;
 }
 
 export function useChallenges() {
@@ -29,7 +31,26 @@ export function useChallenges() {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      setChallenges(data as Challenge[]);
+      // Fetch author profiles
+      const userIds = [...new Set(data.map((c: any) => c.user_id).filter(Boolean))] as string[];
+      let profileMap: Record<string, { name: string | null; avatar: string | null }> = {};
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("user_id, full_name, avatar_url")
+          .in("user_id", userIds);
+        if (profiles) {
+          for (const p of profiles) {
+            profileMap[p.user_id] = { name: p.full_name, avatar: p.avatar_url };
+          }
+        }
+      }
+
+      setChallenges(data.map((c: any) => ({
+        ...c,
+        author_name: c.user_id ? profileMap[c.user_id]?.name || null : null,
+        author_avatar_url: c.user_id ? profileMap[c.user_id]?.avatar || null : null,
+      })) as Challenge[]);
     }
 
     // Fetch participations for current user
