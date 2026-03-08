@@ -1,11 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import {
   CheckCircle2, RotateCcw, Lightbulb, Eye, EyeOff,
-  Send, FlaskConical, ChevronRight, BarChart3
+  Send, FlaskConical, ChevronRight, BarChart3, SlidersHorizontal
 } from "lucide-react";
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -16,6 +17,15 @@ import {
 /* ═══════════════ TYPES ═══════════════ */
 
 type MathPoint = { x: number; y: number; label?: string };
+
+type InteractiveParam = {
+  name: string;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+  default: number;
+};
 
 type GraphData = {
   type: "function" | "scatter" | "bar" | "histogram";
@@ -61,6 +71,7 @@ type MathLabData = {
   graph_data?: GraphData;
   geometry?: GeometryShape[];
   solution_steps?: SolutionStep[];
+  interactive_params?: InteractiveParam[];
   scenario?: string;
   instructions?: string;
   tasks: Task[];
@@ -75,42 +86,86 @@ type Props = {
   isCompleted?: boolean;
 };
 
-/* ═══════════════ GRAPH RENDERER ═══════════════ */
+/* ═══════════════ EVALUATE EQUATION ═══════════════ */
 
-function MathGraph({ graphData }: { graphData: GraphData }) {
+function evaluateEquation(equation: string, x: number, params: Record<string, number>): number | null {
+  try {
+    let expr = equation.replace(/\^/g, "**");
+    // Replace parameter variables with their values
+    for (const [name, value] of Object.entries(params)) {
+      // Replace standalone param names (not inside function names)
+      expr = expr.replace(new RegExp(`(?<![a-zA-Z.])${name}(?![a-zA-Z(])`, "g"), `(${value})`);
+    }
+    expr = expr.replace(/(?<![a-zA-Z.])x(?![a-zA-Z(])/g, `(${x})`);
+    const y = Function(`"use strict"; return (${expr})`)();
+    if (typeof y === "number" && isFinite(y)) return Math.round(y * 100) / 100;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/* ═══════════════ INTERACTIVE GRAPH ═══════════════ */
+
+function MathGraph({ graphData, interactiveParams }: { graphData: GraphData; interactiveParams?: InteractiveParam[] }) {
+  const hasSliders = interactiveParams && interactiveParams.length > 0;
+  const [paramValues, setParamValues] = useState<Record<string, number>>(() => {
+    const defaults: Record<string, number> = {};
+    if (interactiveParams) {
+      for (const p of interactiveParams) {
+        defaults[p.name] = p.default;
+      }
+    }
+    return defaults;
+  });
+
   const chartData = useMemo(() => {
-    if (graphData.points && graphData.points.length > 0) {
+    if (graphData.points && graphData.points.length > 0 && !hasSliders) {
       return graphData.points.map((p) => ({ x: p.x, y: p.y }));
     }
 
-    // Generate points from equation string
     if (graphData.equation) {
       const xMin = graphData.x_range?.[0] ?? -10;
       const xMax = graphData.x_range?.[1] ?? 10;
       const points: { x: number; y: number }[] = [];
-      const step = (xMax - xMin) / 80;
+      const step = (xMax - xMin) / 100;
 
       for (let x = xMin; x <= xMax; x += step) {
-        try {
-          // Safe eval for basic math expressions
-          const expr = graphData.equation
-            .replace(/\^/g, "**")
-            .replace(/x/g, `(${x})`);
-          const y = Function(`"use strict"; return (${expr})`)();
-          if (typeof y === "number" && isFinite(y)) {
-            points.push({ x: Math.round(x * 100) / 100, y: Math.round(y * 100) / 100 });
-          }
-        } catch {
-          // skip invalid points
+        const y = evaluateEquation(graphData.equation, x, paramValues);
+        if (y !== null) {
+          points.push({ x: Math.round(x * 100) / 100, y });
         }
       }
       return points;
     }
 
     return [];
-  }, [graphData]);
+  }, [graphData, paramValues, hasSliders]);
 
-  const keyPoints = graphData.key_points ?? [];
+  // Recalculate key points with current params
+  const dynamicKeyPoints = useMemo(() => {
+    if (!graphData.key_points || !graphData.equation) return graphData.key_points ?? [];
+    if (!hasSliders) return graphData.key_points;
+    // Re-evaluate key point y values with current params
+    return graphData.key_points.map(kp => {
+      const y = evaluateEquation(graphData.equation!, kp.x, paramValues);
+      return { ...kp, y: y ?? kp.y };
+    });
+  }, [graphData.key_points, graphData.equation, paramValues, hasSliders]);
+
+  const handleParamChange = useCallback((name: string, value: number) => {
+    setParamValues(prev => ({ ...prev, [name]: value }));
+  }, []);
+
+  // Build current equation display
+  const displayEquation = useMemo(() => {
+    if (!graphData.equation) return null;
+    let eq = graphData.equation;
+    for (const [name, value] of Object.entries(paramValues)) {
+      eq = eq.replace(new RegExp(`(?<![a-zA-Z.])${name}(?![a-zA-Z(])`, "g"), String(value));
+    }
+    return eq;
+  }, [graphData.equation, paramValues]);
 
   if (graphData.type === "bar" || graphData.type === "histogram") {
     const barData = (graphData.data_labels ?? []).map((label, i) => ({
@@ -146,24 +201,9 @@ function MathGraph({ graphData }: { graphData: GraphData }) {
         <ResponsiveContainer width="100%" height="100%">
           <ScatterChart>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis
-              dataKey="x"
-              name={graphData.x_label || "x"}
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            />
-            <YAxis
-              dataKey="y"
-              name={graphData.y_label || "y"}
-              tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
-            />
-            <Tooltip
-              contentStyle={{
-                background: "hsl(var(--card))",
-                border: "1px solid hsl(var(--border))",
-                borderRadius: "8px",
-                fontSize: 12,
-              }}
-            />
+            <XAxis dataKey="x" name={graphData.x_label || "x"} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+            <YAxis dataKey="y" name={graphData.y_label || "y"} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+            <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }} />
             <Scatter data={chartData} fill="hsl(var(--accent))" />
           </ScatterChart>
         </ResponsiveContainer>
@@ -171,62 +211,108 @@ function MathGraph({ graphData }: { graphData: GraphData }) {
     );
   }
 
-  // Default: Line chart (function graph)
+  // Default: Line chart (function graph) with optional sliders
   return (
-    <div className="w-full h-72 bg-background rounded-lg border p-2">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-          <XAxis
-            dataKey="x"
-            label={{ value: graphData.x_label || "x", position: "bottom", fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            type="number"
-            domain={graphData.x_range ? [graphData.x_range[0], graphData.x_range[1]] : ["auto", "auto"]}
-          />
-          <YAxis
-            label={{ value: graphData.y_label || "y", angle: -90, position: "insideLeft", fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
-            tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-            domain={graphData.y_range ? [graphData.y_range[0], graphData.y_range[1]] : ["auto", "auto"]}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "hsl(var(--card))",
-              border: "1px solid hsl(var(--border))",
-              borderRadius: "8px",
-              fontSize: 12,
-            }}
-            formatter={(value: number) => [value.toFixed(2), "y"]}
-            labelFormatter={(label: number) => `x = ${label}`}
-          />
-          <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
-          <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
-          <Line
-            type="monotone"
-            dataKey="y"
-            stroke="hsl(var(--accent))"
-            strokeWidth={2.5}
-            dot={false}
-            activeDot={{ r: 4, fill: "hsl(var(--accent))" }}
-          />
-          {keyPoints.map((kp, i) => (
-            <ReferenceDot
-              key={i}
-              x={kp.x}
-              y={kp.y}
-              r={5}
-              fill="hsl(var(--primary))"
-              stroke="hsl(var(--primary-foreground))"
-              strokeWidth={2}
-              label={{ value: kp.label, position: "top", fontSize: 11, fill: "hsl(var(--primary))" }}
+    <div className="space-y-3">
+      <div className="w-full h-72 bg-background rounded-lg border p-2">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis
+              dataKey="x"
+              label={{ value: graphData.x_label || "x", position: "bottom", fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              type="number"
+              domain={graphData.x_range ? [graphData.x_range[0], graphData.x_range[1]] : ["auto", "auto"]}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-      {graphData.equation && (
-        <p className="text-center text-sm font-mono text-accent mt-1">
-          y = {graphData.equation}
+            <YAxis
+              label={{ value: graphData.y_label || "y", angle: -90, position: "insideLeft", fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
+              tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+              domain={graphData.y_range ? [graphData.y_range[0], graphData.y_range[1]] : ["auto", "auto"]}
+            />
+            <Tooltip
+              contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: 12 }}
+              formatter={(value: number) => [value.toFixed(2), "y"]}
+              labelFormatter={(label: number) => `x = ${label}`}
+            />
+            <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
+            <ReferenceLine x={0} stroke="hsl(var(--muted-foreground))" strokeWidth={1} />
+            <Line
+              type="monotone"
+              dataKey="y"
+              stroke="hsl(var(--accent))"
+              strokeWidth={2.5}
+              dot={false}
+              activeDot={{ r: 4, fill: "hsl(var(--accent))" }}
+              isAnimationActive={false}
+            />
+            {dynamicKeyPoints.map((kp, i) => (
+              <ReferenceDot
+                key={i}
+                x={kp.x}
+                y={kp.y}
+                r={5}
+                fill="hsl(var(--primary))"
+                stroke="hsl(var(--primary-foreground))"
+                strokeWidth={2}
+                label={{ value: kp.label, position: "top", fontSize: 11, fill: "hsl(var(--primary))" }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Equation display */}
+      {displayEquation && (
+        <p className="text-center text-sm font-mono text-accent">
+          y = {displayEquation}
         </p>
+      )}
+
+      {/* Interactive Parameter Sliders */}
+      {hasSliders && (
+        <Card className="border-accent/20 bg-accent/[0.03]">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center gap-2 text-xs font-semibold text-accent">
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              Adjust Parameters
+            </div>
+            {interactiveParams!.map((param) => (
+              <div key={param.name} className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-medium text-muted-foreground">{param.label}</label>
+                  <Badge variant="outline" className="text-xs font-mono tabular-nums">
+                    {param.name} = {paramValues[param.name] ?? param.default}
+                  </Badge>
+                </div>
+                <Slider
+                  value={[paramValues[param.name] ?? param.default]}
+                  onValueChange={([v]) => handleParamChange(param.name, v)}
+                  min={param.min}
+                  max={param.max}
+                  step={param.step}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground">
+                  <span>{param.min}</span>
+                  <span>{param.max}</span>
+                </div>
+              </div>
+            ))}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                const defaults: Record<string, number> = {};
+                for (const p of interactiveParams!) defaults[p.name] = p.default;
+                setParamValues(defaults);
+              }}
+            >
+              <RotateCcw className="w-3 h-3 mr-1" /> Reset to defaults
+            </Button>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
@@ -449,7 +535,7 @@ export default function MathLab({ data, onComplete, isCompleted }: Props) {
 
           {/* Visual preview */}
           {data.visual_type === "graph" && data.graph_data && (
-            <MathGraph graphData={data.graph_data} />
+            <MathGraph graphData={data.graph_data} interactiveParams={data.interactive_params} />
           )}
           {data.visual_type === "geometry" && data.geometry && (
             <GeometryDiagram shapes={data.geometry} />
@@ -492,7 +578,7 @@ export default function MathLab({ data, onComplete, isCompleted }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {data.visual_type === "graph" && data.graph_data && <MathGraph graphData={data.graph_data} />}
+          {data.visual_type === "graph" && data.graph_data && <MathGraph graphData={data.graph_data} interactiveParams={data.interactive_params} />}
           {data.visual_type === "geometry" && data.geometry && <GeometryDiagram shapes={data.geometry} />}
           {data.visual_type === "chart" && data.graph_data && <MathGraph graphData={data.graph_data} />}
           {data.visual_type === "solution_steps" && data.solution_steps && <SolutionStepsVisual steps={data.solution_steps} />}

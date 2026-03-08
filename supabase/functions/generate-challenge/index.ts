@@ -51,34 +51,58 @@ The lab_data MUST contain ALL of these fields:
 - objective: What math skill the student will practice
 - concept_overview: 2-4 sentence explanation of the math concept
 - visual_type: One of "graph", "geometry", "solution_steps", "chart"
-- scenario: A real-world scenario where this math concept applies
+- scenario: A RELEVANT real-world scenario tied to the specific math concept
 - instructions: Step-by-step lab instructions
 - tasks: Array of 3-5 tasks (each with id, description, type, correct_answer)
 - hints: Array of 2 hint strings
 - solution: The correct answer
 - solution_explanation: Step-by-step explanation
 
+SCENARIO RULES (CRITICAL):
+The scenario MUST be unique and directly relevant to the math concept:
+- Linear functions → business revenue, distance vs time, phone plan pricing
+- Quadratic functions → projectile motion, maximizing garden area, bridge arches
+- Systems of equations → comparing pricing plans, mixing solutions
+- Geometry/triangles → building structures, measuring land, architecture
+- Statistics → analyzing survey data, sports statistics, weather patterns
+- Trigonometry → measuring heights with angles, wave motion, navigation
+- Exponential/logarithmic → population growth, radioactive decay, compound interest
+- Probability → games of chance, quality control, medical testing
+NEVER reuse the same generic scenario across different topics. Each lab must feel like a unique real-world application.
+
 VISUAL TYPE SELECTION RULES:
-- If the topic involves functions, equations, graphing, slopes, intercepts → visual_type = "graph"
+- If the topic involves functions, equations, graphing, slopes, intercepts, transformations → visual_type = "graph"
 - If the topic involves shapes, angles, triangles, circles, polygons → visual_type = "geometry"
-- If the topic involves solving equations step-by-step → visual_type = "solution_steps"
+- If the topic involves solving equations step-by-step, simplifying → visual_type = "solution_steps"
 - If the topic involves data, statistics, probability → visual_type = "chart"
 
-FOR visual_type = "graph", lab_data MUST include graph_data:
+FOR visual_type = "graph", lab_data MUST include graph_data AND interactive_params:
+
+graph_data:
 {
   "type": "function" or "scatter" or "bar",
-  "equation": "x^2 - 4*x + 3" (JavaScript math expression using x),
-  "x_label": "x",
-  "y_label": "y",
+  "equation": "a*x^2 + b*x + c" (JavaScript math expression using x and parameter variables a, b, c),
+  "x_label": "x (meaningful label, e.g. 'Time (seconds)')",
+  "y_label": "y (meaningful label, e.g. 'Height (meters)')",
   "x_range": [-5, 10],
   "y_range": [-5, 15],
   "key_points": [{"x": 2, "y": -1, "label": "Vertex (2,-1)"}, {"x": 1, "y": 0, "label": "Root (1,0)"}]
 }
+
+interactive_params (REQUIRED for graph topics):
+[
+  {"name": "a", "label": "Coefficient a", "min": -5, "max": 5, "step": 0.5, "default": 1},
+  {"name": "b", "label": "Coefficient b", "min": -10, "max": 10, "step": 1, "default": -4},
+  {"name": "c", "label": "Constant c", "min": -10, "max": 10, "step": 1, "default": 3}
+]
+These allow students to adjust sliders and watch the graph change in real-time.
+Use parameter variables (a, b, c, m, etc.) in the equation so sliders actually affect the graph.
+
 IMPORTANT: The equation must be a valid JavaScript math expression. Use * for multiplication, ^ for exponents. Examples:
-- "x^2 - 4*x + 3" for quadratics
-- "2*x + 1" for linear
-- "Math.sin(x)" for trig
-- "Math.abs(x)" for absolute value
+- "a*x^2 + b*x + c" for quadratics with interactive params
+- "m*x + b" for linear with slope/intercept sliders
+- "a*Math.sin(b*x + c)" for trig with amplitude/frequency/phase sliders
+- "a*Math.abs(x - h) + k" for absolute value with transformations
 
 FOR visual_type = "geometry", lab_data MUST include geometry (array of shapes):
 [{
@@ -99,6 +123,7 @@ TASK FORMAT:
 Each task must have: id (number), description (string), type ("input" | "choice" | "explanation"), correct_answer (string)
 For choice tasks, also include options (array of 3-4 strings).
 Tasks should progress from easier to harder.
+Include at least one task that references the visual (e.g. "Using the graph, identify..." or "From the diagram, calculate...").
 
 Return the result using the create_challenge_full function.`;
   }
