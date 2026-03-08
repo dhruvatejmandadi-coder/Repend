@@ -2,17 +2,17 @@ import { CheckCircle2 } from "lucide-react";
 
 const benefits = [
   "AI-generated courses tailored to any topic you choose",
-  "Interactive decision modules: simulations, scenarios, and classification tasks",
+  "Interactive simulations, decision labs, and classification tasks",
   "Daily challenges to keep your skills sharp",
-  "Track your progress and see real improvement",
+  "Detailed progress tracking and certificates",
 ];
 
 const categories = [
   { emoji: "💻", name: "Coding" },
-  { emoji: "📚", name: "School" },
+  { emoji: "📚", name: "Academic" },
   { emoji: "🎨", name: "Creative" },
-  { emoji: "💼", name: "Professional" },
-  { emoji: "🎬", name: "Video" },
+  { emoji: "💼", name: "Business" },
+  { emoji: "🔬", name: "Science" },
   { emoji: "✍️", name: "Writing" },
 ];
 
@@ -20,26 +20,26 @@ export function ValueProp() {
   return (
     <section className="py-24">
       <div className="container px-4 sm:px-6">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center max-w-6xl mx-auto">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center max-w-6xl mx-auto">
           {/* Content */}
           <div>
-            <span className="inline-block text-sm font-semibold text-primary uppercase tracking-wider mb-3">
-              The Repend Advantage
-            </span>
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-6 text-foreground">
-              Why learn with{" "}
-              <span className="gradient-text">Repend</span>?
+            <p className="text-[13px] font-semibold text-primary uppercase tracking-wider mb-3">
+              Why Repend
+            </p>
+            <h2 className="font-display text-3xl sm:text-4xl font-bold mb-5 text-foreground leading-tight">
+              Learning that actually{" "}
+              <span className="gradient-text">sticks</span>
             </h2>
-            <p className="text-muted-foreground text-lg mb-8 leading-relaxed">
+            <p className="text-muted-foreground text-base mb-8 leading-relaxed">
               Static tutorials only get you so far. Repend creates personalized courses with 
-              interactive decision modules and quizzes — so you actually <span className="text-foreground font-medium">retain</span> what you learn.
+              interactive decision modules — so you genuinely retain what you learn.
             </p>
             
-            <ul className="space-y-4">
+            <ul className="space-y-3.5">
               {benefits.map((benefit) => (
                 <li key={benefit} className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-accent mt-0.5 flex-shrink-0" />
-                  <span className="text-foreground">{benefit}</span>
+                  <CheckCircle2 className="w-4.5 h-4.5 text-accent mt-0.5 flex-shrink-0" />
+                  <span className="text-foreground/90 text-sm">{benefit}</span>
                 </li>
               ))}
             </ul>
@@ -47,56 +47,52 @@ export function ValueProp() {
 
           {/* Visual */}
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/5 rounded-3xl blur-2xl" />
-            <div className="relative bg-card border border-border rounded-3xl p-8 overflow-hidden shadow-lg">
+            <div className="relative bg-card border border-border/60 rounded-2xl p-7 overflow-hidden">
               {/* Categories */}
-              <p className="text-sm font-medium text-foreground mb-4">Generate a course on anything:</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">Generate a course on anything</p>
               <div className="flex flex-wrap gap-2 mb-6">
                 {categories.map((cat) => (
                   <div 
                     key={cat.name}
-                    className="flex items-center gap-2 px-3 py-2 bg-secondary rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors cursor-default"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary/60 rounded-lg text-[13px] font-medium transition-colors cursor-default border border-transparent hover:border-border/40"
                   >
                     <span>{cat.emoji}</span>
-                    <span>{cat.name}</span>
+                    <span className="text-foreground/80">{cat.name}</span>
                   </div>
                 ))}
               </div>
 
               {/* AI Course Card */}
-              <div className="bg-gradient-to-br from-accent/10 to-accent/5 rounded-2xl p-5 mb-4 border border-accent/20">
+              <div className="bg-gradient-to-br from-accent/[0.06] to-transparent rounded-xl p-5 mb-3 border border-accent/10">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl gradient-accent flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-xs">AI</span>
+                  <div className="w-9 h-9 rounded-lg gradient-accent flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-[11px]">AI</span>
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-foreground">AI Course Generator</p>
-                    <p className="text-xs text-muted-foreground">Instant personalized courses</p>
+                    <p className="font-semibold text-[13px] text-foreground">AI Course Generator</p>
+                    <p className="text-[11px] text-muted-foreground">Instant personalized courses</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground italic">
+                <p className="text-[13px] text-muted-foreground/80 italic">
                   "Generating your course on React hooks with 5 modules, quizzes, and a simulation lab..."
                 </p>
               </div>
 
               {/* Challenge Card */}
-              <div className="bg-gradient-to-br from-primary/10 to-primary/5 rounded-2xl p-5 border border-primary/20">
+              <div className="bg-gradient-to-br from-primary/[0.06] to-transparent rounded-xl p-5 border border-primary/10">
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-md">
-                    <span className="text-white font-bold text-sm">🏆</span>
+                  <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
+                    <span className="text-primary-foreground font-bold text-sm">🏆</span>
                   </div>
                   <div>
-                    <p className="font-semibold text-sm text-foreground">Daily Challenge</p>
-                    <p className="text-xs text-muted-foreground">New every day</p>
+                    <p className="font-semibold text-[13px] text-foreground">Daily Challenge</p>
+                    <p className="text-[11px] text-muted-foreground">New every day</p>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground italic">
+                <p className="text-[13px] text-muted-foreground/80 italic">
                   "Today's challenge: Build a responsive navbar using only CSS Grid..."
                 </p>
               </div>
-
-              {/* Decorative */}
-              <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-primary/10 rounded-full blur-2xl" />
             </div>
           </div>
         </div>

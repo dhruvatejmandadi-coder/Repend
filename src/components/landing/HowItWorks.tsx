@@ -5,82 +5,67 @@ const steps = [
     icon: BookOpen,
     title: "Generate a Course",
     description: "Tell the AI what you want to learn. It creates a full course with lessons, quizzes, and interactive labs — instantly.",
-    color: "primary",
+    step: "01",
   },
   {
     icon: Bot,
-    title: "Learn with AI",
-    description: "Work through modules at your own pace. Ask the AI tutor questions anytime and get personalized explanations.",
-    color: "accent",
+    title: "Learn Interactively",
+    description: "Work through modules at your own pace with AI-powered simulations, decision labs, and real-time feedback.",
+    step: "02",
   },
   {
     icon: Trophy,
-    title: "Take on Challenges",
-    description: "Complete daily challenges, track your progress, and level up alongside the community.",
-    color: "primary",
+    title: "Track & Challenge",
+    description: "Complete daily challenges, earn certificates, and measure your growth with detailed progress analytics.",
+    step: "03",
   },
 ];
 
 export function HowItWorks() {
   return (
-    <section className="py-24 bg-secondary/50">
-      <div className="container px-4 sm:px-6">
+    <section className="py-24 relative">
+      <div className="absolute inset-0 bg-secondary/30" />
+      <div className="container px-4 sm:px-6 relative">
         <div className="text-center mb-16">
-          <span className="inline-block text-sm font-semibold text-primary uppercase tracking-wider mb-3">
+          <p className="text-[13px] font-semibold text-primary uppercase tracking-wider mb-3">
             How it works
-          </span>
-          <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold mb-4 text-foreground">
-            Three simple steps to success
+          </p>
+          <h2 className="font-display text-3xl sm:text-4xl font-bold mb-4 text-foreground">
+            Three steps to mastery
           </h2>
-          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-            A proven process to accelerate your learning journey
+          <p className="text-muted-foreground text-base max-w-lg mx-auto">
+            A streamlined process designed for efficient, effective learning.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
           {steps.map((step, index) => (
-            <div
-              key={step.title}
-              className="relative group"
-            >
-              {/* Connector Arrow */}
+            <div key={step.title} className="relative group">
+              {/* Connector */}
               {index < steps.length - 1 && (
-                <div className="hidden md:flex absolute top-1/2 -right-4 lg:-right-6 z-10 transform -translate-y-1/2">
-                  <ArrowRight className="w-6 h-6 text-border" />
+                <div className="hidden md:flex absolute top-12 -right-3 z-10">
+                  <ArrowRight className="w-5 h-5 text-border/60" />
                 </div>
               )}
               
-              <div className="relative bg-card border border-border rounded-2xl p-8 text-center transition-all duration-300 hover:border-primary/30 hover:shadow-lg group-hover:-translate-y-1 card-elevated h-full">
-                {/* Step Number */}
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-foreground flex items-center justify-center shadow-md">
-                  <span className="text-sm font-bold text-background">{index + 1}</span>
-                </div>
+              <div className="relative bg-card/80 border border-border/60 rounded-xl p-7 transition-all duration-300 hover:border-primary/20 hover:bg-card group-hover:-translate-y-1 h-full">
+                {/* Step number */}
+                <span className="text-[11px] font-bold text-muted-foreground/40 uppercase tracking-widest mb-4 block">
+                  Step {step.step}
+                </span>
 
                 {/* Icon */}
-                <div className={`w-16 h-16 rounded-2xl mx-auto mb-6 flex items-center justify-center ${
-                  step.color === "primary" ? "gradient-primary" : "gradient-accent"
-                }`}>
-                  <step.icon className="w-8 h-8 text-white" />
+                <div className="w-11 h-11 rounded-lg gradient-primary flex items-center justify-center mb-5">
+                  <step.icon className="w-5 h-5 text-primary-foreground" />
                 </div>
 
-                <h3 className="font-display text-xl font-semibold mb-3 text-foreground">{step.title}</h3>
+                <h3 className="font-display text-lg font-semibold mb-2 text-foreground">{step.title}</h3>
                 <p className="text-muted-foreground text-sm leading-relaxed">
                   {step.description}
                 </p>
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Note */}
-        <div className="mt-16 max-w-2xl mx-auto text-center">
-          <div className="inline-flex items-center gap-3 px-6 py-4 rounded-2xl bg-card border border-border shadow-sm">
-            <Bot className="w-5 h-5 text-primary" />
-            <span className="text-sm text-muted-foreground">
-              <span className="text-primary font-semibold">AI generates your course.</span>{" "}
-              <span className="text-accent font-semibold">Challenges keep you sharp.</span>
-            </span>
-          </div>
         </div>
       </div>
     </section>

@@ -4,54 +4,66 @@ import { Link } from "react-router-dom";
 
 export function Hero() {
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center pt-20 overflow-hidden">
+    <section className="relative min-h-[92vh] flex items-center justify-center pt-16 overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0" style={{ background: 'var(--gradient-hero)' }} />
-      <div className="absolute top-20 right-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-20 left-1/4 w-96 h-96 bg-accent/8 rounded-full blur-3xl" />
-      <div className="absolute top-1/3 left-1/3 w-2 h-2 bg-accent/40 rounded-full animate-float" />
-      <div className="absolute top-1/4 right-1/3 w-1.5 h-1.5 bg-primary/50 rounded-full animate-float" style={{ animationDelay: '1s' }} />
+      
+      {/* Subtle grid pattern */}
+      <div className="absolute inset-0 opacity-[0.03]" style={{
+        backgroundImage: `linear-gradient(hsl(214 80% 56%) 1px, transparent 1px), linear-gradient(90deg, hsl(214 80% 56%) 1px, transparent 1px)`,
+        backgroundSize: '64px 64px'
+      }} />
+      
+      {/* Ambient light */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/[0.06] rounded-full blur-[120px]" />
+      <div className="absolute bottom-1/4 left-1/4 w-[400px] h-[400px] bg-accent/[0.04] rounded-full blur-[100px]" />
       
       <div className="container relative z-10 px-4 sm:px-6 py-16">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-3xl mx-auto text-center">
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-8 animate-fade-in">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm font-medium text-primary">
-              AI-Powered Courses + Daily Challenges
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/[0.08] border border-primary/15 mb-10 animate-fade-in">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[13px] font-medium text-primary/90">
+              AI-Powered Learning Platform
             </span>
           </div>
 
           {/* Main Headline */}
-          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 animate-fade-in-up text-foreground">
-            Learn anything with{" "}
-            <span className="gradient-text">AI courses</span>
-            <br />
-            and daily{" "}
-            <span className="text-accent">challenges</span>
+          <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-[4.25rem] font-bold leading-[1.1] mb-6 animate-fade-in-up text-foreground">
+            Master any skill with{" "}
+            <span className="gradient-text">AI-generated</span>
+            {" "}courses
           </h1>
 
           {/* Subheadline */}
-          <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in-up leading-relaxed" style={{ animationDelay: '0.2s' }}>
-            Generate personalized courses on any topic, take on daily challenges, and grow with a community of learners — all powered by AI.
+          <p className="text-base sm:text-lg text-muted-foreground max-w-xl mx-auto mb-10 animate-fade-in-up leading-relaxed" style={{ animationDelay: '0.15s' }}>
+            Personalized courses with interactive simulations, daily challenges, and real-time progress tracking — all generated in seconds.
           </p>
 
           {/* CTAs */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
-            <Button variant="hero" size="xl" asChild>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 animate-fade-in-up" style={{ animationDelay: '0.25s' }}>
+            <Button variant="hero" size="lg" asChild>
               <Link to="/courses">
-                Try AI Course Free
-                <ArrowRight className="w-5 h-5" />
+                Start Learning Free
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </Button>
-            <Button variant="heroOutline" size="xl" asChild>
+            <Button variant="outline" size="lg" asChild className="border-border/60">
               <Link to="/login">
                 Sign In
               </Link>
             </Button>
           </div>
+
+          {/* Social proof hint */}
+          <p className="text-xs text-muted-foreground/60 mt-8 animate-fade-in" style={{ animationDelay: '0.4s' }}>
+            No credit card required · Courses generated in under 30 seconds
+          </p>
         </div>
       </div>
+
+      {/* Bottom fade */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent" />
     </section>
   );
 }

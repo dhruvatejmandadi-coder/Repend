@@ -10,7 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { GeneratingSignUpPrompt } from "@/components/survey/GeneratingSignUpPrompt";
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ".pdf,.txt,.md,.csv,.png,.jpg,.jpeg,.webp";
 
 type Course = {
@@ -58,14 +58,11 @@ export default function Courses() {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > MAX_FILE_SIZE) {
       toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
       return;
     }
-
     setSelectedFile(file);
-    // Reset input so same file can be re-selected
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -79,18 +76,14 @@ export default function Courses() {
 
   const uploadFile = async (): Promise<string | null> => {
     if (!selectedFile || !user) return null;
-
     setIsUploading(true);
     const path = `${user.id}/${Date.now()}_${selectedFile.name}`;
-
     const { error } = await supabase.storage.from("course-uploads").upload(path, selectedFile);
-
     if (error) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
       setIsUploading(false);
       return null;
     }
-
     setIsUploading(false);
     return path;
   };
@@ -108,13 +101,9 @@ export default function Courses() {
     setIsGenerating(true);
     try {
       let filePath: string | null = null;
-
       if (selectedFile) {
         filePath = await uploadFile();
-        if (!filePath) {
-          setIsGenerating(false);
-          return;
-        }
+        if (!filePath) { setIsGenerating(false); return; }
       }
 
       const body: Record<string, string> = { topic: topic.trim() || selectedFile?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document" };
@@ -163,34 +152,34 @@ export default function Courses() {
 
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6">
+      <div className="page-container space-y-10">
         {/* Header */}
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/50 border border-border mb-6">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm text-muted-foreground">AI-Powered Learning</span>
+        <div className="max-w-2xl mx-auto text-center pt-4">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/[0.08] border border-primary/15 mb-6">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[13px] font-medium text-primary/90">AI-Powered Learning</span>
           </div>
-          <h1 className="font-display text-3xl sm:text-4xl font-bold mb-4">
+          <h1 className="font-display text-3xl sm:text-4xl font-bold mb-3">
             {user ? (
               <>Learn <span className="gradient-text">Anything</span></>
             ) : (
               <>Try AI <span className="gradient-text">Course Generation</span></>
             )}
           </h1>
-          <p className="text-muted-foreground mb-6">
+          <p className="text-muted-foreground text-sm mb-8 max-w-md mx-auto">
             {user
-              ? "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated YouTube videos."
+              ? "Type any topic and our AI will create a full course with lessons, labs, quizzes, and curated videos."
               : "Enter any topic below and watch our AI build a personalized course"}
           </p>
 
           {/* Generate Form */}
-          <div className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
+          <div className="flex flex-col sm:flex-row gap-2.5 max-w-lg mx-auto">
             <div className="flex-1 flex gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                className="shrink-0 h-10 w-10"
+                className="shrink-0 h-10 w-10 border-border/60"
                 onClick={handleAttachClick}
                 disabled={isGenerating}
                 title="Attach a file (PDF, image, text) for personalized course generation"
@@ -232,14 +221,11 @@ export default function Courses() {
           {/* File chip */}
           {selectedFile && (
             <div className="flex items-center justify-center gap-2 mt-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border text-sm">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/60 border border-border/50 text-[13px]">
                 <FileText className="w-3.5 h-3.5 text-primary" />
                 <span className="text-foreground max-w-[200px] truncate">{selectedFile.name}</span>
                 <span className="text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
-                <button
-                  onClick={() => setSelectedFile(null)}
-                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
-                >
+                <button onClick={() => setSelectedFile(null)} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -248,48 +234,51 @@ export default function Courses() {
 
           {/* Guest hint */}
           {!user && !isGenerating && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs text-muted-foreground/60 mt-4">
               Create an account to save your courses.
             </p>
           )}
         </div>
 
-        {/* Courses List (authenticated only) */}
+        {/* Courses List */}
         {user && (
           <>
             {loading ? (
-              <div className="flex justify-center py-12">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <div className="flex justify-center py-16">
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
               </div>
             ) : courses.length > 0 ? (
-              <div className="max-w-4xl mx-auto">
-                <h2 className="font-display text-xl font-bold mb-4">Your Courses</h2>
+              <div className="max-w-5xl mx-auto">
+                <div className="flex items-center justify-between mb-5">
+                  <h2 className="font-display text-lg font-semibold text-foreground">Your Courses</h2>
+                  <span className="text-xs text-muted-foreground">{courses.length} course{courses.length !== 1 && 's'}</span>
+                </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {courses.map((course) => (
                     <Card
                       key={course.id}
-                      className="bg-card border-border hover:border-primary/30 transition-colors cursor-pointer group"
+                      className="bg-card/80 border-border/50 hover:border-primary/20 transition-all duration-200 cursor-pointer group hover:-translate-y-0.5"
                       onClick={() => course.status === "ready" && navigate(`/courses/${course.id}`)}
                     >
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-3">
-                          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                            <BookOpen className="w-5 h-5 text-primary-foreground" />
+                          <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center">
+                            <BookOpen className="w-4 h-4 text-primary-foreground" />
                           </div>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-8 w-8"
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive h-7 w-7"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleDelete(course.id);
                             }}
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-3.5 h-3.5" />
                           </Button>
                         </div>
-                        <h3 className="font-display font-semibold mb-1 line-clamp-2">{course.title}</h3>
-                        <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                        <h3 className="font-display font-semibold text-[15px] mb-1 line-clamp-2">{course.title}</h3>
+                        <p className="text-[13px] text-muted-foreground line-clamp-2 mb-4">
                           {course.description || course.topic}
                         </p>
                         {course.status === "generating" ? (
@@ -300,8 +289,8 @@ export default function Courses() {
                         ) : course.status === "failed" ? (
                           <span className="text-xs text-destructive">Generation failed</span>
                         ) : (
-                          <div className="flex items-center gap-1 text-xs text-primary">
-                            View Course <ArrowRight className="w-3 h-3" />
+                          <div className="flex items-center gap-1 text-xs text-primary font-medium">
+                            Continue <ArrowRight className="w-3 h-3" />
                           </div>
                         )}
                       </CardContent>
@@ -310,9 +299,9 @@ export default function Courses() {
                 </div>
               </div>
             ) : (
-              <div className="text-center py-12 text-muted-foreground">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p>No courses yet. Create your first one above!</p>
+              <div className="text-center py-16 text-muted-foreground">
+                <BookOpen className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">No courses yet. Create your first one above!</p>
               </div>
             )}
           </>

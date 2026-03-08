@@ -23,28 +23,27 @@ const Index = () => {
   }
 
   const handleSurveyClick = () => {
-    // Allow anonymous surveys - no login required
     setSurveyOpen(true);
   };
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--gradient-hero)' }}>
+    <div className="min-h-screen bg-background">
       <Header />
       <main>
         <Hero />
         
         {/* Survey CTA Section */}
-        <section className="py-16 bg-secondary/50">
-          <div className="container max-w-4xl text-center">
-            <span className="inline-block text-sm font-semibold text-accent uppercase tracking-wider mb-3">
+        <section className="py-20 relative">
+          <div className="absolute inset-0 bg-secondary/20" />
+          <div className="container max-w-3xl text-center relative">
+            <p className="text-[13px] font-semibold text-accent uppercase tracking-wider mb-3">
               Personalize Your Experience
-            </span>
-            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
-              Tell Us What You Want to Learn
+            </p>
+            <h2 className="font-display text-2xl sm:text-3xl font-bold mb-4 text-foreground">
+              Tell us what you want to learn
             </h2>
-            <p className="text-muted-foreground text-lg mb-8 max-w-2xl mx-auto">
-              Take a quick survey so we can understand your goals, learning style, and challenges. 
-              We'll tailor your course recommendations and challenge suggestions.
+            <p className="text-muted-foreground text-base mb-8 max-w-lg mx-auto">
+              Take a quick survey so we can tailor your course recommendations and challenge suggestions.
             </p>
             <Button 
               variant="hero" 
@@ -52,7 +51,7 @@ const Index = () => {
               onClick={handleSurveyClick}
               className="gap-2"
             >
-              <ClipboardList className="w-5 h-5" />
+              <ClipboardList className="w-4 h-4" />
               Take the Survey
             </Button>
           </div>

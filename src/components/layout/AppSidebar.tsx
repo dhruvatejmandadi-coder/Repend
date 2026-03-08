@@ -20,11 +20,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarHeader,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useAdmin } from "@/hooks/useAdmin";
+import rependLogo from "@/assets/repend-logo.png";
 
 const guestItems = [
   { title: "Try AI Course", url: "/courses", icon: BookOpen },
@@ -59,11 +61,18 @@ export function AppSidebar() {
   const mainItems = user ? authedMainItems : guestItems;
 
   return (
-    <Sidebar collapsible="icon" className="border-r border-border">
-      <SidebarContent className="pt-4">
+    <Sidebar collapsible="icon" className="border-r border-border/60">
+      {/* Logo in sidebar header */}
+      <SidebarHeader className="px-4 py-5 border-b border-border/40">
+        <NavLink to={user ? "/courses" : "/"} className="flex items-center gap-2">
+          <img src={rependLogo} alt="Repend" className="h-7 w-auto object-contain" />
+        </NavLink>
+      </SidebarHeader>
+
+      <SidebarContent className="pt-2">
         <SidebarGroup>
-          <SidebarGroupLabel className={cn(collapsed && "sr-only")}>
-            {user ? "Main" : "Explore"}
+          <SidebarGroupLabel className={cn("text-[11px] uppercase tracking-widest text-muted-foreground/60 font-medium", collapsed && "sr-only")}>
+            {user ? "Navigation" : "Explore"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -77,12 +86,14 @@ export function AppSidebar() {
                     <NavLink
                       to={item.url}
                       className={cn(
-                        "flex items-center gap-3",
-                        isActive(item.url) && "text-primary"
+                        "flex items-center gap-3 rounded-lg transition-all duration-150",
+                        isActive(item.url) 
+                          ? "text-primary font-medium" 
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      <span>{item.title}</span>
+                      <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                      <span className="text-[13px]">{item.title}</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -93,7 +104,7 @@ export function AppSidebar() {
 
         {user && isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className={cn(collapsed && "sr-only")}>
+            <SidebarGroupLabel className={cn("text-[11px] uppercase tracking-widest text-muted-foreground/60 font-medium", collapsed && "sr-only")}>
               Admin
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -107,12 +118,14 @@ export function AppSidebar() {
                     <NavLink
                       to="/admin"
                       className={cn(
-                        "flex items-center gap-3",
-                        isActive("/admin") && "text-primary"
+                        "flex items-center gap-3 rounded-lg transition-all duration-150",
+                        isActive("/admin") 
+                          ? "text-primary font-medium" 
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      <Shield className="w-4 h-4 flex-shrink-0" />
-                      <span>Admin</span>
+                      <Shield className="w-[18px] h-[18px] flex-shrink-0" />
+                      <span className="text-[13px]">Admin</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -123,8 +136,8 @@ export function AppSidebar() {
 
         {user && (
           <SidebarGroup>
-            <SidebarGroupLabel className={cn(collapsed && "sr-only")}>
-              Learning
+            <SidebarGroupLabel className={cn("text-[11px] uppercase tracking-widest text-muted-foreground/60 font-medium", collapsed && "sr-only")}>
+              Personal
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -138,12 +151,14 @@ export function AppSidebar() {
                       <NavLink
                         to={item.url}
                         className={cn(
-                          "flex items-center gap-3",
-                          isActive(item.url) && "text-primary"
+                          "flex items-center gap-3 rounded-lg transition-all duration-150",
+                          isActive(item.url) 
+                            ? "text-primary font-medium" 
+                            : "text-muted-foreground hover:text-foreground"
                         )}
                       >
-                        <item.icon className="w-4 h-4 flex-shrink-0" />
-                        <span>{item.title}</span>
+                        <item.icon className="w-[18px] h-[18px] flex-shrink-0" />
+                        <span className="text-[13px]">{item.title}</span>
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -154,7 +169,7 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="p-3">
+      <SidebarFooter className="p-3 border-t border-border/40">
         <SidebarMenu>
           {user && (
             <SidebarMenuItem>
@@ -164,8 +179,8 @@ export function AppSidebar() {
                 className="flex items-center gap-3 text-primary hover:text-primary/80 cursor-pointer font-medium"
               >
                 <NavLink to="/pricing">
-                  <Sparkles className="w-4 h-4 flex-shrink-0" />
-                  <span>Upgrade</span>
+                  <Sparkles className="w-[18px] h-[18px] flex-shrink-0" />
+                  <span className="text-[13px]">Upgrade</span>
                 </NavLink>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -177,8 +192,8 @@ export function AppSidebar() {
                 onClick={handleSignOut}
                 className="flex items-center gap-3 text-muted-foreground hover:text-destructive cursor-pointer"
               >
-                <LogOut className="w-4 h-4 flex-shrink-0" />
-                <span>Sign Out</span>
+                <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+                <span className="text-[13px]">Sign Out</span>
               </SidebarMenuButton>
             ) : (
               <SidebarMenuButton
@@ -187,8 +202,8 @@ export function AppSidebar() {
                 className="flex items-center gap-3 text-muted-foreground hover:text-primary cursor-pointer"
               >
                 <NavLink to="/login">
-                  <LogIn className="w-4 h-4 flex-shrink-0" />
-                  <span>Sign In</span>
+                  <LogIn className="w-[18px] h-[18px] flex-shrink-0" />
+                  <span className="text-[13px]">Sign In</span>
                 </NavLink>
               </SidebarMenuButton>
             )}
