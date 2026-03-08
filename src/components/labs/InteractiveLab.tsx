@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import ClassificationLab from "./ClassificationLab";
 import PolicyOptimizationLab from "./PolicyOptimizationLab";
 import EthicalDilemmaLab from "./EthicalDilemmaLab";
+import DecisionLab from "./DecisionLab";
 
 /* ================= TYPES ================= */
 
@@ -277,6 +278,13 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
     const hasData = labData?.dimensions?.length > 0 && labData?.decisions?.length > 0;
     if (!hasData) return <LabEmptyState labType={labType} />;
     return <EthicalDilemmaLab data={labData} />;
+  }
+
+  // Decision Lab
+  if (labType === "decision_lab") {
+    const hasData = labData?.scenario && labData?.constraints?.length > 0 && labData?.decision_prompt;
+    if (!hasData) return <LabEmptyState labType={labType} />;
+    return <DecisionLab data={labData} />;
   }
 
   // Default: Simulation

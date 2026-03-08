@@ -20,7 +20,7 @@ const CourseSchema = z.object({
       lesson_content: z.string(),
       youtube_query: z.string().optional(),
       youtube_title: z.string().optional(),
-      lab_type: z.enum(["simulation", "classification", "policy_optimization", "ethical_dilemma"]),
+      lab_type: z.enum(["simulation", "classification", "policy_optimization", "ethical_dilemma", "decision_lab"]),
       lab_data: z.any(),
       quiz: z.array(
         z.object({
@@ -116,6 +116,16 @@ function isValidEthicalDilemma(ld: any): boolean {
       }
     }
   }
+  return true;
+}
+
+function isValidDecisionLab(ld: any): boolean {
+  if (!ld || typeof ld !== "object") return false;
+  if (typeof ld.scenario !== "string" || ld.scenario.length < 20) return false;
+  if (!Array.isArray(ld.constraints) || ld.constraints.length < 2) return false;
+  if (typeof ld.decision_prompt !== "string") return false;
+  if (typeof ld.twist !== "string" || ld.twist.length < 10) return false;
+  if (typeof ld.reflection_question !== "string") return false;
   return true;
 }
 
@@ -267,8 +277,28 @@ function generateEthicalDilemmaFallback(title: string) {
   };
 }
 
+function generateDecisionLabFallback(title: string) {
+  const t = title || "Topic";
+  return {
+    scenario: `You are a decision-maker responsible for a critical ${t.toLowerCase()} initiative. Your organization has invested significant resources, and stakeholders expect results within 6 months. The market is competitive and conditions are shifting rapidly.`,
+    constraints: [
+      `Budget is fixed — no additional funding available`,
+      `You must maintain team morale above acceptable levels`,
+      `Regulatory compliance requirements cannot be violated`,
+    ],
+    decision_prompt: `Given these constraints, what is your strategic approach to delivering results in ${t.toLowerCase()}?`,
+    twist: `Halfway through execution, a key competitor releases a superior solution and your primary team lead resigns unexpectedly. Your original timeline is now at risk.`,
+    reflection_question: `Looking back at your initial strategy and how you adapted: what assumption was most dangerous, and what would you do differently from the start?`,
+    difficulty_tier: 2,
+    variables: {
+      budget: { label: "Budget", value: "$100K" },
+      timeline: { label: "Timeline", value: "6 months" },
+      team_size: { label: "Team", value: "5 people" },
+    },
+  };
+}
 /* ===============================
-   🔧 REPAIR MODULES
+   REPAIR MODULES
 ================================ */
 
 function repairModules(parsed: any) {
@@ -411,6 +441,11 @@ function repairModules(parsed: any) {
           if (!dim.description) dim.description = "";
         }
       }
+    } else if (mod.lab_type === "decision_lab") {
+      if (!isValidDecisionLab(ld)) {
+        console.warn(`[RepairModules] decision_lab fallback generated for: "${title}"`);
+        mod.lab_data = generateDecisionLabFallback(title);
+      }
     }
 
     // --- FINAL GUARD ---
@@ -418,7 +453,8 @@ function repairModules(parsed: any) {
       (mod.lab_type === "simulation" && isValidSimulation(mod.lab_data)) ||
       (mod.lab_type === "classification" && isValidClassification(mod.lab_data)) ||
       (mod.lab_type === "policy_optimization" && isValidPolicyOptimization(mod.lab_data)) ||
-      (mod.lab_type === "ethical_dilemma" && isValidEthicalDilemma(mod.lab_data));
+      (mod.lab_type === "ethical_dilemma" && isValidEthicalDilemma(mod.lab_data)) ||
+      (mod.lab_type === "decision_lab" && isValidDecisionLab(mod.lab_data));
 
     if (!finalValid) {
       console.error(`[RepairModules] FINAL GUARD - Forced simulation for: "${title}"`);
@@ -627,8 +663,9 @@ Choose lab_type based on the topic's cognitive nature:
 - "classification" → for analytical/sorting topics (categorization, identification, prioritization)
 - "policy_optimization" → for strategic/constraint topics (reaching targets within limits)
 - "ethical_dilemma" → for ethical/moral topics (tradeoff decisions with no perfect answer)
+- "decision_lab" → for strategic reasoning, business, negotiation, product design, engineering decisions — ANY topic requiring free-text strategic thinking with AI critique
 
-Mix lab types across modules. Do NOT use the same lab_type for every module.
+PREFER decision_lab for at least 1-2 modules per course. Mix lab types across modules. Do NOT use the same lab_type for every module.
 
 === SIMULATION LAB (lab_type: "simulation") ===
 lab_data format:
@@ -707,8 +744,32 @@ lab_data format:
 }
 RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve at least one dimension AND harm at least one other. Use "impacts" (deltas, -50 to +50), NOT "set_state". Student is scored on BALANCE across dimensions.
 
+=== DECISION LAB (lab_type: "decision_lab") ===
+lab_data format:
+{
+  "scenario": "Detailed real-world scenario (3-5 sentences). Must be specific, concrete, and domain-relevant.",
+  "constraints": ["Constraint 1", "Constraint 2", "Constraint 3"],
+  "decision_prompt": "What is your strategic approach to [specific challenge]?",
+  "twist": "A new constraint that fundamentally breaks or challenges the student's initial strategy (2-3 sentences).",
+  "reflection_question": "Looking back at your decisions, what would you change and why?",
+  "difficulty_tier": 2,
+  "variables": {
+    "budget": {"label": "Budget", "value": "$100K"},
+    "timeline": {"label": "Timeline", "value": "6 months"},
+    "team_size": {"label": "Team", "value": "5 people"}
+  }
+}
+RULES:
+- Scenario must be specific and grounded (not abstract)
+- 2-3 hard constraints that force tradeoffs
+- Twist must genuinely challenge the initial strategy (not just add difficulty)
+- difficulty_tier: 1 (basic clarity), 2 (constrained), 3 (strategic tradeoffs)
+- variables: randomizable parameters that make each run feel different
+- Students write free-text responses; AI provides critique
+- This lab type is PREFERRED for business, strategy, engineering, negotiation, product design topics
+
 ${filePath ? "IMPORTANT: The user has uploaded SOURCE MATERIAL. You MUST base the course content directly on the material provided. Extract key concepts, facts, and structure from the source material. Do NOT generate generic content — every lesson, lab scenario, and quiz question should reference or build upon the uploaded material." : ""}
-Generate 4-6 modules with a good mix of lab types.`,
+Generate 4-6 modules with a good mix of lab types. Include at least 1-2 decision_lab modules.`,
           },
           { role: "user", content: userContent },
         ],
@@ -732,7 +793,7 @@ Generate 4-6 modules with a good mix of lab types.`,
                         lesson_content: { type: "string", description: "Markdown lesson with --- slide separators" },
                         youtube_query: { type: "string" },
                         youtube_title: { type: "string" },
-                        lab_type: { type: "string", enum: ["simulation", "classification", "policy_optimization", "ethical_dilemma"] },
+                        lab_type: { type: "string", enum: ["simulation", "classification", "policy_optimization", "ethical_dilemma", "decision_lab"] },
                         lab_data: { type: "object", description: "Lab configuration object" },
                         quiz: {
                           type: "array",
