@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
