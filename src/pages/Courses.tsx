@@ -308,6 +308,9 @@ export default function Courses() {
         )}
       </div>
 
+      {/* Course generation loading screen */}
+      <CourseGeneratingScreen topic={topic || selectedFile?.name || ""} isVisible={isGenerating && !!user} />
+
       <GeneratingSignUpPrompt open={showSignUpPrompt} onOpenChange={handleSignUpPromptClose} topic={topic} />
     </>
   );
