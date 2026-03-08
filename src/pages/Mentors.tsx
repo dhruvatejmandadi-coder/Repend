@@ -211,6 +211,5 @@ export default function Mentors() {
           </Button>
         </div>
       </div>
-    </div>
   );
 }
