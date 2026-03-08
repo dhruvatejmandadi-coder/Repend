@@ -179,6 +179,8 @@ export type Database = {
           expires_at: string | null
           id: string
           is_daily: boolean
+          lab_data: Json | null
+          lab_type: string | null
           title: string
           updated_at: string
           user_id: string | null
@@ -190,6 +192,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_daily?: boolean
+          lab_data?: Json | null
+          lab_type?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
@@ -201,6 +205,8 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_daily?: boolean
+          lab_data?: Json | null
+          lab_type?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
