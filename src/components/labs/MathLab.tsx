@@ -535,7 +535,7 @@ export default function MathLab({ data, onComplete, isCompleted }: Props) {
 
           {/* Visual preview */}
           {data.visual_type === "graph" && data.graph_data && (
-            <MathGraph graphData={data.graph_data} />
+            <MathGraph graphData={data.graph_data} interactiveParams={data.interactive_params} />
           )}
           {data.visual_type === "geometry" && data.geometry && (
             <GeometryDiagram shapes={data.geometry} />
