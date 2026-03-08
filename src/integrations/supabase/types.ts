@@ -174,39 +174,63 @@ export type Database = {
       }
       challenges: {
         Row: {
+          challenge_type: string | null
           created_at: string
           description: string
+          difficulty: string | null
           expires_at: string | null
+          hints: Json | null
           id: string
+          instructions: string | null
           is_daily: boolean
           lab_data: Json | null
           lab_type: string | null
+          objective: string | null
+          problem: string | null
+          solution: string | null
+          solution_explanation: string | null
           title: string
           updated_at: string
           user_id: string | null
           youtube_url: string | null
         }
         Insert: {
+          challenge_type?: string | null
           created_at?: string
           description: string
+          difficulty?: string | null
           expires_at?: string | null
+          hints?: Json | null
           id?: string
+          instructions?: string | null
           is_daily?: boolean
           lab_data?: Json | null
           lab_type?: string | null
+          objective?: string | null
+          problem?: string | null
+          solution?: string | null
+          solution_explanation?: string | null
           title: string
           updated_at?: string
           user_id?: string | null
           youtube_url?: string | null
         }
         Update: {
+          challenge_type?: string | null
           created_at?: string
           description?: string
+          difficulty?: string | null
           expires_at?: string | null
+          hints?: Json | null
           id?: string
+          instructions?: string | null
           is_daily?: boolean
           lab_data?: Json | null
           lab_type?: string | null
+          objective?: string | null
+          problem?: string | null
+          solution?: string | null
+          solution_explanation?: string | null
           title?: string
           updated_at?: string
           user_id?: string | null
