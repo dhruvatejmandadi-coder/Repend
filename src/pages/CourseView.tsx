@@ -399,6 +399,6 @@ export default function CourseView() {
           </main>
         )}
       </div>
-    </DashboardLayout>
+    </>
   );
 }

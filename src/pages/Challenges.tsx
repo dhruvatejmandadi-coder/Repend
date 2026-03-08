@@ -201,6 +201,6 @@ export default function Challenges() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

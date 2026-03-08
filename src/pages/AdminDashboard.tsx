@@ -560,7 +560,7 @@ export default function AdminDashboard() {
           )}
         </Tabs>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 
