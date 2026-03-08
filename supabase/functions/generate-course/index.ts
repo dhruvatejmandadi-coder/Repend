@@ -277,7 +277,26 @@ function generateEthicalDilemmaFallback(title: string) {
   };
 }
 
-/* ===============================
+function generateDecisionLabFallback(title: string) {
+  const t = title || "Topic";
+  return {
+    scenario: `You are a decision-maker responsible for a critical ${t.toLowerCase()} initiative. Your organization has invested significant resources, and stakeholders expect results within 6 months. The market is competitive and conditions are shifting rapidly.`,
+    constraints: [
+      `Budget is fixed — no additional funding available`,
+      `You must maintain team morale above acceptable levels`,
+      `Regulatory compliance requirements cannot be violated`,
+    ],
+    decision_prompt: `Given these constraints, what is your strategic approach to delivering results in ${t.toLowerCase()}?`,
+    twist: `Halfway through execution, a key competitor releases a superior solution and your primary team lead resigns unexpectedly. Your original timeline is now at risk.`,
+    reflection_question: `Looking back at your initial strategy and how you adapted: what assumption was most dangerous, and what would you do differently from the start?`,
+    difficulty_tier: 2,
+    variables: {
+      budget: { label: "Budget", value: "$100K" },
+      timeline: { label: "Timeline", value: "6 months" },
+      team_size: { label: "Team", value: "5 people" },
+    },
+  };
+}
    🔧 REPAIR MODULES
 ================================ */
 
