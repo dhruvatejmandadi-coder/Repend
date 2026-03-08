@@ -450,6 +450,27 @@ IMPORTANT: Generate a COMPLETE, PLAYABLE interactive lab with all required field
       if (!challengeData.lab_data.max_moves) challengeData.lab_data.max_moves = 4;
     }
 
+    // ── Repair math_lab data ──
+    if (challengeData.lab_type === "math_lab" && challengeData.lab_data) {
+      const ld = challengeData.lab_data;
+      if (!ld.title) ld.title = challengeData.title;
+      if (!ld.objective) ld.objective = challengeData.objective || "";
+      if (!ld.concept_overview) ld.concept_overview = challengeData.description || "";
+      if (!ld.visual_type) ld.visual_type = "graph";
+      if (!ld.tasks || !Array.isArray(ld.tasks) || ld.tasks.length === 0) {
+        ld.tasks = [
+          { id: 1, description: "Analyze the visual representation.", type: "explanation", correct_answer: "" },
+          { id: 2, description: "Identify the key values.", type: "input", correct_answer: "" },
+          { id: 3, description: "Explain the concept in your own words.", type: "explanation", correct_answer: "" },
+        ];
+      }
+      // Ensure task ids
+      ld.tasks.forEach((t: any, i: number) => { if (!t.id) t.id = i + 1; });
+      if (!ld.hints || !Array.isArray(ld.hints)) ld.hints = challengeData.hints || ["Think step by step.", "Review the visual."];
+      if (!ld.solution) ld.solution = challengeData.solution || "";
+      if (!ld.solution_explanation) ld.solution_explanation = challengeData.solution_explanation || "";
+    }
+
     console.log("Generated challenge:", challengeData.lab_type, "with", Object.keys(challengeData.lab_data).length, "lab fields");
 
     return new Response(JSON.stringify({ challenge_data: challengeData }), {
