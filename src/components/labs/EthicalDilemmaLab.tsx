@@ -39,6 +39,12 @@ export default function EthicalDilemmaLab({ data, onComplete }: { data: EthicalD
 
   const allDone = Object.keys(answered).length === decisions.length;
 
+  const [completionFired, setCompletionFired] = useState(false);
+  if (allDone && !completionFired && onComplete) {
+    onComplete();
+    setCompletionFired(true);
+  }
+
   const handleChoice = (choiceIdx: number) => {
     if (answered[currentDecision] !== undefined) return;
     const choice = decisions[currentDecision]?.choices[choiceIdx];

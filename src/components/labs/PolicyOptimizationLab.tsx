@@ -74,6 +74,12 @@ export default function PolicyOptimizationLab({ data, onComplete }: { data: Poli
   const allMet = constraintResults.every((c) => c.met);
   const isFinished = decisionsMade.length >= maxDecisions || decisionsMade.length >= decisions.length;
 
+  const [completionFired, setCompletionFired] = useState(false);
+  if (isFinished && !completionFired && onComplete) {
+    onComplete();
+    setCompletionFired(true);
+  }
+
   const handleChoice = (choiceIdx: number) => {
     const choice = decisions[currentDecision]?.choices[choiceIdx];
     if (!choice) return;

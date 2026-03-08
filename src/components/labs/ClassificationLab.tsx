@@ -69,10 +69,18 @@ export default function ClassificationLab({ data, onComplete }: { data: Classifi
     ? items.filter((it) => assignments[it.name] === it.correct_category).length
     : 0;
 
+  // Fire onComplete when submitted
+  const [completionFired, setCompletionFired] = useState(false);
+  if (submitted && !completionFired && onComplete) {
+    onComplete();
+    setCompletionFired(true);
+  }
+
   const reset = () => {
     setAssignments({});
     setCurrentItem(0);
     setSubmitted(false);
+    setCompletionFired(false);
   };
 
   if (!items.length || !categories.length) {
