@@ -631,7 +631,7 @@ CRITICAL MODULE STRUCTURE — every module MUST have ALL of these fields:
 - lesson_content: string (slide-based markdown, see LESSON CONTENT FORMAT below)
 - youtube_query: string (search query to find a relevant video)
 - youtube_title: string
-- lab_type: one of "simulation", "classification", "policy_optimization", "ethical_dilemma"
+- lab_type: one of "simulation", "classification", "policy_optimization", "ethical_dilemma", "decision_lab", "math_lab"
 - lab_data: object (format depends on lab_type, see below)
 - quiz: array of {question, options: string[4], correct: number 0-3, explanation}
 
@@ -690,9 +690,41 @@ Choose lab_type based on the topic's cognitive nature:
 - "classification" → for analytical/sorting topics (categorization, identification, prioritization)
 - "policy_optimization" → for strategic/constraint topics (reaching targets within limits)
 - "ethical_dilemma" → for ethical/moral topics (tradeoff decisions with no perfect answer)
-- "decision_lab" → for strategic reasoning, business, negotiation, product design, engineering decisions — ANY topic requiring free-text strategic thinking with AI critique
+- "decision_lab" → for strategic reasoning, business, negotiation, product design, engineering decisions
+- "math_lab" → ONLY for math topics (algebra, geometry, calculus, statistics, trigonometry, equations, graphing)
 
-PREFER decision_lab for at least 1-2 modules per course. Mix lab types across modules. Do NOT use the same lab_type for every module.
+MATH LAB RULE: If the course topic is math-related, use "math_lab" for ALL modules. Math topics include algebra, geometry, calculus, statistics, trigonometry, equations, graphing, number theory, etc.
+
+For math_lab, lab_data format:
+{
+  "title": "Lab title",
+  "objective": "What math skill the student will practice",
+  "concept_overview": "2-4 sentence explanation of the concept",
+  "visual_type": "graph" | "geometry" | "solution_steps" | "chart",
+  "graph_data": { (for graph/chart types)
+    "type": "function" | "scatter" | "bar",
+    "equation": "x^2 - 4*x + 3", (JS math expression)
+    "x_label": "x", "y_label": "y",
+    "x_range": [-5, 10], "y_range": [-5, 15],
+    "key_points": [{"x": 2, "y": -1, "label": "Vertex"}]
+  },
+  "geometry": [{ (for geometry type)
+    "type": "triangle",
+    "points": [{"x": 1, "y": 1, "label": "A"}],
+    "measurements": {"AB": "4 units"}
+  }],
+  "solution_steps": [{ (for solution_steps type)
+    "step": 1, "expression": "2x + 5 = 15", "explanation": "Original equation"
+  }],
+  "scenario": "Real-world application scenario",
+  "instructions": "Step-by-step lab instructions",
+  "tasks": [{"id": 1, "description": "task text", "type": "input"|"choice"|"explanation", "correct_answer": "answer"}],
+  "hints": ["hint 1", "hint 2"],
+  "solution": "correct answer",
+  "solution_explanation": "step-by-step explanation"
+}
+
+PREFER decision_lab for at least 1-2 modules per course (unless it's a math course). Mix lab types across modules. Do NOT use the same lab_type for every module (except math courses which should always use math_lab).
 
 === SIMULATION LAB (lab_type: "simulation") ===
 lab_data format:
