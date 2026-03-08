@@ -1,77 +1,85 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Send } from "lucide-react";
+import { Send, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { formatDistanceToNow } from "date-fns";
 
 interface Comment {
   id: string;
-  author_name: string;
+  author_name: string | null;
   content: string;
   created_at: string;
+  user_id: string | null;
 }
 
 interface ChallengeCommentsProps {
   challengeId: string;
 }
 
-// Mock comments
-const mockComments: Comment[] = [
-  {
-    id: "1",
-    author_name: "Alex M.",
-    content: "This challenge really helped me stay consistent! Day 15 and going strong 💪",
-    created_at: "2 hours ago",
-  },
-  {
-    id: "2",
-    author_name: "Sarah K.",
-    content: "Just joined! Excited to start this journey with everyone.",
-    created_at: "5 hours ago",
-  },
-];
-
 export function ChallengeComments({ challengeId }: ChallengeCommentsProps) {
-  const [comments, setComments] = useState<Comment[]>(mockComments);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [guestName, setGuestName] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const fetchComments = async () => {
+    const { data, error } = await supabase
+      .from("challenge_comments")
+      .select("*")
+      .eq("challenge_id", challengeId)
+      .order("created_at", { ascending: false });
+
+    if (!error && data) setComments(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchComments();
+  }, [challengeId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
     if (!newComment.trim()) return;
-    
+
     if (!user && !guestName.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please enter your name to comment.",
-      });
+      toast({ title: "Name required", description: "Please enter your name to comment." });
       return;
     }
 
-    const comment: Comment = {
-      id: Date.now().toString(),
-      author_name: user ? "You" : guestName,
-      content: newComment,
-      created_at: "Just now",
+    setSubmitting(true);
+    const payload: any = {
+      challenge_id: challengeId,
+      content: newComment.trim(),
     };
 
-    setComments([comment, ...comments]);
-    setNewComment("");
-    
-    toast({
-      title: "Comment added!",
-      description: "Your comment has been posted.",
-    });
+    if (user) {
+      payload.user_id = user.id;
+      payload.author_name = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+    } else {
+      payload.author_name = guestName.trim();
+    }
+
+    const { error } = await supabase.from("challenge_comments").insert(payload);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setNewComment("");
+      toast({ title: "Comment added!" });
+      fetchComments();
+    }
+    setSubmitting(false);
   };
 
   return (
     <div className="pt-4 border-t border-border space-y-4">
-      {/* Comment Form */}
       <form onSubmit={handleSubmit} className="space-y-2">
         {!user && (
           <Input
@@ -88,30 +96,39 @@ export function ChallengeComments({ challengeId }: ChallengeCommentsProps) {
             onChange={(e) => setNewComment(e.target.value)}
             className="text-sm"
           />
-          <Button type="submit" size="icon" variant="hero">
-            <Send className="w-4 h-4" />
+          <Button type="submit" size="icon" disabled={submitting}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           </Button>
         </div>
       </form>
 
-      {/* Comments List */}
       <div className="space-y-3 max-h-60 overflow-y-auto">
-        {comments.map((comment) => (
-          <div key={comment.id} className="flex gap-3">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {comment.author_name.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">{comment.author_name}</span>
-                <span className="text-xs text-muted-foreground">{comment.created_at}</span>
-              </div>
-              <p className="text-sm text-muted-foreground">{comment.content}</p>
-            </div>
+        {loading ? (
+          <div className="flex justify-center py-4">
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
           </div>
-        ))}
+        ) : comments.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">No comments yet. Be the first!</p>
+        ) : (
+          comments.map((comment) => (
+            <div key={comment.id} className="flex gap-3">
+              <Avatar className="w-8 h-8">
+                <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                  {(comment.author_name || "?").charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">{comment.author_name || "Anonymous"}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground">{comment.content}</p>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
