@@ -8,23 +8,23 @@
 
 @layer base {
   :root {
-    --background: 220 30% 10%;
+    --background: 222 35% 8%;
     --foreground: 210 40% 96%;
 
-    --card: 220 30% 14%;
+    --card: 222 32% 12%;
     --card-foreground: 210 40% 96%;
 
-    --popover: 220 30% 14%;
+    --popover: 222 32% 12%;
     --popover-foreground: 210 40% 96%;
 
     --primary: 214 80% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 30% 18%;
+    --secondary: 222 28% 16%;
     --secondary-foreground: 210 40% 90%;
 
-    --muted: 220 25% 20%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 222 22% 18%;
+    --muted-foreground: 215 18% 55%;
 
     --accent: 200 85% 60%;
     --accent-foreground: 0 0% 100%;
@@ -32,31 +32,32 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 25% 20%;
-    --input: 220 25% 22%;
+    --border: 222 20% 16%;
+    --input: 222 22% 18%;
     --ring: 214 80% 56%;
 
-    --radius: 0.75rem;
+    --radius: 0.625rem;
 
     /* Custom tokens */
     --gradient-primary: linear-gradient(135deg, hsl(214, 80%, 56%) 0%, hsl(200, 85%, 60%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(200, 85%, 60%) 0%, hsl(214, 80%, 56%) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(220, 35%, 8%) 0%, hsl(220, 30%, 12%) 50%, hsl(220, 30%, 10%) 100%);
-    --gradient-section: linear-gradient(180deg, hsl(220, 30%, 12%) 0%, hsl(220, 30%, 10%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(222, 40%, 6%) 0%, hsl(222, 35%, 10%) 50%, hsl(222, 35%, 8%) 100%);
+    --gradient-section: linear-gradient(180deg, hsl(222, 32%, 12%) 0%, hsl(222, 35%, 8%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(214, 80%, 56% / 0.08) 0%, hsl(200, 85%, 60% / 0.04) 100%);
     
-    --shadow-soft: 0 1px 3px hsl(0 0% 0% / 0.3), 0 1px 2px hsl(0 0% 0% / 0.2);
-    --shadow-elevated: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
-    --shadow-card: 0 10px 40px -10px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 40px hsl(214 80% 56% / 0.25);
-    --shadow-glow-accent: 0 0 40px hsl(200 85% 60% / 0.25);
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow-elevated: 0 4px 12px -2px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.35);
+    --shadow-glow: 0 0 32px hsl(214 80% 56% / 0.2);
+    --shadow-glow-accent: 0 0 32px hsl(200 85% 60% / 0.2);
 
-    --sidebar-background: 220 30% 12%;
+    --sidebar-background: 222 35% 10%;
     --sidebar-foreground: 210 40% 96%;
     --sidebar-primary: 214 80% 56%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 30% 18%;
+    --sidebar-accent: 222 28% 16%;
     --sidebar-accent-foreground: 210 40% 90%;
-    --sidebar-border: 220 25% 20%;
+    --sidebar-border: 222 20% 14%;
     --sidebar-ring: 214 80% 56%;
   }
 }
@@ -69,10 +70,32 @@
   body {
     @apply bg-background text-foreground font-sans antialiased;
     font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(222 20% 20%);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(222 20% 28%);
   }
 }
 
@@ -92,6 +115,10 @@
     background-clip: text;
   }
 
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+
   .glow-primary {
     box-shadow: var(--shadow-glow);
   }
@@ -101,9 +128,9 @@
   }
 
   .glass {
-    backdrop-filter: blur(20px);
-    background: hsl(220 30% 12% / 0.7);
-    border: 1px solid hsl(220 25% 25% / 0.5);
+    backdrop-filter: blur(24px);
+    background: hsl(222 32% 10% / 0.75);
+    border: 1px solid hsl(222 20% 20% / 0.6);
   }
 
   .card-elevated {
@@ -112,7 +139,17 @@
   }
 
   .card-elevated:hover {
-    box-shadow: 0 20px 60px -15px hsl(0 0% 0% / 0.5);
+    box-shadow: 0 16px 48px -12px hsl(0 0% 0% / 0.45);
     transform: translateY(-2px);
+  }
+
+  /* Professional page container */
+  .page-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  /* Section divider */
+  .section-divider {
+    @apply border-t border-border/50;
   }
 }
