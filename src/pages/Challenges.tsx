@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Trophy, Star, Loader2, Plus, Sparkles, Trash2, Search } from "lucide-react";
+import { Trophy, Star, Loader2, Plus, Sparkles, Trash2, Search, Play } from "lucide-react";
 import { ChallengeCard } from "@/components/challenges/ChallengeCard";
 import { DailyChallengeCard } from "@/components/challenges/DailyChallengeCard";
 import { useChallenges } from "@/hooks/useChallenges";
