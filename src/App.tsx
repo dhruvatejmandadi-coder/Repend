@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { OnboardingFlow } from "@/components/onboarding/OnboardingFlow";
+import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import Index from "./pages/Index";
 import Courses from "./pages/Courses";
 import CourseView from "./pages/CourseView";
@@ -31,19 +32,24 @@ const App = () => (
         <OnboardingFlow />
         <BrowserRouter>
           <Routes>
+            {/* Pages without sidebar */}
             <Route path="/" element={<Index />} />
-            <Route path="/courses" element={<Courses />} />
-            <Route path="/courses/:id" element={<CourseView />} />
-            <Route path="/community" element={<Community />} />
-            <Route path="/challenges" element={<Challenges />} />
-            
-            <Route path="/progress" element={<ProgressPage />} />
-            <Route path="/pricing" element={<Pricing />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+            <Route path="/waitlist" element={<Waitlist />} />
+
+            {/* Dashboard pages — persistent sidebar */}
+            <Route element={<DashboardLayout />}>
+              <Route path="/courses" element={<Courses />} />
+              <Route path="/courses/:id" element={<CourseView />} />
+              <Route path="/community" element={<Community />} />
+              <Route path="/challenges" element={<Challenges />} />
+              <Route path="/progress" element={<ProgressPage />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/admin" element={<AdminDashboard />} />
+            </Route>
+
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
