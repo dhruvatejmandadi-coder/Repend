@@ -202,7 +202,7 @@ export default function CourseView() {
   const quizPassed = quizPct >= PASS_THRESHOLD * 100;
 
   return (
-    <DashboardLayout>
+    <>
       {justCompleted && course && (
         <CourseCompletionScreen
           courseName={course.title}
