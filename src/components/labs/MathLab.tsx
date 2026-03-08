@@ -578,7 +578,7 @@ export default function MathLab({ data, onComplete, isCompleted }: Props) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {data.visual_type === "graph" && data.graph_data && <MathGraph graphData={data.graph_data} />}
+          {data.visual_type === "graph" && data.graph_data && <MathGraph graphData={data.graph_data} interactiveParams={data.interactive_params} />}
           {data.visual_type === "geometry" && data.geometry && <GeometryDiagram shapes={data.geometry} />}
           {data.visual_type === "chart" && data.graph_data && <MathGraph graphData={data.graph_data} />}
           {data.visual_type === "solution_steps" && data.solution_steps && <SolutionStepsVisual steps={data.solution_steps} />}
