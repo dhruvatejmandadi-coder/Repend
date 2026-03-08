@@ -17,6 +17,7 @@ export interface Challenge {
 
 export function useChallenges() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [activeChallengeIds, setActiveChallengeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -30,6 +31,19 @@ export function useChallenges() {
     if (!error && data) {
       setChallenges(data as Challenge[]);
     }
+
+    // Fetch participations for current user
+    if (user) {
+      const { data: participations } = await supabase
+        .from("challenge_participations")
+        .select("challenge_id")
+        .eq("user_id", user.id);
+
+      if (participations) {
+        setActiveChallengeIds(participations.map((p) => p.challenge_id));
+      }
+    }
+
     setLoading(false);
   };
 
@@ -38,9 +52,8 @@ export function useChallenges() {
   }, [user]);
 
   const dailyChallenge = challenges.find((c) => c.is_daily);
-  const regularChallenges = challenges.filter((c) => !c.is_daily);
   const myChallenges = challenges.filter((c) => c.user_id && c.user_id === user?.id);
-  const communityChallenges = challenges.filter((c) => !c.user_id || c.user_id !== user?.id);
+  const activeChallenges = challenges.filter((c) => activeChallengeIds.includes(c.id));
 
-  return { challenges, dailyChallenge, regularChallenges, myChallenges, communityChallenges, loading, refetch: fetchChallenges };
+  return { challenges, dailyChallenge, myChallenges, activeChallenges, activeChallengeIds, loading, refetch: fetchChallenges };
 }
