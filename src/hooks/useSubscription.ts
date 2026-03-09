@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type Plan = "starter" | "pro" | "elite";
 
-// TODO: Replace these with real Stripe price IDs after creating products in Stripe dashboard
 export const PLAN_CONFIG = {
   pro: {
     price_id: "price_1T8uAkLHmfykQi0ZFinMH5Nq",
@@ -15,13 +14,18 @@ export const PLAN_CONFIG = {
     fileUploadsPerMonth: 3,
   },
   elite: {
-    price_id: "price_1T8uB9LHmfykQi0ZgCuNYyEt",
-    product_id: "prod_U78StcFe4wAWI5",
+    price_id: "price_1T8vj4LHmfykQi0ZxUZWwUPf",
+    product_id: "prod_U7A3vZ4alWsTvD",
     name: "Elite",
-    price: 11.99,
-    coursesPerMonth: Infinity,
+    price: 9.99,
+    coursesPerMonth: 15,
     fileUploadsPerMonth: Infinity,
   },
+} as const;
+
+export const STARTER_LIMITS = {
+  coursesPerMonth: 2,
+  fileUploadsPerMonth: 0,
 } as const;
 
 interface SubscriptionState {
@@ -54,7 +58,9 @@ export function useSubscription() {
       if (data.subscribed && data.product_id) {
         if (data.product_id === PLAN_CONFIG.pro.product_id) plan = "pro";
         else if (data.product_id === PLAN_CONFIG.elite.product_id) plan = "elite";
-        else plan = "pro"; // fallback for any active subscription
+        // Legacy elite product ID support
+        else if (data.product_id === "prod_U78StcFe4wAWI5") plan = "elite";
+        else plan = "pro";
       }
 
       setState({
@@ -78,6 +84,18 @@ export function useSubscription() {
   const isProOrAbove = state.plan === "pro" || state.plan === "elite";
   const isElite = state.plan === "elite";
 
+  const getCoursesLimit = () => {
+    if (state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
+    if (state.plan === "pro") return PLAN_CONFIG.pro.coursesPerMonth;
+    return STARTER_LIMITS.coursesPerMonth;
+  };
+
+  const getFileUploadsLimit = () => {
+    if (state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
+    if (state.plan === "pro") return PLAN_CONFIG.pro.fileUploadsPerMonth;
+    return STARTER_LIMITS.fileUploadsPerMonth;
+  };
+
   const startCheckout = async (priceId: string) => {
     const { data, error } = await supabase.functions.invoke("create-checkout", {
       body: { priceId },
@@ -96,6 +114,8 @@ export function useSubscription() {
     ...state,
     isProOrAbove,
     isElite,
+    getCoursesLimit,
+    getFileUploadsLimit,
     startCheckout,
     openPortal,
     refresh: checkSubscription,

@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText } from "lucide-react";
+import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText, Crown } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { GeneratingSignUpPrompt } from "@/components/survey/GeneratingSignUpPrompt";
 import { CourseGeneratingScreen } from "@/components/courses/CourseGeneratingScreen";
+import { useSubscription, PLAN_CONFIG, STARTER_LIMITS } from "@/hooks/useSubscription";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ".pdf,.txt,.md,.csv,.png,.jpg,.jpeg,.webp";
@@ -88,6 +89,8 @@ export default function Courses() {
     return path;
   };
 
+  const { plan, getCoursesLimit, getFileUploadsLimit } = useSubscription();
+
   const handleGenerate = async () => {
     const hasInput = topic.trim() || selectedFile;
     if (!hasInput || isGenerating) return;
@@ -95,6 +98,29 @@ export default function Courses() {
     if (!user) {
       setIsGenerating(true);
       setTimeout(() => setShowSignUpPrompt(true), 1200);
+      return;
+    }
+
+    // Check course generation limits
+    const coursesLimit = getCoursesLimit();
+    if (courses.length >= coursesLimit) {
+      toast({
+        title: "Course limit reached",
+        description: `Your ${plan} plan allows ${coursesLimit} courses/month. Upgrade for more!`,
+        variant: "destructive",
+      });
+      navigate("/pricing");
+      return;
+    }
+
+    // Check file upload limits
+    if (selectedFile && getFileUploadsLimit() === 0) {
+      toast({
+        title: "File uploads not available",
+        description: "Upgrade to Pro or Elite to generate courses from uploaded files.",
+        variant: "destructive",
+      });
+      navigate("/pricing");
       return;
     }
 
