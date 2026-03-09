@@ -15,8 +15,8 @@ export const PLAN_CONFIG = {
     fileUploadsPerMonth: 3,
   },
   elite: {
-    price_id: "price_ELITE_PLACEHOLDER",
-    product_id: "prod_ELITE_PLACEHOLDER",
+    price_id: "price_1T8uB9LHmfykQi0ZgCuNYyEt",
+    product_id: "prod_U78StcFe4wAWI5",
     name: "Elite",
     price: 11.99,
     coursesPerMonth: Infinity,
