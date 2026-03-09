@@ -7,16 +7,16 @@ export type Plan = "starter" | "pro" | "elite";
 // TODO: Replace these with real Stripe price IDs after creating products in Stripe dashboard
 export const PLAN_CONFIG = {
   pro: {
-    price_id: "price_PRO_PLACEHOLDER",
-    product_id: "prod_PRO_PLACEHOLDER",
+    price_id: "price_1T8uAkLHmfykQi0ZFinMH5Nq",
+    product_id: "prod_U78RPaFsIiqpqq",
     name: "Pro",
     price: 5.99,
     coursesPerMonth: 10,
     fileUploadsPerMonth: 3,
   },
   elite: {
-    price_id: "price_ELITE_PLACEHOLDER",
-    product_id: "prod_ELITE_PLACEHOLDER",
+    price_id: "price_1T8uB9LHmfykQi0ZgCuNYyEt",
+    product_id: "prod_U78StcFe4wAWI5",
     name: "Elite",
     price: 11.99,
     coursesPerMonth: Infinity,
