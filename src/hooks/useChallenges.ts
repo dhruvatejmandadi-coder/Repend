@@ -131,7 +131,8 @@ export function useChallenges() {
   const completedChallengeIds = participations.filter(p => p.completed_at).map(p => p.challenge_id);
 
   const dailyChallenge = challenges.find((c) => c.is_daily);
-  const myChallenges = challenges.filter((c) => c.user_id && c.user_id === user?.id);
+  const joinedOrCompletedIds = new Set([...activeChallengeIds, ...completedChallengeIds]);
+  const myChallenges = challenges.filter((c) => c.user_id && c.user_id === user?.id && !joinedOrCompletedIds.has(c.id));
   const activeChallenges = challenges.filter((c) => activeChallengeIds.includes(c.id));
   const completedChallenges = challenges.filter((c) => completedChallengeIds.includes(c.id));
 
