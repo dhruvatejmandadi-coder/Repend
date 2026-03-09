@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useAdmin } from "@/hooks/useAdmin";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Plan = "starter" | "pro" | "elite";
@@ -37,6 +38,7 @@ interface SubscriptionState {
 
 export function useSubscription() {
   const { user } = useAuth();
+  const { isAdmin } = useAdmin();
   const [state, setState] = useState<SubscriptionState>({
     plan: "starter",
     subscribed: false,
@@ -81,17 +83,17 @@ export function useSubscription() {
     return () => clearInterval(interval);
   }, [checkSubscription]);
 
-  const isProOrAbove = state.plan === "pro" || state.plan === "elite";
-  const isElite = state.plan === "elite";
+  const isProOrAbove = isAdmin || state.plan === "pro" || state.plan === "elite";
+  const isElite = isAdmin || state.plan === "elite";
 
   const getCoursesLimit = () => {
-    if (state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
+    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.coursesPerMonth;
     return STARTER_LIMITS.coursesPerMonth;
   };
 
   const getFileUploadsLimit = () => {
-    if (state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
+    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.fileUploadsPerMonth;
     return STARTER_LIMITS.fileUploadsPerMonth;
   };
