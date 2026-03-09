@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -17,9 +17,15 @@ export interface Challenge {
   author_avatar_url?: string | null;
 }
 
+export interface Participation {
+  challenge_id: string;
+  completed_at: string | null;
+  created_at: string;
+}
+
 export function useChallenges() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [activeChallengeIds, setActiveChallengeIds] = useState<string[]>([]);
+  const [participations, setParticipations] = useState<Participation[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
@@ -31,7 +37,6 @@ export function useChallenges() {
       .order("created_at", { ascending: false });
 
     if (!error && data) {
-      // Fetch author profiles
       const userIds = [...new Set(data.map((c: any) => c.user_id).filter(Boolean))] as string[];
       let profileMap: Record<string, { name: string | null; avatar: string | null }> = {};
       if (userIds.length > 0) {
@@ -53,15 +58,14 @@ export function useChallenges() {
       })) as Challenge[]);
     }
 
-    // Fetch participations for current user
     if (user) {
-      const { data: participations } = await supabase
+      const { data: parts } = await supabase
         .from("challenge_participations")
-        .select("challenge_id")
+        .select("challenge_id, completed_at, created_at")
         .eq("user_id", user.id);
 
-      if (participations) {
-        setActiveChallengeIds(participations.map((p) => p.challenge_id));
+      if (parts) {
+        setParticipations(parts as Participation[]);
       }
     }
 
@@ -72,9 +76,80 @@ export function useChallenges() {
     fetchChallenges();
   }, [user]);
 
+  const joinChallenge = useCallback(async (challengeId: string) => {
+    if (!user) return false;
+    const already = participations.find(p => p.challenge_id === challengeId);
+    if (already) return true;
+
+    const { error } = await supabase.from("challenge_participations").insert({
+      challenge_id: challengeId,
+      user_id: user.id,
+    });
+
+    if (error) return false;
+
+    setParticipations(prev => [...prev, {
+      challenge_id: challengeId,
+      completed_at: null,
+      created_at: new Date().toISOString(),
+    }]);
+    return true;
+  }, [user, participations]);
+
+  const completeChallenge = useCallback(async (challengeId: string) => {
+    if (!user) return false;
+    const now = new Date().toISOString();
+
+    const { error } = await supabase
+      .from("challenge_participations")
+      .update({ completed_at: now })
+      .eq("challenge_id", challengeId)
+      .eq("user_id", user.id);
+
+    if (error) return false;
+
+    setParticipations(prev => prev.map(p =>
+      p.challenge_id === challengeId ? { ...p, completed_at: now } : p
+    ));
+    return true;
+  }, [user]);
+
+  const isJoined = useCallback((challengeId: string) => {
+    return participations.some(p => p.challenge_id === challengeId);
+  }, [participations]);
+
+  const isCompleted = useCallback((challengeId: string) => {
+    return participations.some(p => p.challenge_id === challengeId && p.completed_at !== null);
+  }, [participations]);
+
+  const getCompletedDate = useCallback((challengeId: string) => {
+    const p = participations.find(p => p.challenge_id === challengeId && p.completed_at);
+    return p?.completed_at ?? null;
+  }, [participations]);
+
+  const activeChallengeIds = participations.filter(p => !p.completed_at).map(p => p.challenge_id);
+  const completedChallengeIds = participations.filter(p => p.completed_at).map(p => p.challenge_id);
+
   const dailyChallenge = challenges.find((c) => c.is_daily);
   const myChallenges = challenges.filter((c) => c.user_id && c.user_id === user?.id);
   const activeChallenges = challenges.filter((c) => activeChallengeIds.includes(c.id));
+  const completedChallenges = challenges.filter((c) => completedChallengeIds.includes(c.id));
 
-  return { challenges, dailyChallenge, myChallenges, activeChallenges, activeChallengeIds, loading, refetch: fetchChallenges };
+  return {
+    challenges,
+    dailyChallenge,
+    myChallenges,
+    activeChallenges,
+    completedChallenges,
+    activeChallengeIds,
+    completedChallengeIds,
+    participations,
+    loading,
+    refetch: fetchChallenges,
+    joinChallenge,
+    completeChallenge,
+    isJoined,
+    isCompleted,
+    getCompletedDate,
+  };
 }

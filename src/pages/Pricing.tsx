@@ -49,7 +49,7 @@ const tiers: {
   {
     plan: "elite",
     name: "Elite",
-    price: "$11.99",
+    price: "$9.99",
     description: "Maximum power for serious learners",
     icon: Crown,
     cta: "Go Elite",
