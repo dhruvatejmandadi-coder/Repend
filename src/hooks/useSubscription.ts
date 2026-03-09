@@ -83,8 +83,8 @@ export function useSubscription() {
     return () => clearInterval(interval);
   }, [checkSubscription]);
 
-  const isProOrAbove = state.plan === "pro" || state.plan === "elite";
-  const isElite = state.plan === "elite";
+  const isProOrAbove = isAdmin || state.plan === "pro" || state.plan === "elite";
+  const isElite = isAdmin || state.plan === "elite";
 
   const getCoursesLimit = () => {
     if (state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
