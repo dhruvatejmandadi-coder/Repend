@@ -1044,21 +1044,54 @@ Generate 4-6 modules with a good mix of lab types. Include at least 1-2 decision
       }),
     });
 
-    const aiData = await response.json();
+    const responseText = await response.text();
+    let aiData: any;
+    try {
+      aiData = JSON.parse(responseText);
+    } catch (parseErr) {
+      console.error("AI response was not valid JSON:", responseText.substring(0, 500));
+      throw new Error("AI returned an invalid response. Please try again.");
+    }
 
     if (!aiData.choices?.length) {
-      throw new Error("Empty AI response");
+      console.error("AI response had no choices:", JSON.stringify(aiData).substring(0, 500));
+      throw new Error("Empty AI response. The model may have been overloaded — please try again.");
     }
 
     const message = aiData.choices[0].message;
     const toolCall = message?.tool_calls?.[0];
 
     if (!toolCall) {
-      throw new Error("No function call returned by AI");
+      const finishReason = aiData.choices[0]?.finish_reason;
+      console.error("No tool call. finish_reason:", finishReason, "message:", JSON.stringify(message).substring(0, 300));
+      throw new Error(`AI did not return course data (reason: ${finishReason || "unknown"}). Please try again.`);
     }
 
-    // Parse and repair
-    const parsed = JSON.parse(toolCall.function.arguments);
+    // Parse and repair — handle truncated JSON from the model
+    let parsed: any;
+    try {
+      parsed = JSON.parse(toolCall.function.arguments);
+    } catch (parseErr) {
+      // Attempt to repair truncated JSON
+      let raw = toolCall.function.arguments || "";
+      // Remove trailing incomplete tokens and try to close the JSON
+      raw = raw.replace(/,\s*$/, "");
+      // Try progressively closing brackets
+      const closers = ["]}]}", "]}}", "]}", "}", "]"];
+      let repaired = false;
+      for (const closer of closers) {
+        try {
+          parsed = JSON.parse(raw + closer);
+          console.warn("Repaired truncated JSON by appending:", closer);
+          repaired = true;
+          break;
+        } catch { /* try next */ }
+      }
+      if (!repaired) {
+        console.error("Could not repair truncated AI output:", raw.substring(raw.length - 200));
+        throw new Error("AI response was truncated. Please try again with a simpler topic or fewer modules.");
+      }
+    }
     const repaired = repairModules(parsed);
 
     // Validate
