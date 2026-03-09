@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trophy, CheckCircle2, Target, BookOpen, Lightbulb, FileText, Eye, EyeOff, Send, FlaskConical } from "lucide-react";
+import { ArrowLeft, Loader2, Trophy, CheckCircle2, Target, BookOpen, Lightbulb, FileText, Eye, EyeOff, Send, FlaskConical, UserPlus, Play } from "lucide-react";
 import InteractiveLab from "@/components/labs/InteractiveLab";
 import { ChallengeComments } from "@/components/challenges/ChallengeComments";
 import { usePoints } from "@/hooks/usePoints";
+import { useChallenges } from "@/hooks/useChallenges";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
 export default function ChallengeView() {
   const { id } = useParams<{ id: string }>();
@@ -20,10 +23,15 @@ export default function ChallengeView() {
   const [hintsRevealed, setHintsRevealed] = useState<number[]>([]);
   const [userAnswer, setUserAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const { completeChallenge, completedChallenges } = usePoints();
+  const [joining, setJoining] = useState(false);
+  const { completeChallenge: completePoints, completedChallenges: localCompleted } = usePoints();
+  const { joinChallenge, completeChallenge: dbComplete, isJoined, isCompleted, getCompletedDate, refetch } = useChallenges();
+  const { user } = useAuth();
   const { toast } = useToast();
 
-  const isCompleted = challenge ? completedChallenges.includes(challenge.id) : false;
+  const joined = id ? isJoined(id) : false;
+  const completed = id ? isCompleted(id) : false;
+  const completedDate = id ? getCompletedDate(id) : null;
 
   useEffect(() => {
     if (!id) return;
@@ -39,19 +47,35 @@ export default function ChallengeView() {
     })();
   }, [id]);
 
-  const handleLabComplete = () => {
-    if (!challenge || isCompleted) return;
-    completeChallenge(challenge.id, challenge.is_daily);
+  const handleJoin = async () => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Create an account to join challenges.", variant: "destructive" });
+      return;
+    }
+    if (!id) return;
+    setJoining(true);
+    const success = await joinChallenge(id);
+    if (success) {
+      toast({ title: "Joined! 🎯", description: "You're now participating in this challenge." });
+    }
+    setJoining(false);
+  };
+
+  const handleComplete = async () => {
+    if (!challenge || !id || completed) return;
+    await dbComplete(id);
+    completePoints(challenge.id, challenge.is_daily);
     toast({ title: "Challenge completed! 🎉", description: `+${challenge.is_daily ? 100 : 50} points earned!` });
+  };
+
+  const handleLabComplete = () => {
+    handleComplete();
   };
 
   const handleSubmitAnswer = () => {
     if (!userAnswer.trim()) return;
     setSubmitted(true);
-    if (!isCompleted && challenge) {
-      completeChallenge(challenge.id, challenge.is_daily);
-      toast({ title: "Answer submitted! 🎉", description: `+${challenge.is_daily ? 100 : 50} points earned!` });
-    }
+    handleComplete();
   };
 
   const toggleHint = (i: number) => {
@@ -90,13 +114,23 @@ export default function ChallengeView() {
         <div className="flex-1">
           <div className="flex items-center gap-3 flex-wrap">
             <h1 className="font-display text-2xl font-bold">{challenge.title}</h1>
-            {isCompleted && (
+            {completed && (
               <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
                 <CheckCircle2 className="w-3 h-3 mr-1" /> Completed
               </Badge>
             )}
+            {joined && !completed && (
+              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
+                <Play className="w-3 h-3 mr-1" /> Active
+              </Badge>
+            )}
           </div>
           <p className="text-muted-foreground text-sm mt-1">{challenge.description}</p>
+          {completed && completedDate && (
+            <p className="text-xs text-green-400/70 mt-1">
+              Completed on {format(new Date(completedDate), "MMMM d, yyyy 'at' h:mm a")}
+            </p>
+          )}
         </div>
         <div className="flex gap-2 shrink-0">
           {challenge.difficulty && (
@@ -115,6 +149,38 @@ export default function ChallengeView() {
           )}
         </div>
       </div>
+
+      {/* Join Banner */}
+      {!joined && !completed && user && (
+        <Card className="border-primary/30 bg-primary/[0.03]">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-sm">Ready to take on this challenge?</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Join to track your progress and earn points when you complete it.</p>
+            </div>
+            <Button onClick={handleJoin} disabled={joining}>
+              {joining ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <UserPlus className="w-4 h-4 mr-2" />
+              )}
+              Join Challenge
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {!user && (
+        <Card className="border-primary/30 bg-primary/[0.03]">
+          <CardContent className="p-5 flex items-center justify-between">
+            <div>
+              <h3 className="font-semibold text-sm">Sign in to participate</h3>
+              <p className="text-xs text-muted-foreground mt-0.5">Create an account to join challenges, track progress, and earn points.</p>
+            </div>
+            <Button onClick={() => navigate("/signup")}>Sign Up</Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Objective */}
       {challenge.objective && (
@@ -173,12 +239,11 @@ export default function ChallengeView() {
               labTitle={challenge.title}
               labDescription={challenge.description}
               onComplete={handleLabComplete}
-              isCompleted={isCompleted}
+              isCompleted={completed}
             />
           </CardContent>
         </Card>
       ) : (
-        /* Workspace for text-based challenges */
         <Card className="border-accent/20">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
@@ -186,7 +251,7 @@ export default function ChallengeView() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {submitted || isCompleted ? (
+            {submitted || completed ? (
               <div className="text-center space-y-3 py-4">
                 <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
                 <p className="font-semibold">Answer Submitted!</p>
@@ -208,11 +273,14 @@ export default function ChallengeView() {
                 />
                 <Button
                   onClick={handleSubmitAnswer}
-                  disabled={!userAnswer.trim()}
+                  disabled={!userAnswer.trim() || (!joined && !!user)}
                   className="w-full"
                 >
                   <Send className="w-4 h-4 mr-2" /> Submit Answer
                 </Button>
+                {!joined && user && (
+                  <p className="text-xs text-muted-foreground text-center">Join the challenge first to submit your answer.</p>
+                )}
               </>
             )}
           </CardContent>
