@@ -87,13 +87,13 @@ export function useSubscription() {
   const isElite = isAdmin || state.plan === "elite";
 
   const getCoursesLimit = () => {
-    if (state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
+    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.coursesPerMonth;
     return STARTER_LIMITS.coursesPerMonth;
   };
 
   const getFileUploadsLimit = () => {
-    if (state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
+    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.fileUploadsPerMonth;
     return STARTER_LIMITS.fileUploadsPerMonth;
   };
