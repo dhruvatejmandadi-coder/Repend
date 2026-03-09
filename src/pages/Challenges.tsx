@@ -8,21 +8,35 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Star, Loader2, Plus, Sparkles, Trash2, Search, Play,
-  Zap, ArrowRight, CheckCircle2, Clock
+  Zap, ArrowRight, CheckCircle2, Clock, UserPlus
 } from "lucide-react";
 import { DailyChallengeCard } from "@/components/challenges/DailyChallengeCard";
 import { useChallenges } from "@/hooks/useChallenges";
-import { usePoints } from "@/hooks/usePoints";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Challenge } from "@/hooks/useChallenges";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 
-function ChallengeCardEnhanced({ challenge, onDelete, showDelete }: { challenge: Challenge; onDelete?: (id: string) => void; showDelete?: boolean }) {
+function ChallengeCardEnhanced({
+  challenge,
+  onDelete,
+  showDelete,
+  isJoined,
+  isCompleted,
+  completedDate,
+  onJoin,
+}: {
+  challenge: Challenge;
+  onDelete?: (id: string) => void;
+  showDelete?: boolean;
+  isJoined?: boolean;
+  isCompleted?: boolean;
+  completedDate?: string | null;
+  onJoin?: (id: string) => void;
+}) {
   const navigate = useNavigate();
-  const { completedChallenges } = usePoints();
-  const isCompleted = completedChallenges.includes(challenge.id);
+  const [joining, setJoining] = useState(false);
   const labLabel = challenge.lab_type?.replace(/_/g, " ") ?? null;
 
   const timeAgo = (() => {
@@ -38,12 +52,19 @@ function ChallengeCardEnhanced({ challenge, onDelete, showDelete }: { challenge:
     decision_lab: "bg-cyan-500/10 text-cyan-400 border-cyan-500/20",
   };
 
+  const handleJoin = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onJoin) return;
+    setJoining(true);
+    await onJoin(challenge.id);
+    setJoining(false);
+  };
+
   return (
     <Card
       className="overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group hover:border-primary/30 hover:-translate-y-0.5 relative"
       onClick={() => navigate(`/challenges/${challenge.id}`)}
     >
-      {/* Top accent bar */}
       <div className="h-1 w-full bg-gradient-to-r from-primary/60 to-accent/60" />
 
       <CardContent className="p-5 space-y-3">
@@ -59,6 +80,11 @@ function ChallengeCardEnhanced({ challenge, onDelete, showDelete }: { challenge:
               <CheckCircle2 className="w-3 h-3 mr-1" /> Done
             </Badge>
           )}
+          {isJoined && !isCompleted && (
+            <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/25 text-[11px] px-2 py-0.5">
+              <Play className="w-3 h-3 mr-1" /> Active
+            </Badge>
+          )}
         </div>
 
         {/* Title */}
@@ -70,6 +96,14 @@ function ChallengeCardEnhanced({ challenge, onDelete, showDelete }: { challenge:
         <p className="text-[13px] text-muted-foreground leading-relaxed line-clamp-2">
           {challenge.description}
         </p>
+
+        {/* Completed date */}
+        {isCompleted && completedDate && (
+          <div className="flex items-center gap-1.5 text-[11px] text-green-400/80">
+            <CheckCircle2 className="w-3 h-3" />
+            Completed {format(new Date(completedDate), "MMM d, yyyy")}
+          </div>
+        )}
 
         {/* Footer: author + time */}
         <div className="flex items-center justify-between pt-2 border-t border-border/40">
@@ -90,9 +124,27 @@ function ChallengeCardEnhanced({ challenge, onDelete, showDelete }: { challenge:
           </div>
         </div>
 
-        {/* CTA */}
-        <div className="flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-          {isCompleted ? "View challenge" : "Start challenge"} <ArrowRight className="w-3 h-3" />
+        {/* CTA / Join button */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 text-xs font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+            {isCompleted ? "View challenge" : isJoined ? "Continue" : "View"} <ArrowRight className="w-3 h-3" />
+          </div>
+
+          {!isJoined && !isCompleted && onJoin && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs h-7 px-3 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={handleJoin}
+              disabled={joining}
+            >
+              {joining ? (
+                <Loader2 className="w-3 h-3 animate-spin" />
+              ) : (
+                <><UserPlus className="w-3 h-3 mr-1" /> Join</>
+              )}
+            </Button>
+          )}
         </div>
       </CardContent>
 
@@ -129,8 +181,10 @@ export default function Challenges() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("my");
   const [searchQuery, setSearchQuery] = useState("");
-  const { dailyChallenge, myChallenges, activeChallenges, loading, refetch } = useChallenges();
-  const { completedChallenges } = usePoints();
+  const {
+    dailyChallenge, myChallenges, activeChallenges, completedChallenges,
+    loading, refetch, joinChallenge, isJoined, isCompleted, getCompletedDate,
+  } = useChallenges();
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -138,6 +192,19 @@ export default function Challenges() {
     await supabase.from("challenges").delete().eq("id", id);
     toast({ title: "Challenge deleted" });
     refetch();
+  };
+
+  const handleJoin = async (challengeId: string) => {
+    if (!user) {
+      toast({ title: "Sign in required", description: "Create an account to join challenges.", variant: "destructive" });
+      return;
+    }
+    const success = await joinChallenge(challengeId);
+    if (success) {
+      toast({ title: "Joined! 🎯", description: "Challenge added to your Active tab." });
+    } else {
+      toast({ title: "Could not join", description: "Something went wrong.", variant: "destructive" });
+    }
   };
 
   const filterBySearch = (challenges: Challenge[]) => {
@@ -156,14 +223,10 @@ export default function Challenges() {
     );
   }
 
-  const allForCompleted = [...myChallenges, ...activeChallenges];
-  const completedList = filterBySearch(allForCompleted.filter((c) => completedChallenges.includes(c.id)));
-
   return (
     <div className="page-container space-y-8 pb-12">
       {/* Hero Header */}
       <div className="relative max-w-3xl mx-auto text-center pt-4">
-        {/* Glow effect */}
         <div className="absolute inset-0 -top-8 bg-gradient-to-b from-primary/5 via-transparent to-transparent rounded-3xl blur-2xl pointer-events-none" />
 
         <div className="relative">
@@ -214,7 +277,7 @@ export default function Challenges() {
       {dailyChallenge && <DailyChallengeCard challenge={dailyChallenge} />}
 
       {/* Stats bar */}
-      {user && (myChallenges.length > 0 || activeChallenges.length > 0) && (
+      {user && (myChallenges.length > 0 || activeChallenges.length > 0 || completedChallenges.length > 0) && (
         <div className="flex items-center justify-center gap-6 text-[13px]">
           <div className="flex items-center gap-1.5 text-muted-foreground">
             <span className="font-semibold text-foreground">{myChallenges.length}</span> Created
@@ -225,7 +288,7 @@ export default function Challenges() {
           </div>
           <div className="w-px h-4 bg-border/40" />
           <div className="flex items-center gap-1.5 text-muted-foreground">
-            <span className="font-semibold text-foreground">{completedList.length}</span> Completed
+            <span className="font-semibold text-foreground">{completedChallenges.length}</span> Completed
           </div>
         </div>
       )}
@@ -248,7 +311,16 @@ export default function Challenges() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filterBySearch(myChallenges).map((c) => (
-                <ChallengeCardEnhanced key={c.id} challenge={c} onDelete={handleDelete} showDelete />
+                <ChallengeCardEnhanced
+                  key={c.id}
+                  challenge={c}
+                  onDelete={handleDelete}
+                  showDelete
+                  isJoined={isJoined(c.id)}
+                  isCompleted={isCompleted(c.id)}
+                  completedDate={getCompletedDate(c.id)}
+                  onJoin={handleJoin}
+                />
               ))}
             </div>
           )}
@@ -264,14 +336,19 @@ export default function Challenges() {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {filterBySearch(activeChallenges).map((c) => (
-                <ChallengeCardEnhanced key={c.id} challenge={c} />
+                <ChallengeCardEnhanced
+                  key={c.id}
+                  challenge={c}
+                  isJoined={true}
+                  isCompleted={false}
+                />
               ))}
             </div>
           )}
         </TabsContent>
 
         <TabsContent value="completed" className="mt-6">
-          {completedList.length === 0 ? (
+          {filterBySearch(completedChallenges).length === 0 ? (
             <EmptyState
               icon={Star}
               title="No completed challenges"
@@ -279,8 +356,13 @@ export default function Challenges() {
             />
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {completedList.map((c) => (
-                <ChallengeCardEnhanced key={c.id} challenge={c} />
+              {filterBySearch(completedChallenges).map((c) => (
+                <ChallengeCardEnhanced
+                  key={c.id}
+                  challenge={c}
+                  isCompleted={true}
+                  completedDate={getCompletedDate(c.id)}
+                />
               ))}
             </div>
           )}
