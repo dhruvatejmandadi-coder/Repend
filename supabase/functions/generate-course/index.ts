@@ -121,11 +121,16 @@ function isValidEthicalDilemma(ld: any): boolean {
 
 function isValidDecisionLab(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
+  if (!ld.concept_knowledge || typeof ld.concept_knowledge.definition !== "string") return false;
+  if (!Array.isArray(ld.concept_knowledge.key_ideas) || ld.concept_knowledge.key_ideas.length < 2) return false;
+  if (!ld.real_world_relevance || typeof ld.real_world_relevance.explanation !== "string") return false;
   if (typeof ld.scenario !== "string" || ld.scenario.length < 20) return false;
-  if (!Array.isArray(ld.constraints) || ld.constraints.length < 2) return false;
-  if (typeof ld.decision_prompt !== "string") return false;
-  if (typeof ld.twist !== "string" || ld.twist.length < 10) return false;
-  if (typeof ld.reflection_question !== "string") return false;
+  if (!ld.decision_challenge || typeof ld.decision_challenge.question !== "string") return false;
+  if (!Array.isArray(ld.decision_challenge.options) || ld.decision_challenge.options.length < 3) return false;
+  for (const opt of ld.decision_challenge.options) {
+    if (typeof opt.id !== "string" || typeof opt.text !== "string" || typeof opt.consequence !== "string" || typeof opt.is_best !== "boolean") return false;
+  }
+  if (typeof ld.best_decision_explanation !== "string") return false;
   return true;
 }
 
@@ -280,21 +285,32 @@ function generateEthicalDilemmaFallback(title: string) {
 function generateDecisionLabFallback(title: string) {
   const t = title || "Topic";
   return {
-    scenario: `You are a decision-maker responsible for a critical ${t.toLowerCase()} initiative. Your organization has invested significant resources, and stakeholders expect results within 6 months. The market is competitive and conditions are shifting rapidly.`,
-    constraints: [
-      `Budget is fixed — no additional funding available`,
-      `You must maintain team morale above acceptable levels`,
-      `Regulatory compliance requirements cannot be violated`,
-    ],
-    decision_prompt: `Given these constraints, what is your strategic approach to delivering results in ${t.toLowerCase()}?`,
-    twist: `Halfway through execution, a key competitor releases a superior solution and your primary team lead resigns unexpectedly. Your original timeline is now at risk.`,
-    reflection_question: `Looking back at your initial strategy and how you adapted: what assumption was most dangerous, and what would you do differently from the start?`,
-    difficulty_tier: 2,
-    variables: {
-      budget: { label: "Budget", value: "$100K" },
-      timeline: { label: "Timeline", value: "6 months" },
-      team_size: { label: "Team", value: "5 people" },
+    concept_knowledge: {
+      definition: `${t} refers to the study and application of key principles that drive outcomes in this domain.`,
+      key_ideas: [
+        `${t} involves balancing multiple competing factors.`,
+        `Decisions in ${t.toLowerCase()} have short-term and long-term consequences.`,
+        `Understanding tradeoffs is essential to making effective choices.`,
+      ],
+      examples: [
+        `A manager using ${t.toLowerCase()} principles to allocate limited resources across departments.`,
+        `A government applying ${t.toLowerCase()} concepts when designing new public policy.`,
+      ],
     },
+    real_world_relevance: {
+      explanation: `${t} directly impacts how organizations, governments, and individuals make critical decisions. Understanding this concept helps you anticipate consequences and design better strategies in real-world situations.`,
+      domain: "Strategic Decision-Making",
+    },
+    scenario: `You are leading a critical ${t.toLowerCase()} initiative for a mid-sized organization. Resources are limited, stakeholders have high expectations, and the competitive landscape is shifting rapidly. You must choose a path forward that balances immediate results with long-term sustainability.`,
+    decision_challenge: {
+      question: `Given the pressures you face, which strategic approach would you take for this ${t.toLowerCase()} initiative?`,
+      options: [
+        { id: "a", text: "Aggressive push for quick results", consequence: `You achieve short-term gains but burn out the team and create technical debt. Within 6 months, quality issues emerge and stakeholder trust erodes.`, is_best: false },
+        { id: "b", text: "Balanced phased approach", consequence: `You deliver incremental wins while building a sustainable foundation. Stakeholders see steady progress and the team remains motivated. Long-term outcomes are strong.`, is_best: true },
+        { id: "c", text: "Conservative wait-and-see", consequence: `You avoid risk but miss the market window. Competitors move ahead and stakeholders lose confidence in your leadership. The initiative stalls.`, is_best: false },
+      ],
+    },
+    best_decision_explanation: `The balanced phased approach is best because it manages competing pressures without sacrificing long-term viability. By delivering incremental wins, you maintain stakeholder confidence while building a sustainable foundation — a core principle of effective ${t.toLowerCase()} strategy.`,
   };
 }
 /* ===============================
@@ -1020,26 +1036,36 @@ RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve at least one dime
 === DECISION LAB (lab_type: "decision_lab") ===
 lab_data format:
 {
-  "scenario": "Detailed real-world scenario (3-5 sentences). Must be specific, concrete, and domain-relevant.",
-  "constraints": ["Constraint 1", "Constraint 2", "Constraint 3"],
-  "decision_prompt": "What is your strategic approach to [specific challenge]?",
-  "twist": "A new constraint that fundamentally breaks or challenges the student's initial strategy (2-3 sentences).",
-  "reflection_question": "Looking back at your decisions, what would you change and why?",
-  "difficulty_tier": 2,
-  "variables": {
-    "budget": {"label": "Budget", "value": "$100K"},
-    "timeline": {"label": "Timeline", "value": "6 months"},
-    "team_size": {"label": "Team", "value": "5 people"}
-  }
+  "concept_knowledge": {
+    "definition": "Clear explanation of the concept (1-2 sentences)",
+    "key_ideas": ["Key idea 1", "Key idea 2", "Key idea 3"],
+    "examples": ["Real example 1", "Real example 2"]
+  },
+  "real_world_relevance": {
+    "explanation": "Why this concept matters in the real world (2-3 sentences)",
+    "domain": "e.g. Government Policy, Business Strategy, Urban Planning"
+  },
+  "scenario": "A realistic situation where someone must make a decision using this concept (3-5 sentences). MUST be unique per topic.",
+  "decision_challenge": {
+    "question": "What would you do in this situation?",
+    "options": [
+      {"id": "a", "text": "Option A description", "consequence": "What happens if you choose this (2-3 sentences)", "is_best": false},
+      {"id": "b", "text": "Option B description", "consequence": "What happens if you choose this (2-3 sentences)", "is_best": true},
+      {"id": "c", "text": "Option C description", "consequence": "What happens if you choose this (2-3 sentences)", "is_best": false}
+    ]
+  },
+  "best_decision_explanation": "Why the best option is correct, connecting back to the concept (2-3 sentences)"
 }
 RULES:
-- Scenario must be specific and grounded (not abstract)
-- 2-3 hard constraints that force tradeoffs
-- Twist must genuinely challenge the initial strategy (not just add difficulty)
-- difficulty_tier: 1 (basic clarity), 2 (constrained), 3 (strategic tradeoffs)
-- variables: randomizable parameters that make each run feel different
-- Students write free-text responses; AI provides critique
-- This lab type is PREFERRED for business, strategy, engineering, negotiation, product design topics
+- concept_knowledge must teach the concept BEFORE the student decides
+- Scenario must be UNIQUE for every topic — never reuse scenarios
+- 3-4 decision options, each representing a different strategy
+- No obviously wrong answers — all options should seem reasonable
+- Each option must have a detailed consequence explaining what would happen
+- Exactly ONE option should have is_best: true
+- best_decision_explanation must connect reasoning back to the concept
+- This lab type is PREFERRED for business, strategy, engineering, negotiation, social science topics
+- Decision options must be specific and realistic — avoid generic choices like "increase funding"
 
 ${filePath ? "IMPORTANT: The user has uploaded SOURCE MATERIAL. You MUST base the course content directly on the material provided. Extract key concepts, facts, and structure from the source material. Do NOT generate generic content — every lesson, lab scenario, and quiz question should reference or build upon the uploaded material." : ""}
 Generate 4-6 modules with a good mix of lab types. Include at least 1-2 decision_lab modules.`,
