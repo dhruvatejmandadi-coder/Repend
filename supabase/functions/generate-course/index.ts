@@ -858,33 +858,43 @@ Choose lab_type based on the topic's cognitive nature:
 MATH LAB RULE: If the course topic is math-related, use "math_lab" for ALL modules. Math topics include algebra, geometry, calculus, statistics, trigonometry, equations, graphing, number theory, etc.
 MATH LAB DIVERSITY RULE: Across math modules, rotate visual_type intentionally. Use at least 3 different visual types when possible (graph, geometry, solution_steps, chart), and never make every module use the same visual_type.
 
+=== MATH LAB TOPIC RELEVANCY — CRITICAL ===
+Every math lab MUST be directly about the SPECIFIC math concept in that module's title.
+- If the module is about "Tangent Lines", the lab MUST involve tangent line equations, slopes at a point, secant-to-tangent limits — NOT quadratics or unrelated algebra.
+- If the module is about "Trigonometric Functions", use sin/cos/tan equations, unit circle values, trig identities — NOT polynomial graphs.
+- If the module is about "Limits", use limit computations, epsilon-delta, continuity — NOT generic equations.
+- The equation, graph_data, geometry, solution_steps, tasks, scenario, and hints MUST all reference the EXACT concept from the module title.
+- NEVER default to quadratic equations (ax²+bx+c) unless the module is specifically about quadratics or parabolas.
+- The scenario MUST use a real-world application of THAT SPECIFIC math concept (e.g., tangent lines → rate of change of a rocket's altitude; trig → calculating roof angles).
+- Tasks must require the student to USE that concept's formulas and methods, not generic "solve this equation."
+
 For math_lab, lab_data format:
 {
-  "title": "Lab title",
-  "objective": "What math skill the student will practice",
-  "concept_overview": "2-4 sentence explanation of the concept",
+  "title": "Lab title — must reference the specific math concept",
+  "objective": "What SPECIFIC math skill the student will practice (e.g., 'Find the equation of a tangent line at a given point')",
+  "concept_overview": "2-4 sentence explanation of THIS SPECIFIC concept with its key formulas",
   "visual_type": "graph" | "geometry" | "solution_steps" | "chart",
   "graph_data": { (for graph/chart types)
     "type": "function" | "scatter" | "bar",
-    "equation": "x^2 - 4*x + 3", (JS math expression)
+    "equation": "Math.sin(x)", (JS math expression — MUST match the module's concept, e.g. tangent line: "x^2" with tangent overlay, trig: "Math.sin(x)")
     "x_label": "x", "y_label": "y",
     "x_range": [-5, 10], "y_range": [-5, 15],
-    "key_points": [{"x": 2, "y": -1, "label": "Vertex"}]
+    "key_points": [{"x": 2, "y": 4, "label": "Point of tangency"}]
   },
   "geometry": [{ (for geometry type)
-    "type": "triangle",
+    "type": "triangle" | "circle" | "line",
     "points": [{"x": 1, "y": 1, "label": "A"}],
     "measurements": {"AB": "4 units"}
   }],
   "solution_steps": [{ (for solution_steps type)
-    "step": 1, "expression": "2x + 5 = 15", "explanation": "Original equation"
+    "step": 1, "expression": "f'(x) = 2x", "explanation": "Take the derivative to find slope of tangent"
   }],
-  "scenario": "Real-world application scenario",
-  "instructions": "Step-by-step lab instructions",
-  "tasks": [{"id": 1, "description": "task text", "type": "input"|"choice"|"explanation", "correct_answer": "answer"}],
-  "hints": ["hint 1", "hint 2"],
-  "solution": "correct answer",
-  "solution_explanation": "step-by-step explanation"
+  "scenario": "Real-world application of THIS SPECIFIC concept (not generic math)",
+  "instructions": "Step-by-step lab instructions referencing the specific formulas/methods for this concept",
+  "tasks": [{"id": 1, "description": "task requiring THIS concept's methods", "type": "input"|"choice"|"explanation", "correct_answer": "answer"}],
+  "hints": ["hint referencing this concept's formulas", "hint 2"],
+  "solution": "correct answer using this concept",
+  "solution_explanation": "step-by-step explanation using this concept's methods"
 }
 
 PREFER decision_lab for at least 1-2 modules per course (unless it's a math course). Mix lab types across modules. Do NOT use the same lab_type for every module (except math courses which should always use math_lab).
