@@ -121,11 +121,16 @@ function isValidEthicalDilemma(ld: any): boolean {
 
 function isValidDecisionLab(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
+  if (!ld.concept_knowledge || typeof ld.concept_knowledge.definition !== "string") return false;
+  if (!Array.isArray(ld.concept_knowledge.key_ideas) || ld.concept_knowledge.key_ideas.length < 2) return false;
+  if (!ld.real_world_relevance || typeof ld.real_world_relevance.explanation !== "string") return false;
   if (typeof ld.scenario !== "string" || ld.scenario.length < 20) return false;
-  if (!Array.isArray(ld.constraints) || ld.constraints.length < 2) return false;
-  if (typeof ld.decision_prompt !== "string") return false;
-  if (typeof ld.twist !== "string" || ld.twist.length < 10) return false;
-  if (typeof ld.reflection_question !== "string") return false;
+  if (!ld.decision_challenge || typeof ld.decision_challenge.question !== "string") return false;
+  if (!Array.isArray(ld.decision_challenge.options) || ld.decision_challenge.options.length < 3) return false;
+  for (const opt of ld.decision_challenge.options) {
+    if (typeof opt.id !== "string" || typeof opt.text !== "string" || typeof opt.consequence !== "string" || typeof opt.is_best !== "boolean") return false;
+  }
+  if (typeof ld.best_decision_explanation !== "string") return false;
   return true;
 }
 
