@@ -285,21 +285,32 @@ function generateEthicalDilemmaFallback(title: string) {
 function generateDecisionLabFallback(title: string) {
   const t = title || "Topic";
   return {
-    scenario: `You are a decision-maker responsible for a critical ${t.toLowerCase()} initiative. Your organization has invested significant resources, and stakeholders expect results within 6 months. The market is competitive and conditions are shifting rapidly.`,
-    constraints: [
-      `Budget is fixed — no additional funding available`,
-      `You must maintain team morale above acceptable levels`,
-      `Regulatory compliance requirements cannot be violated`,
-    ],
-    decision_prompt: `Given these constraints, what is your strategic approach to delivering results in ${t.toLowerCase()}?`,
-    twist: `Halfway through execution, a key competitor releases a superior solution and your primary team lead resigns unexpectedly. Your original timeline is now at risk.`,
-    reflection_question: `Looking back at your initial strategy and how you adapted: what assumption was most dangerous, and what would you do differently from the start?`,
-    difficulty_tier: 2,
-    variables: {
-      budget: { label: "Budget", value: "$100K" },
-      timeline: { label: "Timeline", value: "6 months" },
-      team_size: { label: "Team", value: "5 people" },
+    concept_knowledge: {
+      definition: `${t} refers to the study and application of key principles that drive outcomes in this domain.`,
+      key_ideas: [
+        `${t} involves balancing multiple competing factors.`,
+        `Decisions in ${t.toLowerCase()} have short-term and long-term consequences.`,
+        `Understanding tradeoffs is essential to making effective choices.`,
+      ],
+      examples: [
+        `A manager using ${t.toLowerCase()} principles to allocate limited resources across departments.`,
+        `A government applying ${t.toLowerCase()} concepts when designing new public policy.`,
+      ],
     },
+    real_world_relevance: {
+      explanation: `${t} directly impacts how organizations, governments, and individuals make critical decisions. Understanding this concept helps you anticipate consequences and design better strategies in real-world situations.`,
+      domain: "Strategic Decision-Making",
+    },
+    scenario: `You are leading a critical ${t.toLowerCase()} initiative for a mid-sized organization. Resources are limited, stakeholders have high expectations, and the competitive landscape is shifting rapidly. You must choose a path forward that balances immediate results with long-term sustainability.`,
+    decision_challenge: {
+      question: `Given the pressures you face, which strategic approach would you take for this ${t.toLowerCase()} initiative?`,
+      options: [
+        { id: "a", text: "Aggressive push for quick results", consequence: `You achieve short-term gains but burn out the team and create technical debt. Within 6 months, quality issues emerge and stakeholder trust erodes.`, is_best: false },
+        { id: "b", text: "Balanced phased approach", consequence: `You deliver incremental wins while building a sustainable foundation. Stakeholders see steady progress and the team remains motivated. Long-term outcomes are strong.`, is_best: true },
+        { id: "c", text: "Conservative wait-and-see", consequence: `You avoid risk but miss the market window. Competitors move ahead and stakeholders lose confidence in your leadership. The initiative stalls.`, is_best: false },
+      ],
+    },
+    best_decision_explanation: `The balanced phased approach is best because it manages competing pressures without sacrificing long-term viability. By delivering incremental wins, you maintain stakeholder confidence while building a sustainable foundation — a core principle of effective ${t.toLowerCase()} strategy.`,
   };
 }
 /* ===============================
