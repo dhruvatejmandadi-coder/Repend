@@ -272,76 +272,19 @@ export default function CourseView() {
               )}
 
               {/* Quiz */}
-              {activeContent === "quiz" && !loadingQuizAttempt && (
-                <div className="space-y-4">
-                  {getSectionDone(mod.id, "quiz") && !quizSubmitted && (
-                    <Card className="border-green-500/20 bg-green-500/[0.04]">
-                      <CardContent className="p-4 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-green-500" />
-                        <span className="text-[13px] font-medium">Quiz passed! You can retake it if you'd like.</span>
-                      </CardContent>
-                    </Card>
-                  )}
-
-                  {(mod.quiz as any[])?.map((q: any, qi: number) => (
-                    <Card key={qi} className="border-border/50">
-                      <CardContent className="p-6">
-                        <p className="font-medium mb-3 text-[15px]">{qi + 1}. {q.question}</p>
-                        <div className="space-y-2">
-                          {q.options?.map((opt: string, oi: number) => {
-                            const selected = quizAnswers[qi] === oi;
-                            const isCorrect = oi === q.correct;
-                            let style = "border-border/50 hover:border-primary/20";
-                            if (quizSubmitted) {
-                              if (isCorrect) style = "border-green-500/40 bg-green-500/[0.06]";
-                              else if (selected && !isCorrect) style = "border-destructive/40 bg-destructive/[0.06]";
-                            } else if (selected) {
-                              style = "border-primary/40 bg-primary/[0.06]";
-                            }
-                            return (
-                              <button
-                                key={oi}
-                                disabled={quizSubmitted}
-                                onClick={() => setQuizAnswers((prev) => ({ ...prev, [qi]: oi }))}
-                                className={`w-full text-left px-4 py-3 rounded-lg border text-[13px] transition-all duration-150 ${style}`}
-                              >
-                                {opt}
-                              </button>
-                            );
-                          })}
-                        </div>
-                        {quizSubmitted && q.explanation && (
-                          <p className="mt-3 text-[13px] text-muted-foreground bg-secondary/30 p-3 rounded-lg">
-                            💡 {q.explanation}
-                          </p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-
-                  <div className="flex items-center gap-3">
-                    {!quizSubmitted ? (
-                      <Button onClick={handleQuizSubmit} disabled={Object.keys(quizAnswers).length < (mod.quiz?.length || 0)}>
-                        Submit Quiz
-                      </Button>
-                    ) : (
-                      <Button variant="outline" onClick={resetQuiz}>Retry Quiz</Button>
-                    )}
-
-                    {quizSubmitted && (
-                      <div className="flex items-center gap-2">
-                        <Badge variant={quizPassed ? "default" : "destructive"} className="text-[11px]">
-                          {quizPct}% ({quizScore}/{quizTotal})
-                        </Badge>
-                        {!quizPassed && (
-                          <span className="text-[13px] text-muted-foreground">Need 70% to pass</span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
+              {activeContent === "quiz" && (
+                <QuizSlides
+                  questions={mod.quiz as any[]}
+                  onSubmit={handleQuizSubmit}
+                  isCompleted={getSectionDone(mod.id, "quiz")}
+                />
               )}
             </div>
+
+            {/* AI Tutor */}
+            {activeContent === "lesson" && course && (
+              <AiTutor moduleTitle={mod.title} courseTitle={course.title} />
+            )}
           </main>
         )}
       </div>
