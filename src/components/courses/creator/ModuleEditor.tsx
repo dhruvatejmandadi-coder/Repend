@@ -1,12 +1,13 @@
-import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { FileText, Beaker, ClipboardList } from "lucide-react";
-import type { CreatorModule, QuizQuestion } from "@/pages/CourseCreator";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { FileText, Beaker, ClipboardList, ChevronDown, ChevronUp } from "lucide-react";
+import type { CreatorModule } from "@/pages/CourseCreator";
 import LabEditor from "./LabEditor";
 import QuizEditor from "./QuizEditor";
+import { useState } from "react";
 
 interface Props {
   module: CreatorModule;
@@ -14,8 +15,17 @@ interface Props {
 }
 
 export default function ModuleEditor({ module, onChange }: Props) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    lesson: true,
+    lab: true,
+    quiz: true,
+  });
+
+  const toggle = (section: string) =>
+    setOpenSections((prev) => ({ ...prev, [section]: !prev[section] }));
+
   return (
-    <div className="space-y-4 pt-4">
+    <div className="space-y-3 pt-4">
       <div className="space-y-2">
         <Label>Module Title</Label>
         <Input
@@ -25,64 +35,115 @@ export default function ModuleEditor({ module, onChange }: Props) {
         />
       </div>
 
-      <Tabs defaultValue="lesson" className="w-full">
-        <TabsList className="w-full">
-          <TabsTrigger value="lesson" className="flex-1 text-xs gap-1">
-            <FileText className="w-3 h-3" /> Lesson
-          </TabsTrigger>
-          <TabsTrigger value="lab" className="flex-1 text-xs gap-1">
-            <Beaker className="w-3 h-3" /> Lab
-          </TabsTrigger>
-          <TabsTrigger value="quiz" className="flex-1 text-xs gap-1">
-            <ClipboardList className="w-3 h-3" /> Quiz
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="lesson" className="space-y-3 mt-3">
+      {/* Lesson Section */}
+      <SectionHeader
+        icon={<FileText className="w-3.5 h-3.5" />}
+        label="Lesson"
+        badge={module.lesson_content ? "Added" : undefined}
+        open={openSections.lesson}
+        onToggle={() => toggle("lesson")}
+      />
+      {openSections.lesson && (
+        <div className="space-y-3 pl-2 border-l-2 border-primary/20 ml-2">
           <div className="space-y-2">
-            <Label>Lesson Content (Markdown)</Label>
             <p className="text-xs text-muted-foreground">
               Use <code className="bg-secondary px-1 rounded">---</code> to separate slides. Use <code className="bg-secondary px-1 rounded">## Heading</code> for slide titles.
             </p>
             <Textarea
-              placeholder={`## What is Supply?\n\n- Supply is the quantity of a good...\n- Key factors include...\n\n---\n\n## What is Demand?\n\n- Demand represents...\n- Price affects demand through...`}
+              placeholder={`## What is Supply?\n\n- Supply is the quantity of a good...\n\n---\n\n## What is Demand?\n\n- Demand represents...`}
               value={module.lesson_content}
               onChange={(e) => onChange({ lesson_content: e.target.value })}
-              rows={12}
+              rows={8}
               className="font-mono text-sm"
             />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label>YouTube URL (optional)</Label>
+              <Label className="text-xs">YouTube URL (optional)</Label>
               <Input
                 placeholder="https://youtube.com/watch?v=..."
                 value={module.youtube_url || ""}
                 onChange={(e) => onChange({ youtube_url: e.target.value || null })}
+                className="h-8 text-sm"
               />
             </div>
             <div className="space-y-2">
-              <Label>Video Title</Label>
+              <Label className="text-xs">Video Title</Label>
               <Input
                 placeholder="Video title..."
                 value={module.youtube_title || ""}
                 onChange={(e) => onChange({ youtube_title: e.target.value || null })}
+                className="h-8 text-sm"
               />
             </div>
           </div>
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="lab" className="mt-3">
+      {/* Lab Section */}
+      <SectionHeader
+        icon={<Beaker className="w-3.5 h-3.5" />}
+        label="Lab"
+        badge={module.lab_type || undefined}
+        open={openSections.lab}
+        onToggle={() => toggle("lab")}
+      />
+      {openSections.lab && (
+        <div className="pl-2 border-l-2 border-green-500/20 ml-2">
           <LabEditor module={module} onChange={onChange} />
-        </TabsContent>
+        </div>
+      )}
 
-        <TabsContent value="quiz" className="mt-3">
+      {/* Quiz Section */}
+      <SectionHeader
+        icon={<ClipboardList className="w-3.5 h-3.5" />}
+        label="Quiz"
+        badge={module.quiz.length > 0 ? `${module.quiz.length} Q` : undefined}
+        open={openSections.quiz}
+        onToggle={() => toggle("quiz")}
+      />
+      {openSections.quiz && (
+        <div className="pl-2 border-l-2 border-orange-500/20 ml-2">
           <QuizEditor
             questions={module.quiz}
             onChange={(quiz) => onChange({ quiz })}
           />
-        </TabsContent>
-      </Tabs>
+        </div>
+      )}
     </div>
+  );
+}
+
+function SectionHeader({
+  icon,
+  label,
+  badge,
+  open,
+  onToggle,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  badge?: string;
+  open: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      onClick={onToggle}
+      className="flex items-center gap-2 w-full text-left py-2 px-3 rounded-lg hover:bg-muted/30 transition-colors"
+    >
+      {icon}
+      <span className="text-sm font-medium flex-1">{label}</span>
+      {badge && (
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+          {badge}
+        </Badge>
+      )}
+      {open ? (
+        <ChevronUp className="w-3.5 h-3.5 text-muted-foreground" />
+      ) : (
+        <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" />
+      )}
+    </button>
   );
 }
