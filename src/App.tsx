@@ -45,6 +45,8 @@ const App = () => (
             {/* Dashboard pages — persistent sidebar */}
             <Route element={<DashboardLayout />}>
               <Route path="/courses" element={<Courses />} />
+              <Route path="/courses/create" element={<CourseCreator />} />
+              <Route path="/courses/explore" element={<PublicCourses />} />
               <Route path="/courses/:id" element={<CourseView />} />
               <Route path="/community" element={<Community />} />
               <Route path="/challenges" element={<Challenges />} />
