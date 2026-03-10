@@ -147,11 +147,6 @@ export default function CourseView() {
     );
   }
 
-  const quizScore = mod ? (mod.quiz as any[]).filter((q: any, i: number) => quizAnswers[i] === q.correct).length : 0;
-  const quizTotal = mod?.quiz?.length || 0;
-  const quizPct = quizTotal > 0 ? Math.round((quizScore / quizTotal) * 100) : 0;
-  const quizPassed = quizPct >= PASS_THRESHOLD * 100;
-
   return (
     <>
       {justCompleted && course && (
