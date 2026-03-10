@@ -264,6 +264,18 @@ export default function Courses() {
               Create an account to save your courses.
             </p>
           )}
+
+          {/* Creator + Explore buttons */}
+          {user && (
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <Button variant="outline" onClick={() => navigate("/courses/create")} className="gap-2">
+                <PenTool className="w-4 h-4" /> Course Creator
+              </Button>
+              <Button variant="outline" onClick={() => navigate("/courses/explore")} className="gap-2">
+                <Globe className="w-4 h-4" /> Explore Public
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Courses List */}
