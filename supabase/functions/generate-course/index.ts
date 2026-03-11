@@ -178,7 +178,15 @@ function generateSimulationFallback(title: string) {
   ];
   const questions = questionSets[h % questionSets.length];
 
+  const intros = [
+    `This simulation explores ${t.toLowerCase()} through real-world decision scenarios. You'll manage three interconnected factors and see how your choices create ripple effects across the system.`,
+    `Step into the role of a decision-maker navigating ${t.toLowerCase()}. Each scenario presents a realistic challenge — your choices will shift the balance between competing priorities.`,
+    `In this ${t.toLowerCase()} simulation, every decision has consequences. You'll balance multiple factors while responding to evolving challenges. There are no perfect answers — only strategic tradeoffs.`,
+  ];
+
   return {
+    title: `${t} Simulation`,
+    intro: intros[h % intros.length],
     parameters: [
       { name: p1, icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
       { name: p2, icon: "📈", unit: "%", min: 0, max: 100, default: 50 },
