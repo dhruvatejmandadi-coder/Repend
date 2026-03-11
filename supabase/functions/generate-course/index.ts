@@ -1053,13 +1053,15 @@ PREFER decision_lab for at least 1-2 modules per course (unless it's a math cour
 === SIMULATION LAB (lab_type: "simulation") ===
 lab_data format:
 {
+  "title": "<Topic> Simulation",
+  "intro": "A 1-2 sentence explanation of what this simulation explores and why it matters (topic-specific, NOT generic)",
   "parameters": [
     {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
   ],
   "thresholds": [
-    {"label": "Excellent", "min_percent": 75, "message": "..."},
-    {"label": "Good", "min_percent": 50, "message": "..."},
-    {"label": "Needs Work", "min_percent": 0, "message": "..."}
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 75, "message": "<topic-specific success message>"},
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 50, "message": "<topic-specific moderate message>"},
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 0, "message": "<topic-specific needs-work message>"}
   ],
   "decisions": [
     {
@@ -1072,7 +1074,7 @@ lab_data format:
     }
   ]
 }
-RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific (e.g. "GDP Growth", "Inflation Rate" for Economics). NEVER use generic names like "Understanding" or "Confidence". Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100.
+RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific (e.g. "GDP Growth", "Inflation Rate" for Economics). NEVER use generic names like "Understanding" or "Confidence". Threshold labels MUST be topic-specific (e.g. "Market Leader" / "Stable Business" / "At Risk" for business, "Ecosystem Thriving" / "Ecosystem Stressed" / "Ecosystem Collapse" for environment). NEVER use generic "Excellent" / "Good" / "Needs Work". Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100. Include "title" and "intro" fields to explain the simulation context before starting.
 
 === CLASSIFICATION LAB (lab_type: "classification") ===
 lab_data format:
