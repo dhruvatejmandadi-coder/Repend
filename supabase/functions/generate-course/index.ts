@@ -221,9 +221,34 @@ function generateClassificationFallback(title: string) {
 
 function generatePolicyOptimizationFallback(title: string) {
   const t = title || "Topic";
-  const p1 = `${t} Performance`;
-  const p2 = `${t} Cost`;
-  const p3 = `${t} Risk`;
+  const h = hashString(t);
+  const paramSets = [
+    [`${t} Performance`, `${t} Cost`, `${t} Risk`],
+    [`${t} Reach`, `${t} Budget`, `${t} Compliance`],
+    [`${t} Speed`, `${t} Accuracy`, `${t} Scalability`],
+  ];
+  const [p1, p2, p3] = paramSets[h % paramSets.length];
+  
+  const scenarioSets = [
+    [
+      { q: `How do you allocate resources for ${t.toLowerCase()}?`, emoji: "🎯",
+        c: [{ text: "Aggressive investment", ex: "High performance but increased costs and risk.", s: { [p1]: 85, [p2]: 75, [p3]: 60 } },
+            { text: "Conservative strategy", ex: "Lower risk but moderate performance gains.", s: { [p1]: 60, [p2]: 40, [p3]: 30 } }] },
+      { q: `A new opportunity emerges in ${t.toLowerCase()}. How do you respond?`, emoji: "💡",
+        c: [{ text: "Seize the opportunity", ex: "Potential for high reward but with elevated risk.", s: { [p1]: 80, [p2]: 65, [p3]: 55 } },
+            { text: "Evaluate carefully", ex: "Measured approach that maintains stability.", s: { [p1]: 65, [p2]: 50, [p3]: 35 } }] },
+    ],
+    [
+      { q: `Regulations around ${t.toLowerCase()} are tightening. How do you adapt?`, emoji: "📜",
+        c: [{ text: "Exceed requirements proactively", ex: "Builds trust and future-proofs operations, but costs more upfront.", s: { [p1]: 60, [p2]: 70, [p3]: 25 } },
+            { text: "Meet minimum standards", ex: "Saves budget now but may require costly changes later.", s: { [p1]: 75, [p2]: 45, [p3]: 50 } }] },
+      { q: `Your ${t.toLowerCase()} team is understaffed. What's the priority?`, emoji: "👥",
+        c: [{ text: "Hire specialists", ex: "Boosts quality but increases costs significantly.", s: { [p1]: 85, [p2]: 80, [p3]: 35 } },
+            { text: "Train existing team", ex: "Slower improvement but more sustainable.", s: { [p1]: 65, [p2]: 50, [p3]: 30 } }] },
+    ],
+  ];
+  const scenarios = scenarioSets[h % scenarioSets.length];
+
   return {
     title: `${t} Optimization`,
     description: `Optimize ${t.toLowerCase()} outcomes within the given constraints.`,
@@ -233,28 +258,14 @@ function generatePolicyOptimizationFallback(title: string) {
       { name: p3, icon: "⚠️", unit: "%", min: 0, max: 100, default: 50 },
     ],
     constraints: [
-      { parameter: p1, operator: ">", value: 60, label: `Keep ${t} performance above 60%` },
-      { parameter: p3, operator: "<", value: 40, label: `Keep ${t} risk below 40%` },
+      { parameter: p1, operator: ">", value: 60, label: `Keep ${t} ${p1.split(' ').pop()?.toLowerCase()} above 60%` },
+      { parameter: p3, operator: "<", value: 40, label: `Keep ${t} ${p3.split(' ').pop()?.toLowerCase()} below 40%` },
     ],
     max_decisions: 3,
-    decisions: [
-      {
-        question: `How do you allocate resources for ${t.toLowerCase()}?`,
-        emoji: "🎯",
-        choices: [
-          { text: "Aggressive investment", explanation: "High performance but increased costs and risk.", set_state: { [p1]: 85, [p2]: 75, [p3]: 60 } },
-          { text: "Conservative strategy", explanation: "Lower risk but moderate performance gains.", set_state: { [p1]: 60, [p2]: 40, [p3]: 30 } },
-        ],
-      },
-      {
-        question: `A new opportunity emerges in ${t.toLowerCase()}. How do you respond?`,
-        emoji: "💡",
-        choices: [
-          { text: "Seize the opportunity", explanation: "Potential for high reward but with elevated risk.", set_state: { [p1]: 80, [p2]: 65, [p3]: 55 } },
-          { text: "Evaluate carefully", explanation: "Measured approach that maintains stability.", set_state: { [p1]: 65, [p2]: 50, [p3]: 35 } },
-        ],
-      },
-    ],
+    decisions: scenarios.map(s => ({
+      question: s.q, emoji: s.emoji,
+      choices: s.c.map(c => ({ text: c.text, explanation: c.ex, set_state: c.s })),
+    })),
   };
 }
 
