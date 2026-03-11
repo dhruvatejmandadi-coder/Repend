@@ -271,47 +271,56 @@ function generatePolicyOptimizationFallback(title: string) {
 
 function generateEthicalDilemmaFallback(title: string) {
   const t = title || "Topic";
-  const dims = [
-    { name: "Effectiveness", icon: "🎯", description: `How well ${t.toLowerCase()} achieves its goals` },
-    { name: "Fairness", icon: "⚖️", description: `How equitably ${t.toLowerCase()} impacts stakeholders` },
-    { name: "Sustainability", icon: "🌱", description: `Long-term viability of ${t.toLowerCase()} decisions` },
+  const h = hashString(t);
+  
+  const dimSets = [
+    [{ name: "Effectiveness", icon: "🎯", description: `How well ${t.toLowerCase()} achieves its goals` },
+     { name: "Fairness", icon: "⚖️", description: `How equitably ${t.toLowerCase()} impacts stakeholders` },
+     { name: "Sustainability", icon: "🌱", description: `Long-term viability of ${t.toLowerCase()} decisions` }],
+    [{ name: "Innovation", icon: "💡", description: `How much ${t.toLowerCase()} drives progress` },
+     { name: "Safety", icon: "🛡️", description: `Risk mitigation in ${t.toLowerCase()}` },
+     { name: "Accessibility", icon: "🌍", description: `How widely ${t.toLowerCase()} benefits people` }],
+    [{ name: "Profit", icon: "💰", description: `Financial returns from ${t.toLowerCase()}` },
+     { name: "Community", icon: "🏘️", description: `Social impact of ${t.toLowerCase()}` },
+     { name: "Environment", icon: "🌿", description: `Environmental footprint of ${t.toLowerCase()}` }],
   ];
+  const dims = dimSets[h % dimSets.length];
   const dn = dims.map(d => d.name);
-  const patterns = [
-    [{ [dn[0]]: 15, [dn[1]]: -10, [dn[2]]: 0 }, { [dn[0]]: -10, [dn[1]]: 15, [dn[2]]: 0 }],
-    [{ [dn[0]]: 0, [dn[1]]: 15, [dn[2]]: -10 }, { [dn[0]]: 0, [dn[1]]: -10, [dn[2]]: 15 }],
-    [{ [dn[0]]: -10, [dn[1]]: 0, [dn[2]]: 15 }, { [dn[0]]: 15, [dn[1]]: 0, [dn[2]]: -10 }],
+
+  const dilemmaTemplates = [
+    [
+      { q: `${t} can be optimized for speed or inclusivity. What do you prioritize?`, emoji: "⚖️",
+        c: [{ text: "Optimize for speed", ex: "Fast results but some groups may be left behind.", impacts: { [dn[0]]: 15, [dn[1]]: -10, [dn[2]]: 0 } },
+            { text: "Ensure inclusivity", ex: "Broader reach but slower progress.", impacts: { [dn[0]]: -10, [dn[1]]: 15, [dn[2]]: 5 } }] },
+      { q: `A cheaper method for ${t.toLowerCase()} has hidden downsides. Your call?`, emoji: "🤔",
+        c: [{ text: "Use the cheaper method", ex: "Saves money now but creates problems later.", impacts: { [dn[0]]: 10, [dn[1]]: -15, [dn[2]]: 5 } },
+            { text: "Pay more for the ethical option", ex: "Higher cost but aligns with values.", impacts: { [dn[0]]: -5, [dn[1]]: 10, [dn[2]]: 10 } }] },
+      { q: `Expanding ${t.toLowerCase()} requires sacrificing one area. Which?`, emoji: "🗣️",
+        c: [{ text: `Sacrifice short-term ${dn[2].toLowerCase()}`, ex: "Growth now at the expense of durability.", impacts: { [dn[0]]: 10, [dn[1]]: 5, [dn[2]]: -15 } },
+            { text: `Accept lower ${dn[0].toLowerCase()}`, ex: "Slower gains but a more resilient foundation.", impacts: { [dn[0]]: -15, [dn[1]]: 5, [dn[2]]: 10 } }] },
+    ],
+    [
+      { q: `A whistleblower exposes problems in ${t.toLowerCase()}. How do you react?`, emoji: "📢",
+        c: [{ text: "Full public disclosure", ex: "Builds long-term trust but causes short-term chaos.", impacts: { [dn[0]]: -10, [dn[1]]: 20, [dn[2]]: 0 } },
+            { text: "Internal resolution only", ex: "Maintains control but risks credibility if leaked.", impacts: { [dn[0]]: 10, [dn[1]]: -15, [dn[2]]: 5 } }] },
+      { q: `${t} data shows a vulnerable group is disproportionately affected. What now?`, emoji: "🏥",
+        c: [{ text: "Redesign for equity", ex: "Costly redesign but ethically sound.", impacts: { [dn[0]]: -10, [dn[1]]: 15, [dn[2]]: 10 } },
+            { text: "Maintain current approach", ex: "Efficient but perpetuates inequality.", impacts: { [dn[0]]: 15, [dn[1]]: -10, [dn[2]]: -5 } }] },
+      { q: `Fast-tracking ${t.toLowerCase()} could cut corners on quality. Worth it?`, emoji: "⏱️",
+        c: [{ text: "Fast-track it", ex: "Meets deadlines but quality suffers.", impacts: { [dn[0]]: 15, [dn[1]]: -10, [dn[2]]: -5 } },
+            { text: "Take the time needed", ex: "Better outcomes but misses the window.", impacts: { [dn[0]]: -5, [dn[1]]: 5, [dn[2]]: 15 } }] },
+    ],
   ];
+  const dilemmas = dilemmaTemplates[h % dilemmaTemplates.length];
+
   return {
     title: `${t} Ethical Dilemma`,
     description: `Navigate ethical tradeoffs in ${t.toLowerCase()}. Every choice has consequences.`,
     dimensions: dims,
-    decisions: [
-      {
-        question: `${t} can be optimized for results or fairness. What do you prioritize?`,
-        emoji: "⚖️",
-        choices: [
-          { text: "Maximize results", explanation: "Achieves goals but may disadvantage some stakeholders.", impacts: patterns[0][0] },
-          { text: "Ensure fairness", explanation: "Equitable outcomes but potentially less efficient.", impacts: patterns[0][1] },
-        ],
-      },
-      {
-        question: `A shortcut in ${t.toLowerCase()} saves time but raises concerns. Your call?`,
-        emoji: "🤔",
-        choices: [
-          { text: "Take the shortcut", explanation: "Quick gains but potential long-term drawbacks.", impacts: patterns[1][0] },
-          { text: "Do it properly", explanation: "Slower but builds lasting foundations.", impacts: patterns[1][1] },
-        ],
-      },
-      {
-        question: `${t} stakeholders disagree on direction. How do you resolve it?`,
-        emoji: "🗣️",
-        choices: [
-          { text: "Prioritize sustainability", explanation: "Long-term thinking over short-term wins.", impacts: patterns[2][0] },
-          { text: "Prioritize effectiveness", explanation: "Deliver results now, adapt later.", impacts: patterns[2][1] },
-        ],
-      },
-    ],
+    decisions: dilemmas.map(d => ({
+      question: d.q, emoji: d.emoji,
+      choices: d.c.map(c => ({ text: c.text, explanation: c.ex, impacts: c.impacts })),
+    })),
   };
 }
 
