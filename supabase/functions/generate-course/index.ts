@@ -317,6 +317,42 @@ function generateEthicalDilemmaFallback(title: string) {
 
 function generateDecisionLabFallback(title: string) {
   const t = title || "Topic";
+  const h = hashString(t);
+  
+  const scenarioPool = [
+    {
+      scenario: `You are a consultant advising a city government on ${t.toLowerCase()}. The mayor wants rapid results before election season, but rushing could undermine public trust. Community leaders are divided on the best approach, and the budget only covers one major initiative.`,
+      question: `Given competing pressures, which strategy do you recommend for this ${t.toLowerCase()} initiative?`,
+      options: [
+        { id: "a", text: "Launch a high-visibility pilot program", consequence: `The pilot generates media attention and quick data, but it only reaches a small population. Critics argue it's performative. If results are mixed, scaling becomes politically difficult.`, is_best: false },
+        { id: "b", text: "Build a coalition with community stakeholders first", consequence: `Takes 2 months longer to launch, but community buy-in ensures the initiative addresses real needs. Implementation runs smoother and outcomes are more sustainable.`, is_best: true },
+        { id: "c", text: "Commission an expert report before acting", consequence: `The report takes 4 months. By the time it's ready, political momentum has faded and the budget is reallocated. The opportunity window closes.`, is_best: false },
+      ],
+      explanation: `Building a coalition first is best because ${t.toLowerCase()} initiatives succeed when they address actual community needs. Stakeholder engagement creates ownership and sustainability — core principles of effective ${t.toLowerCase()} strategy.`,
+    },
+    {
+      scenario: `You're leading a team at a mid-sized company tasked with improving ${t.toLowerCase()} outcomes. The CEO wants a 40% improvement within one quarter. Your team has identified three possible approaches, each with different tradeoffs in speed, cost, and long-term impact.`,
+      question: `Which approach would you choose to improve ${t.toLowerCase()} outcomes?`,
+      options: [
+        { id: "a", text: "Restructure the entire workflow", consequence: `Massive disruption in the short term. Productivity drops 25% for 6 weeks. But after the transition period, the 40% improvement target is exceeded and the new system is more resilient.`, is_best: false },
+        { id: "b", text: "Implement targeted improvements to bottlenecks", consequence: `Addresses the top 3 bottlenecks identified by data analysis. Achieves a 30% improvement within the quarter with minimal disruption. Sets up infrastructure for continued gains.`, is_best: true },
+        { id: "c", text: "Outsource the function entirely", consequence: `Quick results on paper, but institutional knowledge is lost. Quality control becomes harder and costs increase 20% annually. The company becomes dependent on external providers.`, is_best: false },
+      ],
+      explanation: `Targeted bottleneck improvements work best because they use data to focus resources where impact is highest, minimize disruption, and create a foundation for iterative improvement — a key principle in ${t.toLowerCase()}.`,
+    },
+    {
+      scenario: `A nonprofit focused on ${t.toLowerCase()} has received an unexpected $2M grant, but it comes with strings: the money must be spent within 18 months and measurable impact must be demonstrated. Your team of 12 is already at capacity with existing programs.`,
+      question: `How do you deploy the $2M grant effectively?`,
+      options: [
+        { id: "a", text: "Hire aggressively and launch a new flagship program", consequence: `You hire 8 new staff and launch a bold new initiative. But onboarding takes months, the new program has untested assumptions, and by month 12 you've spent 70% of the budget with limited measurable results.`, is_best: false },
+        { id: "b", text: "Scale proven programs and add evaluation infrastructure", consequence: `You expand 2 existing programs that already show results, hire 3 staff plus a data analyst, and invest in measurement tools. By month 15, you show clear impact data and the funder offers a renewal.`, is_best: true },
+        { id: "c", text: "Distribute grants to partner organizations", consequence: `Quick disbursement satisfies the timeline, but you lose control over quality and measurement. Partner reports are inconsistent. The funder questions your organization's capacity to lead.`, is_best: false },
+      ],
+      explanation: `Scaling proven programs is optimal because it leverages existing evidence of impact, reduces execution risk, and builds measurement capacity — ensuring ${t.toLowerCase()} outcomes are both real and demonstrable.`,
+    },
+  ];
+  const chosen = scenarioPool[h % scenarioPool.length];
+
   return {
     concept_knowledge: {
       definition: `${t} refers to the study and application of key principles that drive outcomes in this domain.`,
@@ -334,16 +370,12 @@ function generateDecisionLabFallback(title: string) {
       explanation: `${t} directly impacts how organizations, governments, and individuals make critical decisions. Understanding this concept helps you anticipate consequences and design better strategies in real-world situations.`,
       domain: "Strategic Decision-Making",
     },
-    scenario: `You are leading a critical ${t.toLowerCase()} initiative for a mid-sized organization. Resources are limited, stakeholders have high expectations, and the competitive landscape is shifting rapidly. You must choose a path forward that balances immediate results with long-term sustainability.`,
+    scenario: chosen.scenario,
     decision_challenge: {
-      question: `Given the pressures you face, which strategic approach would you take for this ${t.toLowerCase()} initiative?`,
-      options: [
-        { id: "a", text: "Aggressive push for quick results", consequence: `You achieve short-term gains but burn out the team and create technical debt. Within 6 months, quality issues emerge and stakeholder trust erodes.`, is_best: false },
-        { id: "b", text: "Balanced phased approach", consequence: `You deliver incremental wins while building a sustainable foundation. Stakeholders see steady progress and the team remains motivated. Long-term outcomes are strong.`, is_best: true },
-        { id: "c", text: "Conservative wait-and-see", consequence: `You avoid risk but miss the market window. Competitors move ahead and stakeholders lose confidence in your leadership. The initiative stalls.`, is_best: false },
-      ],
+      question: chosen.question,
+      options: chosen.options,
     },
-    best_decision_explanation: `The balanced phased approach is best because it manages competing pressures without sacrificing long-term viability. By delivering incremental wins, you maintain stakeholder confidence while building a sustainable foundation — a core principle of effective ${t.toLowerCase()} strategy.`,
+    best_decision_explanation: chosen.explanation,
   };
 }
 /* ===============================
