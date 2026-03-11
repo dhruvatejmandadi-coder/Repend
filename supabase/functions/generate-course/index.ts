@@ -140,9 +140,44 @@ function isValidDecisionLab(ld: any): boolean {
 
 function generateSimulationFallback(title: string) {
   const t = title || "Topic";
-  const p1 = `${t} Efficiency`;
-  const p2 = `${t} Quality`;
-  const p3 = `${t} Sustainability`;
+  const h = hashString(t);
+  
+  const paramSets = [
+    [`${t} Efficiency`, `${t} Quality`, `${t} Sustainability`],
+    [`${t} Growth Rate`, `${t} Stability`, `${t} Public Trust`],
+    [`${t} Output`, `${t} Resource Usage`, `${t} Innovation`],
+    [`${t} Adoption`, `${t} Cost Effectiveness`, `${t} Long-term Viability`],
+  ];
+  const [p1, p2, p3] = paramSets[h % paramSets.length];
+
+  const questionSets = [
+    [
+      { q: `A stakeholder demands faster ${t.toLowerCase()} results. How do you respond?`, emoji: "🔬",
+        c: [{ text: "Accelerate timelines", explanation: `Pushing faster improves short-term ${t.toLowerCase()} output but strains resources.`, s: { [p1]: 80, [p2]: 45, [p3]: 40 } },
+            { text: "Maintain current pace", explanation: `Steady progress preserves quality and team morale.`, s: { [p1]: 55, [p2]: 70, [p3]: 65 } }] },
+      { q: `New data reveals a flaw in your ${t.toLowerCase()} approach. What now?`, emoji: "⚡",
+        c: [{ text: "Pivot strategy completely", explanation: `A full pivot addresses the flaw but disrupts ongoing work.`, s: { [p1]: 50, [p2]: 85, [p3]: 60 } },
+            { text: "Adapt incrementally", explanation: `Gradual changes minimize disruption while still improving.`, s: { [p1]: 60, [p2]: 65, [p3]: 75 } }] },
+    ],
+    [
+      { q: `Resources for ${t.toLowerCase()} are being cut by 30%. Where do you focus?`, emoji: "💰",
+        c: [{ text: "Protect core operations", explanation: `Maintaining essentials ensures baseline ${t.toLowerCase()} continues.`, s: { [p1]: 65, [p2]: 75, [p3]: 50 } },
+            { text: "Invest in automation", explanation: `Automation reduces future costs but requires upfront effort.`, s: { [p1]: 50, [p2]: 55, [p3]: 80 } }] },
+      { q: `A competitor has overtaken your ${t.toLowerCase()} results. Your move?`, emoji: "🏃",
+        c: [{ text: "Innovate aggressively", explanation: `Bold innovation can leapfrog competitors but carries risk.`, s: { [p1]: 85, [p2]: 40, [p3]: 55 } },
+            { text: "Improve existing strengths", explanation: `Refining what works builds reliable, sustainable advantage.`, s: { [p1]: 60, [p2]: 80, [p3]: 70 } }] },
+    ],
+    [
+      { q: `Public opinion on ${t.toLowerCase()} is shifting negatively. How do you respond?`, emoji: "📢",
+        c: [{ text: "Launch transparency initiative", explanation: `Openness rebuilds trust but exposes internal challenges.`, s: { [p1]: 55, [p2]: 60, [p3]: 80 } },
+            { text: "Double down on results", explanation: `Strong outcomes speak for themselves, but perception may lag.`, s: { [p1]: 80, [p2]: 70, [p3]: 45 } }] },
+      { q: `Two departments disagree on ${t.toLowerCase()} priorities. How do you mediate?`, emoji: "🤝",
+        c: [{ text: "Let data decide", explanation: `Evidence-based decisions are fair but may ignore context.`, s: { [p1]: 70, [p2]: 75, [p3]: 55 } },
+            { text: "Compromise on both sides", explanation: `Balanced concessions maintain relationships and momentum.`, s: { [p1]: 60, [p2]: 60, [p3]: 70 } }] },
+    ],
+  ];
+  const questions = questionSets[h % questionSets.length];
+
   return {
     parameters: [
       { name: p1, icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
@@ -154,24 +189,11 @@ function generateSimulationFallback(title: string) {
       { label: "Good", min_percent: 50, message: "Solid results with room for improvement." },
       { label: "Needs Work", min_percent: 0, message: "Consider revisiting your approach." },
     ],
-    decisions: [
-      {
-        question: `How would you approach improving ${t.toLowerCase()} outcomes?`,
-        emoji: "🔬",
-        choices: [
-          { text: "Prioritize efficiency", explanation: `Focuses resources on maximizing ${t.toLowerCase()} throughput at the cost of long-term viability.`, set_state: { [p1]: 80, [p2]: 45, [p3]: 40 } },
-          { text: "Balanced approach", explanation: `Spreads effort evenly across all dimensions of ${t.toLowerCase()}.`, set_state: { [p1]: 60, [p2]: 60, [p3]: 55 } },
-        ],
-      },
-      {
-        question: `A challenge arises in ${t.toLowerCase()}. What's your response?`,
-        emoji: "⚡",
-        choices: [
-          { text: "Invest in quality", explanation: `Improving quality standards strengthens long-term ${t.toLowerCase()} outcomes.`, set_state: { [p1]: 50, [p2]: 85, [p3]: 60 } },
-          { text: "Focus on sustainability", explanation: `Sustainable practices ensure ${t.toLowerCase()} remains viable over time.`, set_state: { [p1]: 45, [p2]: 55, [p3]: 80 } },
-        ],
-      },
-    ],
+    decisions: questions.map(q => ({
+      question: q.q,
+      emoji: q.emoji,
+      choices: q.c.map(c => ({ text: c.text, explanation: c.explanation, set_state: c.s })),
+    })),
   };
 }
 
