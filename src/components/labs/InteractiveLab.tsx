@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -35,6 +35,7 @@ type Decision = {
 type SimulationData = {
   title?: string;
   description?: string;
+  intro?: string;
   parameters: Parameter[];
   thresholds: { label: string; min_percent: number; message: string }[];
   decisions?: Decision[];
@@ -95,6 +96,7 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
   const rawDecisions = useMemo(() => data.decisions ?? [], [data]);
   const decisions = useMemo(() => ensureDecisionSetState(rawDecisions, parameters), [rawDecisions, parameters]);
 
+  const [showIntro, setShowIntro] = useState(true);
   const [values, setValues] = useState<Record<string, number>>({});
   const [currentDecision, setCurrentDecision] = useState(0);
   const [answered, setAnswered] = useState<Record<number, number>>({});
@@ -104,6 +106,7 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
     setValues(initial);
     setCurrentDecision(0);
     setAnswered({});
+    setShowIntro(true);
   }, [data, parameters]);
 
   const totalPercent = useMemo(() => {
@@ -155,6 +158,7 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
     setCurrentDecision(0);
     setAnswered({});
     setCompletionFired(false);
+    setShowIntro(true);
   };
 
   // Show completed state when revisiting
@@ -167,6 +171,40 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
           <p className="text-sm text-muted-foreground">You've already completed this simulation.</p>
           <Button variant="outline" onClick={reset}>
             <RotateCcw className="w-4 h-4 mr-1" /> Replay Simulation
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Intro phase — explain what the simulation is about before jumping into decisions
+  if (showIntro) {
+    const introText = data.intro || data.description || `In this simulation, you'll make strategic decisions that affect ${parameters.map(p => p.name).join(", ")}. Each choice shifts the system — there's no single right answer, only tradeoffs. Watch how your decisions impact the outcome.`;
+    return (
+      <Card className="border-primary/20 bg-primary/5">
+        <CardContent className="p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">🧪</span>
+            <h3 className="font-bold text-lg">{data.title || "Simulation Lab"}</h3>
+          </div>
+          <p className="text-sm leading-relaxed">{introText}</p>
+          <div className="space-y-2">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">You'll be managing</span>
+            <div className="flex flex-wrap gap-2">
+              {parameters.map((p) => (
+                <Badge key={p.name} variant="outline" className="text-xs">
+                  {p.icon} {p.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+          <div className="bg-background/60 rounded-lg p-3 border border-border">
+            <p className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">How it works:</span> You'll face {decisions.length} scenario{decisions.length !== 1 ? "s" : ""}. Each choice will adjust the parameters above. Your goal is to find the best balance across all factors.
+            </p>
+          </div>
+          <Button onClick={() => setShowIntro(false)} className="w-full">
+            Start Simulation <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </CardContent>
       </Card>

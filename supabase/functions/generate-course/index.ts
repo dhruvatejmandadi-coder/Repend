@@ -178,17 +178,37 @@ function generateSimulationFallback(title: string) {
   ];
   const questions = questionSets[h % questionSets.length];
 
+  const intros = [
+    `This simulation explores ${t.toLowerCase()} through real-world decision scenarios. You'll manage three interconnected factors and see how your choices create ripple effects across the system.`,
+    `Step into the role of a decision-maker navigating ${t.toLowerCase()}. Each scenario presents a realistic challenge — your choices will shift the balance between competing priorities.`,
+    `In this ${t.toLowerCase()} simulation, every decision has consequences. You'll balance multiple factors while responding to evolving challenges. There are no perfect answers — only strategic tradeoffs.`,
+  ];
+
   return {
+    title: `${t} Simulation`,
+    intro: intros[h % intros.length],
     parameters: [
       { name: p1, icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
       { name: p2, icon: "📈", unit: "%", min: 0, max: 100, default: 50 },
       { name: p3, icon: "📉", unit: "%", min: 0, max: 100, default: 50 },
     ],
     thresholds: [
-      { label: "Excellent", min_percent: 75, message: "Outstanding performance across all factors." },
-      { label: "Good", min_percent: 50, message: "Solid results with room for improvement." },
-      { label: "Needs Work", min_percent: 0, message: "Consider revisiting your approach." },
-    ],
+      [
+        { label: `${t} Mastery`, min_percent: 75, message: `Exceptional command of ${t.toLowerCase()} — your decisions created strong outcomes across all dimensions.` },
+        { label: `Developing ${t} Insight`, min_percent: 50, message: `You're building a solid understanding of ${t.toLowerCase()}, but some tradeoffs could be managed better.` },
+        { label: `${t} Foundations`, min_percent: 0, message: `Your ${t.toLowerCase()} approach needs refinement — revisit the tradeoffs and try a different strategy.` },
+      ],
+      [
+        { label: `Strategic Leader`, min_percent: 75, message: `Your ${t.toLowerCase()} decisions demonstrate strong strategic thinking and balance.` },
+        { label: `Competent Manager`, min_percent: 50, message: `Reasonable ${t.toLowerCase()} decisions, though some areas were under-prioritized.` },
+        { label: `Novice Analyst`, min_percent: 0, message: `Your ${t.toLowerCase()} strategy missed key factors — consider the full picture next time.` },
+      ],
+      [
+        { label: `System Optimizer`, min_percent: 75, message: `You found an effective balance across all ${t.toLowerCase()} factors — impressive systemic thinking.` },
+        { label: `Partial Optimizer`, min_percent: 50, message: `Some ${t.toLowerCase()} factors improved, but others suffered — tradeoff management is key.` },
+        { label: `Imbalanced Approach`, min_percent: 0, message: `Your ${t.toLowerCase()} decisions created significant imbalances — try distributing focus more evenly.` },
+      ],
+    ][h % 3],
     decisions: questions.map(q => ({
       question: q.q,
       emoji: q.emoji,
@@ -1033,13 +1053,15 @@ PREFER decision_lab for at least 1-2 modules per course (unless it's a math cour
 === SIMULATION LAB (lab_type: "simulation") ===
 lab_data format:
 {
+  "title": "<Topic> Simulation",
+  "intro": "A 1-2 sentence explanation of what this simulation explores and why it matters (topic-specific, NOT generic)",
   "parameters": [
     {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
   ],
   "thresholds": [
-    {"label": "Excellent", "min_percent": 75, "message": "..."},
-    {"label": "Good", "min_percent": 50, "message": "..."},
-    {"label": "Needs Work", "min_percent": 0, "message": "..."}
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 75, "message": "<topic-specific success message>"},
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 50, "message": "<topic-specific moderate message>"},
+    {"label": "<TOPIC-SPECIFIC LEVEL NAME>", "min_percent": 0, "message": "<topic-specific needs-work message>"}
   ],
   "decisions": [
     {
@@ -1052,7 +1074,7 @@ lab_data format:
     }
   ]
 }
-RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific (e.g. "GDP Growth", "Inflation Rate" for Economics). NEVER use generic names like "Understanding" or "Confidence". Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100.
+RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific (e.g. "GDP Growth", "Inflation Rate" for Economics). NEVER use generic names like "Understanding" or "Confidence". Threshold labels MUST be topic-specific (e.g. "Market Leader" / "Stable Business" / "At Risk" for business, "Ecosystem Thriving" / "Ecosystem Stressed" / "Ecosystem Collapse" for environment). NEVER use generic "Excellent" / "Good" / "Needs Work". Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100. Include "title" and "intro" fields to explain the simulation context before starting.
 
 === CLASSIFICATION LAB (lab_type: "classification") ===
 lab_data format:
