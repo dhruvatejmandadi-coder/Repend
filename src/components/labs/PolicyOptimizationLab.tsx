@@ -3,7 +3,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
-import { CheckCircle2, XCircle, RotateCcw, Target } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, Target, Lightbulb } from "lucide-react";
+import LabIntro from "./LabIntro";
+import type { LabIntroData } from "./LabIntro";
 
 type Parameter = {
   name: string;
@@ -34,6 +36,8 @@ type Decision = {
 type PolicyData = {
   title?: string;
   description?: string;
+  repend_intro?: LabIntroData;
+  key_insight?: string;
   parameters: Parameter[];
   constraints: Constraint[];
   max_decisions: number;
@@ -56,6 +60,7 @@ export default function PolicyOptimizationLab({ data, onComplete, isCompleted }:
   const decisions = data.decisions ?? [];
   const maxDecisions = data.max_decisions || decisions.length;
 
+  const [showIntro, setShowIntro] = useState(true);
   const [values, setValues] = useState<Record<string, number>>(
     () => Object.fromEntries(parameters.map((p) => [p.name, p.default]))
   );
@@ -75,7 +80,6 @@ export default function PolicyOptimizationLab({ data, onComplete, isCompleted }:
   const allMet = constraintResults.every((c) => c.met);
   const isFinished = decisionsMade.length >= maxDecisions || decisionsMade.length >= decisions.length;
 
-  // Fire onComplete via useEffect
   useEffect(() => {
     if (isFinished && !completionFired && onComplete && !isCompleted) {
       onComplete();
@@ -106,9 +110,9 @@ export default function PolicyOptimizationLab({ data, onComplete, isCompleted }:
     setDecisionsMade([]);
     setCurrentDecision(0);
     setCompletionFired(false);
+    setShowIntro(true);
   };
 
-  // Show completed state when revisiting
   if (isCompleted && !isFinished) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
@@ -122,6 +126,23 @@ export default function PolicyOptimizationLab({ data, onComplete, isCompleted }:
         </CardContent>
       </Card>
     );
+  }
+
+  // Repend intro
+  if (showIntro && data.repend_intro) {
+    return (
+      <LabIntro
+        title={data.title || "Policy Optimization"}
+        intro={data.repend_intro}
+        labType="policy_optimization"
+        onStart={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  // Skip intro if no repend data
+  if (showIntro && !data.repend_intro) {
+    setShowIntro(false);
   }
 
   return (
@@ -187,28 +208,44 @@ export default function PolicyOptimizationLab({ data, onComplete, isCompleted }:
 
       {/* Result */}
       {isFinished && (
-        <Card className={allMet ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}>
-          <CardContent className="p-5 text-center space-y-3">
-            {allMet ? (
-              <>
-                <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
-                <h3 className="font-bold text-lg">All targets met!</h3>
-                <p className="text-sm text-muted-foreground">You optimized the policy within {decisionsMade.length} decisions.</p>
-              </>
-            ) : (
-              <>
-                <XCircle className="w-10 h-10 text-destructive mx-auto" />
-                <h3 className="font-bold text-lg">Targets not met</h3>
-                <p className="text-sm text-muted-foreground">
-                  {constraintResults.filter((c) => !c.met).length} constraint(s) still unmet. Try a different strategy.
-                </p>
-              </>
-            )}
-            <Button variant="outline" onClick={reset}>
-              <RotateCcw className="w-4 h-4 mr-1" /> Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <>
+          <Card className={allMet ? "border-green-500/30 bg-green-500/5" : "border-destructive/30 bg-destructive/5"}>
+            <CardContent className="p-5 text-center space-y-3">
+              {allMet ? (
+                <>
+                  <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+                  <h3 className="font-bold text-lg">All targets met!</h3>
+                  <p className="text-sm text-muted-foreground">You optimized the policy within {decisionsMade.length} decisions.</p>
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-10 h-10 text-destructive mx-auto" />
+                  <h3 className="font-bold text-lg">Targets not met</h3>
+                  <p className="text-sm text-muted-foreground">
+                    {constraintResults.filter((c) => !c.met).length} constraint(s) still unmet. Try a different strategy.
+                  </p>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Key Insight */}
+          {data.key_insight && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold">✅ Key Insight</h3>
+                </div>
+                <p className="text-sm leading-relaxed">{data.key_insight}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </>
       )}
     </div>
   );

@@ -2,7 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Scale, RotateCcw, CheckCircle2 } from "lucide-react";
+import { Scale, RotateCcw, CheckCircle2, Lightbulb } from "lucide-react";
+import LabIntro from "./LabIntro";
+import type { LabIntroData } from "./LabIntro";
 
 type Dimension = {
   name: string;
@@ -23,6 +25,8 @@ type Decision = {
 type EthicalData = {
   title?: string;
   description?: string;
+  repend_intro?: LabIntroData;
+  key_insight?: string;
   dimensions: Dimension[];
   decisions: Decision[];
 };
@@ -31,6 +35,7 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
   const dimensions = data.dimensions ?? [];
   const decisions = data.decisions ?? [];
 
+  const [showIntro, setShowIntro] = useState(true);
   const [scores, setScores] = useState<Record<string, number>>(
     () => Object.fromEntries(dimensions.map((d) => [d.name, 50]))
   );
@@ -40,7 +45,6 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
 
   const allDone = Object.keys(answered).length === decisions.length;
 
-  // Fire onComplete via useEffect
   useEffect(() => {
     if (allDone && !completionFired && onComplete && !isCompleted) {
       onComplete();
@@ -78,9 +82,9 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
     setAnswered({});
     setCurrentDecision(0);
     setCompletionFired(false);
+    setShowIntro(true);
   };
 
-  // Show completed state when revisiting
   if (isCompleted && !allDone) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
@@ -94,6 +98,22 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
         </CardContent>
       </Card>
     );
+  }
+
+  // Repend intro
+  if (showIntro && data.repend_intro) {
+    return (
+      <LabIntro
+        title={data.title || "Ethical Dilemma"}
+        intro={data.repend_intro}
+        labType="ethical_dilemma"
+        onStart={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  if (showIntro && !data.repend_intro) {
+    setShowIntro(false);
   }
 
   return (
@@ -161,7 +181,7 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
                   </button>
                   {isChosen && c.explanation && (
                     <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/50 rounded-md">
-                      💡 {c.explanation}
+                      ⚡ {c.explanation}
                     </p>
                   )}
                 </div>
@@ -178,25 +198,41 @@ export default function EthicalDilemmaLab({ data, onComplete, isCompleted }: { d
 
       {/* Outcome */}
       {allDone && (
-        <Card className="border-primary/20">
-          <CardContent className="p-5 text-center space-y-3">
-            <Scale className="w-10 h-10 text-primary mx-auto" />
-            <h3 className="font-bold text-lg">Ethical Balance Score: {balanceScore}%</h3>
-            <div className="h-3 bg-secondary rounded-full overflow-hidden max-w-xs mx-auto">
-              <div className="h-full bg-primary transition-all" style={{ width: `${balanceScore}%` }} />
-            </div>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {balanceScore >= 75
-                ? "Excellent balance! You maintained equity across all ethical dimensions."
-                : balanceScore >= 50
-                  ? "Decent balance, but some dimensions suffered significantly."
-                  : "Your choices heavily favored certain dimensions over others. Consider the tradeoffs."}
-            </p>
-            <Button variant="outline" onClick={reset}>
-              <RotateCcw className="w-4 h-4 mr-1" /> Try Again
-            </Button>
-          </CardContent>
-        </Card>
+        <>
+          <Card className="border-primary/20">
+            <CardContent className="p-5 text-center space-y-3">
+              <Scale className="w-10 h-10 text-primary mx-auto" />
+              <h3 className="font-bold text-lg">Ethical Balance Score: {balanceScore}%</h3>
+              <div className="h-3 bg-secondary rounded-full overflow-hidden max-w-xs mx-auto">
+                <div className="h-full bg-primary transition-all" style={{ width: `${balanceScore}%` }} />
+              </div>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                {balanceScore >= 75
+                  ? "Excellent balance! You maintained equity across all ethical dimensions."
+                  : balanceScore >= 50
+                    ? "Decent balance, but some dimensions suffered significantly."
+                    : "Your choices heavily favored certain dimensions over others. Consider the tradeoffs."}
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Key Insight */}
+          {data.key_insight && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-5 space-y-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="w-5 h-5 text-primary" />
+                  <h3 className="font-bold">✅ Key Insight</h3>
+                </div>
+                <p className="text-sm leading-relaxed">{data.key_insight}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </>
       )}
     </div>
   );

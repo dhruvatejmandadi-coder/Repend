@@ -178,15 +178,26 @@ function generateSimulationFallback(title: string) {
   ];
   const questions = questionSets[h % questionSets.length];
 
-  const intros = [
-    `This simulation explores ${t.toLowerCase()} through real-world decision scenarios. You'll manage three interconnected factors and see how your choices create ripple effects across the system.`,
-    `Step into the role of a decision-maker navigating ${t.toLowerCase()}. Each scenario presents a realistic challenge — your choices will shift the balance between competing priorities.`,
-    `In this ${t.toLowerCase()} simulation, every decision has consequences. You'll balance multiple factors while responding to evolving challenges. There are no perfect answers — only strategic tradeoffs.`,
+  const roles = [
+    `a department head managing ${t.toLowerCase()} across your organization`,
+    `an operations manager responsible for optimizing ${t.toLowerCase()} outcomes`,
+    `a strategic consultant hired to improve ${t.toLowerCase()} for a mid-sized company`,
   ];
 
   return {
     title: `${t} Simulation`,
-    intro: intros[h % intros.length],
+    repend_intro: {
+      relevance: `${t} directly affects how organizations perform in competitive environments. Understanding how to balance competing priorities in ${t.toLowerCase()} is a critical skill used by managers, analysts, and leaders every day.`,
+      role: roles[h % roles.length],
+      scenario_context: `Your organization is at a crossroads with ${t.toLowerCase()}. Multiple stakeholders have competing demands, resources are limited, and every decision creates ripple effects across the system. You need to navigate ${questions.length} critical scenarios.`,
+      information: [
+        `You're managing 3 key metrics: ${p1}, ${p2}, and ${p3}`,
+        `Each decision shifts all metrics — there are no isolated choices`,
+        `Your goal is to achieve the highest balanced score across all factors`,
+      ],
+      objective: `Learn how decisions in ${t.toLowerCase()} create tradeoffs and systemic consequences.`,
+    },
+    key_insight: `${t} is never about maximizing a single factor. The best ${t.toLowerCase()} strategies find the optimal balance between competing priorities, because over-optimizing one dimension always comes at the cost of another.`,
     parameters: [
       { name: p1, icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
       { name: p2, icon: "📈", unit: "%", min: 0, max: 100, default: 50 },
@@ -219,6 +230,12 @@ function generateSimulationFallback(title: string) {
 
 function generateClassificationFallback(title: string) {
   const t = title || "Topic";
+  const h = hashString(t);
+  const roles = [
+    `a research analyst categorizing ${t.toLowerCase()} elements for a government report`,
+    `a consultant sorting ${t.toLowerCase()} factors for a client presentation`,
+    `a team lead organizing ${t.toLowerCase()} components for a strategic review`,
+  ];
   const cats = [
     { name: "Core Concepts", description: `Fundamental principles of ${t.toLowerCase()}`, color: "#4CAF50" },
     { name: "Supporting Factors", description: `Elements that contribute to ${t.toLowerCase()}`, color: "#2196F3" },
@@ -227,6 +244,18 @@ function generateClassificationFallback(title: string) {
   return {
     title: `${t} Classification`,
     description: `Categorize the following items related to ${t.toLowerCase()} into the correct groups.`,
+    repend_intro: {
+      relevance: `Professionals working with ${t.toLowerCase()} must quickly distinguish between core principles, supporting factors, and common misconceptions. This skill is essential in ${t.toLowerCase()} analysis, strategy, and communication.`,
+      role: roles[h % roles.length],
+      scenario_context: `You've been asked to organize key ${t.toLowerCase()} concepts into clear categories. Your analysis will inform a major decision — getting the classification wrong could lead to flawed strategy.`,
+      information: [
+        `There are ${cats.length} categories to sort items into`,
+        `Some items may seem like they belong in multiple categories — choose the BEST fit`,
+        `Pay attention to whether something is foundational, supportive, or misleading`,
+      ],
+      objective: `Develop the ability to accurately distinguish between core concepts, supporting elements, and misconceptions in ${t.toLowerCase()}.`,
+    },
+    key_insight: `In ${t.toLowerCase()}, confusing a misconception for a core concept can lead to fundamentally flawed decisions. The ability to categorize information accurately is one of the most important analytical skills in any domain.`,
     categories: cats,
     items: [
       { content: `Primary principle of ${t.toLowerCase()}`, correctCategory: "Core Concepts", explanation: "This is a foundational element." },
@@ -272,6 +301,18 @@ function generatePolicyOptimizationFallback(title: string) {
   return {
     title: `${t} Optimization`,
     description: `Optimize ${t.toLowerCase()} outcomes within the given constraints.`,
+    repend_intro: {
+      relevance: `In the real world, ${t.toLowerCase()} decisions are never unlimited. Leaders must achieve targets while operating under strict constraints — budget limits, time pressures, and resource scarcity.`,
+      role: `a policy advisor tasked with optimizing ${t.toLowerCase()} outcomes for your organization`,
+      scenario_context: `You have a limited number of decisions to make. Each one shifts the metrics — but you must hit ALL constraint targets by the end. Strategy and sequencing matter.`,
+      information: [
+        `You're managing: ${p1}, ${p2}, and ${p3}`,
+        `Constraints define minimum/maximum thresholds you must meet`,
+        `You only get ${3} decisions — choose wisely`,
+      ],
+      objective: `Learn to optimize ${t.toLowerCase()} outcomes within realistic constraints.`,
+    },
+    key_insight: `In ${t.toLowerCase()}, meeting all constraints simultaneously requires strategic thinking — not just maximizing one metric. The best decision-makers sequence their choices to create compounding positive effects.`,
     parameters: [
       { name: p1, icon: "🎯", unit: "%", min: 0, max: 100, default: 50 },
       { name: p2, icon: "💰", unit: "%", min: 0, max: 100, default: 50 },
@@ -336,6 +377,18 @@ function generateEthicalDilemmaFallback(title: string) {
   return {
     title: `${t} Ethical Dilemma`,
     description: `Navigate ethical tradeoffs in ${t.toLowerCase()}. Every choice has consequences.`,
+    repend_intro: {
+      relevance: `${t} decisions in the real world often involve ethical tradeoffs. There's rarely a perfect answer — leaders must balance ${dn.map(d => d.toLowerCase()).join(", ")} while accepting that improving one area may harm another.`,
+      role: `a decision-maker navigating ethical challenges in ${t.toLowerCase()}`,
+      scenario_context: `You'll face ${dilemmas.length} dilemmas where every choice helps one dimension and hurts another. Your goal isn't to find the "right" answer — it's to maintain the best possible balance.`,
+      information: [
+        `You're balancing ${dims.length} dimensions: ${dims.map(d => `${d.icon} ${d.name}`).join(", ")}`,
+        `Each choice has positive AND negative impacts — there are no free wins`,
+        `You'll be scored on overall balance, not any single dimension`,
+      ],
+      objective: `Understand how ethical tradeoffs work in ${t.toLowerCase()} and practice maintaining balance under pressure.`,
+    },
+    key_insight: `In ${t.toLowerCase()}, ethical decisions are never black and white. The most effective leaders acknowledge tradeoffs openly, communicate their reasoning, and strive for balance — not perfection.`,
     dimensions: dims,
     decisions: dilemmas.map(d => ({
       question: d.q, emoji: d.emoji,
@@ -1050,11 +1103,35 @@ For math_lab, lab_data format:
 
 PREFER decision_lab for at least 1-2 modules per course (unless it's a math course). Mix lab types across modules. Do NOT use the same lab_type for every module (except math courses which should always use math_lab).
 
+=== 🔥 REPEND LEARNING FORMULA — CRITICAL FOR ALL LABS ===
+Every lab MUST follow this learning loop:
+🌎 Relevance → 🎭 Scenario → 📊 Information → 🧠 Decision → ⚡ Consequence → ✅ Insight
+
+This means every lab_data object (except math_lab) MUST include these additional fields:
+{
+  "repend_intro": {
+    "relevance": "1-2 sentences explaining WHERE this concept is used in the real world (be specific: jobs, industries, daily life)",
+    "role": "The role the student plays (e.g., 'a hospital operations manager', 'a startup CEO', 'an environmental engineer')",
+    "scenario_context": "2-3 sentences setting the scene. What's the situation? What pressure exists? Why does it matter NOW?",
+    "information": ["Key fact 1 the student needs", "Key fact 2", "Key fact 3"],
+    "objective": "1 sentence: what skill or insight will the student gain?"
+  },
+  "key_insight": "After the lab ends, explain the core lesson in 1-2 clear sentences. This creates the 'clarity moment'."
+}
+
+REPEND RULES:
+- The "role" MUST be specific (not "a decision-maker" but "the CFO of a struggling retail chain")
+- The "relevance" MUST name a real industry, job, or situation
+- The "information" MUST be data, facts, or context the student needs BEFORE deciding
+- The "key_insight" MUST explain WHY the best approach works, connecting theory to practice
+- NEVER use generic relevance like "this concept is important" — be SPECIFIC
+
 === SIMULATION LAB (lab_type: "simulation") ===
 lab_data format:
 {
   "title": "<Topic> Simulation",
-  "intro": "A 1-2 sentence explanation of what this simulation explores and why it matters (topic-specific, NOT generic)",
+  "repend_intro": { ... (see above) },
+  "key_insight": "The core lesson after completing all decisions",
   "parameters": [
     {"name": "<TOPIC-SPECIFIC FACTOR>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
   ],
@@ -1074,12 +1151,14 @@ lab_data format:
     }
   ]
 }
-RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific (e.g. "GDP Growth", "Inflation Rate" for Economics). NEVER use generic names like "Understanding" or "Confidence". Threshold labels MUST be topic-specific (e.g. "Market Leader" / "Stable Business" / "At Risk" for business, "Ecosystem Thriving" / "Ecosystem Stressed" / "Ecosystem Collapse" for environment). NEVER use generic "Excellent" / "Good" / "Needs Work". Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100. Include "title" and "intro" fields to explain the simulation context before starting.
+RULES: 3 parameters, 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific. NEVER use generic names. Threshold labels MUST be topic-specific. Every choice MUST have "set_state" mapping ALL parameter names to integers 0-100.
 
 === CLASSIFICATION LAB (lab_type: "classification") ===
 lab_data format:
 {
   "title": "...", "description": "...",
+  "repend_intro": { ... (see above) },
+  "key_insight": "The core lesson after classifying all items",
   "categories": [{"name": "Cat A", "description": "...", "color": "#hex"}],
   "items": [{"content": "...", "correctCategory": "Cat A", "explanation": "..."}]
 }
@@ -1089,6 +1168,8 @@ RULES: 3-4 categories, 6-8 items minimum.
 lab_data format:
 {
   "title": "...", "description": "...",
+  "repend_intro": { ... (see above) },
+  "key_insight": "The core lesson about optimization under constraints",
   "parameters": [
     {"name": "<TOPIC VARIABLE>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}
   ],
@@ -1106,12 +1187,14 @@ lab_data format:
     }
   ]
 }
-RULES: 3 parameters, 2-3 constraints, max_decisions limits how many choices the student can make. Student must reach ALL constraint targets within the decision limit.
+RULES: 3 parameters, 2-3 constraints, max_decisions limits how many choices the student can make.
 
 === ETHICAL DILEMMA LAB (lab_type: "ethical_dilemma") ===
 lab_data format:
 {
   "title": "...", "description": "...",
+  "repend_intro": { ... (see above) },
+  "key_insight": "The core lesson about ethical balance",
   "dimensions": [
     {"name": "Profit", "icon": "💰", "description": "Financial performance"},
     {"name": "Ethics", "icon": "⚖️", "description": "Moral responsibility"},
@@ -1127,7 +1210,7 @@ lab_data format:
     }
   ]
 }
-RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve at least one dimension AND harm at least one other. Use "impacts" (deltas, -50 to +50), NOT "set_state". Student is scored on BALANCE across dimensions.
+RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve at least one dimension AND harm at least one other. Use "impacts" (deltas, -50 to +50), NOT "set_state".
 
 === DECISION LAB (lab_type: "decision_lab") ===
 lab_data format:
@@ -1157,11 +1240,8 @@ RULES:
 - Scenario must be UNIQUE for every topic — never reuse scenarios
 - 3-4 decision options, each representing a different strategy
 - No obviously wrong answers — all options should seem reasonable
-- Each option must have a detailed consequence explaining what would happen
 - Exactly ONE option should have is_best: true
-- best_decision_explanation must connect reasoning back to the concept
-- This lab type is PREFERRED for business, strategy, engineering, negotiation, social science topics
-- Decision options must be specific and realistic — avoid generic choices like "increase funding"
+- Decision options must be specific and realistic
 
 ${filePath ? "IMPORTANT: The user has uploaded SOURCE MATERIAL. You MUST base the course content directly on the material provided. Extract key concepts, facts, and structure from the source material. Do NOT generate generic content — every lesson, lab scenario, and quiz question should reference or build upon the uploaded material." : ""}
 Generate 4-6 modules with a good mix of lab types. Include at least 1-2 decision_lab modules.`,
