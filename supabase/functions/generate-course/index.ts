@@ -230,6 +230,12 @@ function generateSimulationFallback(title: string) {
 
 function generateClassificationFallback(title: string) {
   const t = title || "Topic";
+  const h = hashString(t);
+  const roles = [
+    `a research analyst categorizing ${t.toLowerCase()} elements for a government report`,
+    `a consultant sorting ${t.toLowerCase()} factors for a client presentation`,
+    `a team lead organizing ${t.toLowerCase()} components for a strategic review`,
+  ];
   const cats = [
     { name: "Core Concepts", description: `Fundamental principles of ${t.toLowerCase()}`, color: "#4CAF50" },
     { name: "Supporting Factors", description: `Elements that contribute to ${t.toLowerCase()}`, color: "#2196F3" },
@@ -238,6 +244,18 @@ function generateClassificationFallback(title: string) {
   return {
     title: `${t} Classification`,
     description: `Categorize the following items related to ${t.toLowerCase()} into the correct groups.`,
+    repend_intro: {
+      relevance: `Professionals working with ${t.toLowerCase()} must quickly distinguish between core principles, supporting factors, and common misconceptions. This skill is essential in ${t.toLowerCase()} analysis, strategy, and communication.`,
+      role: roles[h % roles.length],
+      scenario_context: `You've been asked to organize key ${t.toLowerCase()} concepts into clear categories. Your analysis will inform a major decision — getting the classification wrong could lead to flawed strategy.`,
+      information: [
+        `There are ${cats.length} categories to sort items into`,
+        `Some items may seem like they belong in multiple categories — choose the BEST fit`,
+        `Pay attention to whether something is foundational, supportive, or misleading`,
+      ],
+      objective: `Develop the ability to accurately distinguish between core concepts, supporting elements, and misconceptions in ${t.toLowerCase()}.`,
+    },
+    key_insight: `In ${t.toLowerCase()}, confusing a misconception for a core concept can lead to fundamentally flawed decisions. The ability to categorize information accurately is one of the most important analytical skills in any domain.`,
     categories: cats,
     items: [
       { content: `Primary principle of ${t.toLowerCase()}`, correctCategory: "Core Concepts", explanation: "This is a foundational element." },
