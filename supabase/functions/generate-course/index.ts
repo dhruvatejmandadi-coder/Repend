@@ -377,6 +377,18 @@ function generateEthicalDilemmaFallback(title: string) {
   return {
     title: `${t} Ethical Dilemma`,
     description: `Navigate ethical tradeoffs in ${t.toLowerCase()}. Every choice has consequences.`,
+    repend_intro: {
+      relevance: `${t} decisions in the real world often involve ethical tradeoffs. There's rarely a perfect answer — leaders must balance ${dn.map(d => d.toLowerCase()).join(", ")} while accepting that improving one area may harm another.`,
+      role: `a decision-maker navigating ethical challenges in ${t.toLowerCase()}`,
+      scenario_context: `You'll face ${dilemmas.length} dilemmas where every choice helps one dimension and hurts another. Your goal isn't to find the "right" answer — it's to maintain the best possible balance.`,
+      information: [
+        `You're balancing ${dims.length} dimensions: ${dims.map(d => `${d.icon} ${d.name}`).join(", ")}`,
+        `Each choice has positive AND negative impacts — there are no free wins`,
+        `You'll be scored on overall balance, not any single dimension`,
+      ],
+      objective: `Understand how ethical tradeoffs work in ${t.toLowerCase()} and practice maintaining balance under pressure.`,
+    },
+    key_insight: `In ${t.toLowerCase()}, ethical decisions are never black and white. The most effective leaders acknowledge tradeoffs openly, communicate their reasoning, and strive for balance — not perfection.`,
     dimensions: dims,
     decisions: dilemmas.map(d => ({
       question: d.q, emoji: d.emoji,
