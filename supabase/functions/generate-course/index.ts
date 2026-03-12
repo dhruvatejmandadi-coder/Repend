@@ -178,15 +178,26 @@ function generateSimulationFallback(title: string) {
   ];
   const questions = questionSets[h % questionSets.length];
 
-  const intros = [
-    `This simulation explores ${t.toLowerCase()} through real-world decision scenarios. You'll manage three interconnected factors and see how your choices create ripple effects across the system.`,
-    `Step into the role of a decision-maker navigating ${t.toLowerCase()}. Each scenario presents a realistic challenge — your choices will shift the balance between competing priorities.`,
-    `In this ${t.toLowerCase()} simulation, every decision has consequences. You'll balance multiple factors while responding to evolving challenges. There are no perfect answers — only strategic tradeoffs.`,
+  const roles = [
+    `a department head managing ${t.toLowerCase()} across your organization`,
+    `an operations manager responsible for optimizing ${t.toLowerCase()} outcomes`,
+    `a strategic consultant hired to improve ${t.toLowerCase()} for a mid-sized company`,
   ];
 
   return {
     title: `${t} Simulation`,
-    intro: intros[h % intros.length],
+    repend_intro: {
+      relevance: `${t} directly affects how organizations perform in competitive environments. Understanding how to balance competing priorities in ${t.toLowerCase()} is a critical skill used by managers, analysts, and leaders every day.`,
+      role: roles[h % roles.length],
+      scenario_context: `Your organization is at a crossroads with ${t.toLowerCase()}. Multiple stakeholders have competing demands, resources are limited, and every decision creates ripple effects across the system. You need to navigate ${questions.length} critical scenarios.`,
+      information: [
+        `You're managing 3 key metrics: ${p1}, ${p2}, and ${p3}`,
+        `Each decision shifts all metrics — there are no isolated choices`,
+        `Your goal is to achieve the highest balanced score across all factors`,
+      ],
+      objective: `Learn how decisions in ${t.toLowerCase()} create tradeoffs and systemic consequences.`,
+    },
+    key_insight: `${t} is never about maximizing a single factor. The best ${t.toLowerCase()} strategies find the optimal balance between competing priorities, because over-optimizing one dimension always comes at the cost of another.`,
     parameters: [
       { name: p1, icon: "📊", unit: "%", min: 0, max: 100, default: 50 },
       { name: p2, icon: "📈", unit: "%", min: 0, max: 100, default: 50 },
