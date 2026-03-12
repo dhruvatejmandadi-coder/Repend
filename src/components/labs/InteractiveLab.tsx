@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react";
-import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2, ChevronRight, Lightbulb } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -9,6 +9,8 @@ import PolicyOptimizationLab from "./PolicyOptimizationLab";
 import EthicalDilemmaLab from "./EthicalDilemmaLab";
 import DecisionLab from "./DecisionLab";
 import MathLab from "./MathLab";
+import LabIntro from "./LabIntro";
+import type { LabIntroData } from "./LabIntro";
 
 /* ================= TYPES ================= */
 
@@ -36,6 +38,8 @@ type SimulationData = {
   title?: string;
   description?: string;
   intro?: string;
+  repend_intro?: LabIntroData;
+  key_insight?: string;
   parameters: Parameter[];
   thresholds: { label: string; min_percent: number; message: string }[];
   decisions?: Decision[];
@@ -143,7 +147,6 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
 
   const allDone = decisions.length > 0 && Object.keys(answered).length === decisions.length;
 
-  // Fire completion callback once
   const [completionFired, setCompletionFired] = useState(false);
   useEffect(() => {
     if (allDone && !completionFired && onComplete) {
@@ -161,7 +164,6 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
     setShowIntro(true);
   };
 
-  // Show completed state when revisiting
   if (isCompleted && !allDone) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
@@ -177,9 +179,21 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
     );
   }
 
-  // Intro phase — explain what the simulation is about before jumping into decisions
-  if (showIntro) {
-    const introText = data.intro || data.description || `In this simulation, you'll make strategic decisions that affect ${parameters.map(p => p.name).join(", ")}. Each choice shifts the system — there's no single right answer, only tradeoffs. Watch how your decisions impact the outcome.`;
+  // Repend intro flow
+  if (showIntro && data.repend_intro) {
+    return (
+      <LabIntro
+        title={data.title || "Simulation"}
+        intro={data.repend_intro}
+        labType="simulation"
+        onStart={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  // Legacy intro (fallback if no repend_intro)
+  if (showIntro && !data.repend_intro) {
+    const introText = data.intro || data.description || `In this simulation, you'll make strategic decisions that affect ${parameters.map(p => p.name).join(", ")}.`;
     return (
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-5 space-y-4">
@@ -197,11 +211,6 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
                 </Badge>
               ))}
             </div>
-          </div>
-          <div className="bg-background/60 rounded-lg p-3 border border-border">
-            <p className="text-xs text-muted-foreground">
-              <span className="font-semibold text-foreground">How it works:</span> You'll face {decisions.length} scenario{decisions.length !== 1 ? "s" : ""}. Each choice will adjust the parameters above. Your goal is to find the best balance across all factors.
-            </p>
           </div>
           <Button onClick={() => setShowIntro(false)} className="w-full">
             Start Simulation <ChevronRight className="w-4 h-4 ml-1" />
@@ -240,7 +249,7 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
                   </button>
                   {isChosen && c.explanation && (
                     <p className="text-xs text-muted-foreground px-4 py-2 bg-muted/50 rounded-md">
-                      💡 {c.explanation}
+                      ⚡ {c.explanation}
                     </p>
                   )}
                 </div>
@@ -291,6 +300,19 @@ function SimulationLabInline({ data, onComplete, isCompleted }: { data: Simulati
           <p className="text-sm text-muted-foreground mt-2">{threshold?.message}</p>
         </CardContent>
       </Card>
+
+      {/* Key Insight */}
+      {allDone && data.key_insight && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="p-5 space-y-2">
+            <div className="flex items-center gap-2">
+              <Lightbulb className="w-5 h-5 text-primary" />
+              <h3 className="font-bold">✅ Key Insight</h3>
+            </div>
+            <p className="text-sm leading-relaxed">{data.key_insight}</p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Reset button */}
       {allDone && (
@@ -349,7 +371,7 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
 
   // Decision Lab
   if (labType === "decision_lab") {
-    const hasData = labData?.scenario && labData?.constraints?.length > 0 && labData?.decision_prompt;
+    const hasData = labData?.scenario && labData?.decision_challenge;
     if (!hasData) return <LabEmptyState labType={labType} />;
     return <DecisionLab data={labData} onComplete={onComplete} isCompleted={isCompleted} />;
   }

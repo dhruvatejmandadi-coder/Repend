@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, XCircle, RotateCcw, ArrowRight } from "lucide-react";
+import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Lightbulb } from "lucide-react";
+import LabIntro from "./LabIntro";
+import type { LabIntroData } from "./LabIntro";
 
 type RawItem = {
   name?: string;
@@ -35,6 +37,8 @@ type Category = {
 type ClassificationData = {
   title: string;
   description: string;
+  repend_intro?: LabIntroData;
+  key_insight?: string;
   categories: Category[];
   items: Item[];
 };
@@ -50,6 +54,8 @@ export default function ClassificationLab({ data, onComplete, isCompleted }: { d
     emoji: raw.emoji || "📂",
     description: raw.description || "",
   }));
+
+  const [showIntro, setShowIntro] = useState(true);
   const [assignments, setAssignments] = useState<Record<string, string>>({});
   const [currentItem, setCurrentItem] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -69,7 +75,6 @@ export default function ClassificationLab({ data, onComplete, isCompleted }: { d
     ? items.filter((it) => assignments[it.name] === it.correct_category).length
     : 0;
 
-  // Fire onComplete via useEffect to avoid setState-during-render
   useEffect(() => {
     if (submitted && !completionFired && onComplete && !isCompleted) {
       onComplete();
@@ -82,13 +87,13 @@ export default function ClassificationLab({ data, onComplete, isCompleted }: { d
     setCurrentItem(0);
     setSubmitted(false);
     setCompletionFired(false);
+    setShowIntro(true);
   };
 
   if (!items.length || !categories.length) {
     return <Card><CardContent className="p-6 text-muted-foreground text-sm">No classification data available.</CardContent></Card>;
   }
 
-  // Show completed state when revisiting
   if (isCompleted && !submitted) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
@@ -102,6 +107,22 @@ export default function ClassificationLab({ data, onComplete, isCompleted }: { d
         </CardContent>
       </Card>
     );
+  }
+
+  // Repend intro
+  if (showIntro && data.repend_intro) {
+    return (
+      <LabIntro
+        title={data.title || "Classification"}
+        intro={data.repend_intro}
+        labType="classification"
+        onStart={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  if (showIntro && !data.repend_intro) {
+    setShowIntro(false);
   }
 
   if (submitted) {
@@ -139,6 +160,20 @@ export default function ClassificationLab({ data, onComplete, isCompleted }: { d
             </div>
           </CardContent>
         </Card>
+
+        {/* Key Insight */}
+        {data.key_insight && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-primary" />
+                <h3 className="font-bold">✅ Key Insight</h3>
+              </div>
+              <p className="text-sm leading-relaxed">{data.key_insight}</p>
+            </CardContent>
+          </Card>
+        )}
+
         <Button variant="outline" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Try Again</Button>
       </div>
     );
