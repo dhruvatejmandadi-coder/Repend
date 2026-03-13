@@ -106,12 +106,17 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComp
 
           <div
             key={current}
-            className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-img:max-h-[400px] min-h-[300px] animate-fade-in"
+            className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-img:max-h-[400px] prose-table:border-collapse prose-th:bg-muted/50 prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:text-sm prose-th:font-semibold prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-2 prose-td:text-sm min-h-[300px] animate-fade-in"
           >
             <ReactMarkdown
               components={{
                 img: ({ node, ...props }) => (
                   <img {...props} loading="lazy" className="rounded-lg shadow-md mx-auto max-h-[400px] object-contain" />
+                ),
+                table: ({ node, ...props }) => (
+                  <div className="overflow-x-auto my-4 rounded-lg border border-border">
+                    <table {...props} className="w-full" />
+                  </div>
                 ),
               }}
             >{body}</ReactMarkdown>
