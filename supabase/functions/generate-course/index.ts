@@ -693,19 +693,30 @@ function repairModules(parsed: any) {
       const slides = mod.lesson_content.split(/\n---\n/).map((s: string) => s.trim()).filter(Boolean);
       const repairedSlides: string[] = [];
 
+      let inTable = false;
       for (let si = 0; si < slides.length; si++) {
         let slide = slides[si];
 
         const lines = slide.split("\n");
         const repaired: string[] = [];
+        inTable = false;
         for (const line of lines) {
           const trimmed = line.trim();
-          if (!trimmed) { repaired.push(""); continue; }
-          if (trimmed.startsWith("#") || trimmed.startsWith("<!--") || trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+          if (!trimmed) { inTable = false; repaired.push(""); continue; }
+          // Preserve table rows (lines starting with |), table separators, emoji headers, and markdown structure
+          if (trimmed.startsWith("|") || /^\|[-:| ]+\|$/.test(trimmed)) {
+            inTable = true;
+            repaired.push(line);
+          } else if (inTable && trimmed.startsWith("|")) {
+            repaired.push(line);
+          } else if (trimmed.startsWith("#") || trimmed.startsWith("<!--") || trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("💡") || trimmed.startsWith("🔥") || trimmed.startsWith("📊") || trimmed.startsWith("🎯") || trimmed.startsWith("🧪") || trimmed.startsWith("🧠") || trimmed.startsWith("✅") || trimmed.startsWith("⚡") || trimmed.startsWith("🛠") || trimmed.startsWith("📈") || trimmed.startsWith("🌎") || trimmed.startsWith("🎭") || /^\d+\./.test(trimmed)) {
+            inTable = false;
             repaired.push(line);
           } else if (trimmed.length > 10 && !trimmed.startsWith("#")) {
+            inTable = false;
             repaired.push(`- ${trimmed}`);
           } else {
+            inTable = false;
             repaired.push(line);
           }
         }
