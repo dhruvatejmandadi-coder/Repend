@@ -703,21 +703,32 @@ function repairModules(parsed: any) {
         for (const line of lines) {
           const trimmed = line.trim();
           if (!trimmed) { inTable = false; repaired.push(""); continue; }
-          // Preserve table rows (lines starting with |), table separators, emoji headers, and markdown structure
+          // Preserve table rows and separators
           if (trimmed.startsWith("|") || /^\|[-:| ]+\|$/.test(trimmed)) {
             inTable = true;
             repaired.push(line);
           } else if (inTable && trimmed.startsWith("|")) {
             repaired.push(line);
-          } else if (trimmed.startsWith("#") || trimmed.startsWith("<!--") || trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("💡") || trimmed.startsWith("🔥") || trimmed.startsWith("📊") || trimmed.startsWith("🎯") || trimmed.startsWith("🧪") || trimmed.startsWith("🧠") || trimmed.startsWith("✅") || trimmed.startsWith("⚡") || trimmed.startsWith("🛠") || trimmed.startsWith("📈") || trimmed.startsWith("🌎") || trimmed.startsWith("🎭") || /^\d+\./.test(trimmed)) {
+          } else if (
+            // Preserve: headings, comments, existing bullets, emoji headers, numbered lists, bold text, blockquotes
+            trimmed.startsWith("#") || trimmed.startsWith("<!--") || 
+            trimmed.startsWith("- ") || trimmed.startsWith("* ") || 
+            trimmed.startsWith("> ") ||
+            trimmed.startsWith("**") ||
+            /^\d+\./.test(trimmed) ||
+            // Preserve any line starting with an emoji (covers 🔥💡📊🎯🧪🧠✅⚡🛠📈🌎🎭📋 etc.)
+            /^[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{1F900}-\u{1F9FF}]/u.test(trimmed)
+          ) {
             inTable = false;
             repaired.push(line);
-          } else if (trimmed.length > 10 && !trimmed.startsWith("#")) {
-            inTable = false;
-            repaired.push(`- ${trimmed}`);
           } else {
             inTable = false;
-            repaired.push(line);
+            // Don't aggressively bulletize — only convert plain text lines that are clearly paragraphs (>80 chars)
+            if (trimmed.length > 80 && !trimmed.includes("|")) {
+              repaired.push(`- ${trimmed}`);
+            } else {
+              repaired.push(line);
+            }
           }
         }
         slide = repaired.join("\n");
