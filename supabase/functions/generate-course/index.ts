@@ -1002,42 +1002,88 @@ CRITICAL MODULE STRUCTURE — every module MUST have ALL of these fields:
 - quiz: array of {question, options: string[4], correct: number 0-3, explanation}
 
 === LESSON CONTENT FORMAT — CRITICAL ===
-Each slide is separated by "---". Each slide MUST follow this exact format:
+Each slide is separated by "---". Lessons must feel like VISUAL NOTES + LAB COMBINED, not text walls.
+
+Each slide MUST follow this exact format:
 
 <!-- type: [concept|example|case_study|comparison|quick_think|myth_vs_reality|process|interactive_predict|key_takeaways] -->
-## Slide Title
+## 🔥 Slide Title (use emoji in EVERY slide title)
 
 - Bullet point 1
 - Bullet point 2
-- Bullet point 3
-- Bullet point 4
+
+| Column A | Column B | Column C |
+|----------|----------|----------|
+| Data 1   | Data 2   | Data 3   |
+
+- More bullets after table if needed
+
+VISUAL LESSON RULES — MANDATORY:
+- Use emojis in EVERY section header (🔥 🎯 📊 💡 🧪 🧠 ✅ ⚡ 🛠 📈 🌎 🎭)
+- Use TABLES when explaining concepts (formula tables, comparison tables, step tables, cause/effect tables, variable tables, process tables)
+- Short paragraphs only (2-3 sentences MAX)
+- Use bullet points for lists
+- Leave spacing between sections
+- NEVER create text walls — if a section has more than 3 sentences, break it into bullets or a table
+- Include at least ONE table per module across all slides
+- Tables MUST help the student understand, not just decorate
+
+STUDENT LESSON STRUCTURE — follow this flow across slides:
+Slide 1: 🎯 Objective — what will the student learn and why it matters
+Slide 2: 🔥 Concept — simple explanation with table or visual
+Slide 3: 📊 Visual Example — table, chart description, comparison, or diagram
+Slide 4: 💡 Explanation — clear and concise with real-world connection
+Slide 5: 🧪 Lab Setup — experiment scenario or observation setup
+Slide 6: 🧠 Challenge — problem to solve or question to think about
+Slide 7: ✅ Key Takeaways — clear meaning of the concept
+
+You can add or merge slides (4-8 total), but EVERY module must include:
+- At least 1 concept explanation slide with a TABLE
+- At least 1 applied/example slide
+- At least 1 interactive slide (quick_think or interactive_predict)
+- Final slide MUST be <!-- type: key_takeaways -->
+
+GOOD SLIDE EXAMPLE:
+<!-- type: concept -->
+## 📊 Supply and Demand Basics
+
+- When supply increases and demand stays the same, prices tend to **fall**
+- When demand increases and supply stays the same, prices tend to **rise**
+
+| Scenario | Supply | Demand | Price Effect |
+|----------|--------|--------|-------------|
+| New factory opens | ⬆️ Up | ➡️ Same | ⬇️ Falls |
+| Holiday season | ➡️ Same | ⬆️ Up | ⬆️ Rises |
+| Drought hits crops | ⬇️ Down | ➡️ Same | ⬆️ Rises |
+
+💡 The relationship between supply and demand is the foundation of all market pricing.
+
+BAD SLIDE (never do this):
+Supply and demand is a fundamental concept in economics. When supply goes up and demand stays the same, prices fall. When demand goes up and supply stays the same, prices rise. This is because of the relationship between buyers and sellers in a marketplace. Understanding this helps us predict market behavior.
 
 SLIDE RULES:
 - 4-8 slides per module
 - 4-7 bullets per slide, each under 15 words
-- NO paragraphs — bullets ONLY
+- NO long paragraphs — use bullets, tables, and short text
 - Do NOT repeat the slide title in bullets
 - No more than 2 slides of the same type per module
-- At least 1 applied slide (example, case_study, comparison)
-- At least 1 interactive slide (quick_think or interactive_predict)
-- Final slide MUST be <!-- type: key_takeaways --> and must synthesize the module
+- Tables should use emoji indicators where helpful (⬆️ ⬇️ ✅ ❌ ➡️)
 
 TOPIC RELEVANCE:
 - Every slide must directly relate to the module title
 - Every bullet must progress the learner toward the course objective
 - Avoid generic filler, unrelated examples, or repeated ideas
-- Before writing each slide, ask: "Does this move the learner closer to mastering this topic?"
 
 SLIDE TYPE ROTATION:
-- concept: explain core idea
-- example: real-world example
-- process: step breakdown
-- comparison: pros vs cons or before vs after
-- case_study: short scenario
+- concept: explain core idea (MUST include a table if possible)
+- example: real-world example with specific data
+- process: step breakdown (use numbered steps or table)
+- comparison: pros vs cons or before vs after (MUST use a table)
+- case_study: short scenario with specific details
 - quick_think: reflection question for the learner
-- myth_vs_reality: correct a common misconception
+- myth_vs_reality: correct a common misconception (use table: Myth | Reality)
 - interactive_predict: ask learner to predict an outcome
-- key_takeaways: final summary slide
+- key_takeaways: final summary slide with the most important points
 
 === QUIZ RULES ===
 - 8-10 questions per module (students need 70% to pass)
