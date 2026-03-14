@@ -35,40 +35,29 @@ const CourseSchema = z.object({
 });
 
 /* ===============================
-   🔧 VALIDATORS
+   🔧 VALIDATORS (RELAXED — preserve AI output)
 ================================ */
 
 function isValidSimulation(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
-  if (!Array.isArray(ld.parameters) || ld.parameters.length !== 3) return false;
+  if (!Array.isArray(ld.parameters) || ld.parameters.length < 2 || ld.parameters.length > 6) return false;
   for (const p of ld.parameters) {
-    if (typeof p.name !== "string" || typeof p.min !== "number" || typeof p.max !== "number" || typeof p.default !== "number") return false;
+    if (typeof p.name !== "string") return false;
   }
-  if (!Array.isArray(ld.thresholds) || ld.thresholds.length !== 3) return false;
-  if (!Array.isArray(ld.decisions) || ld.decisions.length < 2) return false;
-  const paramNames = ld.parameters.map((p: any) => p.name);
+  if (!Array.isArray(ld.decisions) || ld.decisions.length < 1) return false;
   for (const d of ld.decisions) {
-    if (!Array.isArray(d.choices)) return false;
-    for (const c of d.choices) {
-      if (!c.set_state || typeof c.set_state !== "object") return false;
-      for (const pn of paramNames) {
-        if (typeof c.set_state[pn] !== "number") return false;
-      }
-    }
+    if (!Array.isArray(d.choices) || d.choices.length < 2) return false;
   }
   return true;
 }
 
 function isValidClassification(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
-  if (!Array.isArray(ld.categories) || ld.categories.length < 3) return false;
-  for (const cat of ld.categories) {
-    if (typeof cat.name !== "string") return false;
-  }
-  if (!Array.isArray(ld.items) || ld.items.length < 5) return false;
+  if (!Array.isArray(ld.categories) || ld.categories.length < 2) return false;
+  if (!Array.isArray(ld.items) || ld.items.length < 3) return false;
   for (const item of ld.items) {
     const content = item.content || item.name;
-    const category = item.correctCategory || item.correct_category;
+    const category = item.correctCategory || item.correct_category || item.correct;
     if (typeof content !== "string" || typeof category !== "string") return false;
   }
   return true;
@@ -76,62 +65,221 @@ function isValidClassification(ld: any): boolean {
 
 function isValidPolicyOptimization(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
-  if (!Array.isArray(ld.parameters) || ld.parameters.length < 3) return false;
+  if (!Array.isArray(ld.parameters) || ld.parameters.length < 2 || ld.parameters.length > 6) return false;
   for (const p of ld.parameters) {
-    if (typeof p.name !== "string" || typeof p.min !== "number" || typeof p.max !== "number" || typeof p.default !== "number") return false;
+    if (typeof p.name !== "string") return false;
   }
-  if (!Array.isArray(ld.constraints) || ld.constraints.length < 2) return false;
-  for (const c of ld.constraints) {
-    if (typeof c.parameter !== "string" || typeof c.operator !== "string" || typeof c.value !== "number" || typeof c.label !== "string") return false;
-  }
-  if (typeof ld.max_decisions !== "number") return false;
-  if (!Array.isArray(ld.decisions) || ld.decisions.length < 2) return false;
-  const paramNames = ld.parameters.map((p: any) => p.name);
-  for (const d of ld.decisions) {
-    if (!Array.isArray(d.choices)) return false;
-    for (const ch of d.choices) {
-      if (!ch.set_state || typeof ch.set_state !== "object") return false;
-      for (const pn of paramNames) {
-        if (typeof ch.set_state[pn] !== "number") return false;
-      }
-    }
-  }
+  if (!Array.isArray(ld.constraints) || ld.constraints.length < 1) return false;
+  if (!Array.isArray(ld.decisions) || ld.decisions.length < 1) return false;
   return true;
 }
 
 function isValidEthicalDilemma(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
-  if (!Array.isArray(ld.dimensions) || ld.dimensions.length < 3) return false;
+  if (!Array.isArray(ld.dimensions) || ld.dimensions.length < 2) return false;
   for (const dim of ld.dimensions) {
-    if (typeof dim.name !== "string" || typeof dim.icon !== "string" || typeof dim.description !== "string") return false;
+    if (typeof dim.name !== "string") return false;
   }
-  if (!Array.isArray(ld.decisions) || ld.decisions.length < 3) return false;
-  const dimNames = ld.dimensions.map((d: any) => d.name);
+  if (!Array.isArray(ld.decisions) || ld.decisions.length < 2) return false;
   for (const d of ld.decisions) {
-    if (!Array.isArray(d.choices)) return false;
-    for (const c of d.choices) {
-      if (!c.impacts || typeof c.impacts !== "object") return false;
-      for (const dn of dimNames) {
-        if (typeof c.impacts[dn] !== "number") return false;
-      }
-    }
+    if (!Array.isArray(d.choices) || d.choices.length < 2) return false;
   }
   return true;
 }
 
 function isValidDecisionLab(ld: any): boolean {
   if (!ld || typeof ld !== "object") return false;
-  if (!ld.concept_knowledge || typeof ld.concept_knowledge.definition !== "string") return false;
-  if (!Array.isArray(ld.concept_knowledge.key_ideas) || ld.concept_knowledge.key_ideas.length < 2) return false;
-  if (!ld.real_world_relevance || typeof ld.real_world_relevance.explanation !== "string") return false;
-  if (typeof ld.scenario !== "string" || ld.scenario.length < 20) return false;
-  if (!ld.decision_challenge || typeof ld.decision_challenge.question !== "string") return false;
-  if (!Array.isArray(ld.decision_challenge.options) || ld.decision_challenge.options.length < 3) return false;
-  for (const opt of ld.decision_challenge.options) {
-    if (typeof opt.id !== "string" || typeof opt.text !== "string" || typeof opt.consequence !== "string" || typeof opt.is_best !== "boolean") return false;
+  if (!ld.decision_challenge && !ld.decisions) return false;
+  const challenge = ld.decision_challenge;
+  if (challenge) {
+    if (typeof challenge.question !== "string") return false;
+    if (!Array.isArray(challenge.options) || challenge.options.length < 2) return false;
   }
-  if (typeof ld.best_decision_explanation !== "string") return false;
   return true;
+}
+
+/* ===============================
+   🔧 STRUCTURAL REPAIR FUNCTIONS
+   Normalize AI output instead of replacing it
+================================ */
+
+function repairSimulation(ld: any, title: string): any {
+  const repaired = { ...ld };
+  // Ensure parameters have required numeric fields
+  if (Array.isArray(repaired.parameters)) {
+    repaired.parameters = repaired.parameters.map((p: any) => ({
+      name: String(p.name || "Variable"),
+      icon: String(p.icon || "📊"),
+      unit: String(p.unit || "%"),
+      min: typeof p.min === "number" ? p.min : 0,
+      max: typeof p.max === "number" ? p.max : 100,
+      default: Math.max(0, Math.min(100, typeof p.default === "number" ? p.default : 50)),
+      ...(p.description ? { description: p.description } : {}),
+    }));
+  }
+  // Ensure thresholds exist
+  if (!Array.isArray(repaired.thresholds) || repaired.thresholds.length === 0) {
+    repaired.thresholds = [
+      { label: "Excellent", min_percent: 75, message: "Outstanding performance — your decisions created strong outcomes." },
+      { label: "Good", min_percent: 50, message: "Solid understanding, but some tradeoffs could be managed better." },
+      { label: "Needs Work", min_percent: 0, message: "Review the tradeoffs and try a different strategy." },
+    ];
+  }
+  // Fix decisions — ensure set_state maps all parameters
+  const paramNames = (repaired.parameters || []).map((p: any) => p.name);
+  if (Array.isArray(repaired.decisions)) {
+    for (const d of repaired.decisions) {
+      if (!d.choices) d.choices = [];
+      for (const c of d.choices) {
+        // Convert "effects" to "set_state" if needed
+        if (c.effects && !c.set_state) {
+          const ss: Record<string, number> = {};
+          for (const pn of paramNames) ss[pn] = Math.max(0, Math.min(100, 50 + (c.effects[pn] ?? 0)));
+          c.set_state = ss;
+          delete c.effects;
+        }
+        if (!c.set_state) c.set_state = {};
+        // Fill missing parameters with defaults
+        for (const pn of paramNames) {
+          if (typeof c.set_state[pn] !== "number") c.set_state[pn] = 50;
+          c.set_state[pn] = Math.max(0, Math.min(100, c.set_state[pn]));
+        }
+      }
+    }
+  }
+  return repaired;
+}
+
+function repairClassification(ld: any, title: string): any {
+  const repaired = { ...ld };
+  // Normalize categories — accept string[] or {name}[]
+  if (Array.isArray(repaired.categories)) {
+    repaired.categories = repaired.categories.map((cat: any) => {
+      if (typeof cat === "string") return { name: cat, description: "", color: "#4CAF50" };
+      return { name: String(cat.name || "Category"), description: cat.description || "", color: cat.color || "#4CAF50" };
+    });
+  }
+  // Normalize items — accept various field names
+  if (Array.isArray(repaired.items)) {
+    repaired.items = repaired.items.map((item: any) => ({
+      content: String(item.content || item.name || item.text || "Item"),
+      correctCategory: String(item.correctCategory || item.correct_category || item.correct || item.category || ""),
+      explanation: String(item.explanation || item.reason || ""),
+    }));
+  }
+  return repaired;
+}
+
+function repairPolicyOptimization(ld: any, title: string): any {
+  const repaired = { ...ld };
+  if (Array.isArray(repaired.parameters)) {
+    repaired.parameters = repaired.parameters.map((p: any) => ({
+      name: String(p.name || "Variable"),
+      icon: String(p.icon || "📊"),
+      unit: String(p.unit || "%"),
+      min: typeof p.min === "number" ? p.min : 0,
+      max: typeof p.max === "number" ? p.max : 100,
+      default: Math.max(0, Math.min(100, typeof p.default === "number" ? p.default : 50)),
+    }));
+  }
+  if (!Array.isArray(repaired.constraints) || repaired.constraints.length === 0) {
+    const pName = repaired.parameters?.[0]?.name || "Variable";
+    repaired.constraints = [{ parameter: pName, operator: ">=", value: 60, label: `Keep ${pName} above 60%` }];
+  } else {
+    repaired.constraints = repaired.constraints.map((c: any) => ({
+      parameter: String(c.parameter || "Variable"),
+      operator: String(c.operator || ">="),
+      value: typeof c.value === "number" ? c.value : 50,
+      label: String(c.label || c.description || `Constraint on ${c.parameter}`),
+    }));
+  }
+  if (typeof repaired.max_decisions !== "number") repaired.max_decisions = 3;
+  // Fix decisions set_state
+  const paramNames = (repaired.parameters || []).map((p: any) => p.name);
+  if (Array.isArray(repaired.decisions)) {
+    for (const d of repaired.decisions) {
+      if (!d.choices) d.choices = [];
+      for (const c of d.choices) {
+        if (!c.set_state) c.set_state = {};
+        for (const pn of paramNames) {
+          if (typeof c.set_state[pn] !== "number") c.set_state[pn] = 50;
+          c.set_state[pn] = Math.max(0, Math.min(100, c.set_state[pn]));
+        }
+      }
+    }
+  }
+  return repaired;
+}
+
+function repairEthicalDilemma(ld: any, title: string): any {
+  const repaired = { ...ld };
+  if (Array.isArray(repaired.dimensions)) {
+    repaired.dimensions = repaired.dimensions.map((dim: any) => ({
+      name: String(dim.name || "Dimension"),
+      icon: String(dim.icon || "⚖️"),
+      description: String(dim.description || ""),
+      default: typeof dim.default === "number" ? dim.default : 50,
+    }));
+  }
+  const dimNames = (repaired.dimensions || []).map((d: any) => d.name);
+  if (Array.isArray(repaired.decisions)) {
+    for (const d of repaired.decisions) {
+      if (!d.choices) d.choices = [];
+      for (const c of d.choices) {
+        if (!c.impacts) c.impacts = {};
+        for (const dn of dimNames) {
+          if (typeof c.impacts[dn] !== "number") c.impacts[dn] = 0;
+        }
+      }
+    }
+  }
+  return repaired;
+}
+
+function repairDecisionLab(ld: any, title: string): any {
+  const repaired = { ...ld };
+  if (!repaired.concept_knowledge) {
+    repaired.concept_knowledge = {
+      definition: `${title} refers to the study and application of key principles in this domain.`,
+      key_ideas: [`${title} involves balancing multiple factors.`, `Decisions have short and long-term consequences.`],
+      examples: [`Applying ${title.toLowerCase()} in a real-world scenario.`],
+    };
+  } else {
+    if (typeof repaired.concept_knowledge.definition !== "string") repaired.concept_knowledge.definition = `${title} concept`;
+    if (!Array.isArray(repaired.concept_knowledge.key_ideas)) repaired.concept_knowledge.key_ideas = ["Key idea"];
+    if (!Array.isArray(repaired.concept_knowledge.examples)) repaired.concept_knowledge.examples = ["Example"];
+  }
+  if (!repaired.real_world_relevance) {
+    repaired.real_world_relevance = { explanation: `${title} is relevant in real-world decision-making.`, domain: "General" };
+  }
+  if (typeof repaired.scenario !== "string" || repaired.scenario.length < 10) {
+    repaired.scenario = repaired.scenario_context || repaired.description || `You are facing a decision related to ${title.toLowerCase()}.`;
+  }
+  if (!repaired.decision_challenge) {
+    repaired.decision_challenge = {
+      question: `What approach would you take for ${title.toLowerCase()}?`,
+      options: [
+        { id: "a", text: "Option A", consequence: "Consequence A", is_best: true },
+        { id: "b", text: "Option B", consequence: "Consequence B", is_best: false },
+        { id: "c", text: "Option C", consequence: "Consequence C", is_best: false },
+      ],
+    };
+  } else {
+    if (!Array.isArray(repaired.decision_challenge.options)) repaired.decision_challenge.options = [];
+    repaired.decision_challenge.options = repaired.decision_challenge.options.map((opt: any, i: number) => ({
+      id: String(opt.id || String.fromCharCode(97 + i)),
+      text: String(opt.text || opt.label || `Option ${i + 1}`),
+      consequence: String(opt.consequence || opt.result || opt.outcome || "Consequence"),
+      is_best: typeof opt.is_best === "boolean" ? opt.is_best : i === 0,
+    }));
+    // Ensure exactly one is_best
+    const hasBest = repaired.decision_challenge.options.some((o: any) => o.is_best);
+    if (!hasBest && repaired.decision_challenge.options.length > 0) repaired.decision_challenge.options[0].is_best = true;
+  }
+  if (typeof repaired.best_decision_explanation !== "string") {
+    repaired.best_decision_explanation = `The best approach balances the key factors of ${title.toLowerCase()}.`;
+  }
+  return repaired;
 }
 
 /* ===============================
@@ -783,72 +931,53 @@ function repairModules(parsed: any) {
     const title = mod.title || "Topic";
 
     if (mod.lab_type === "simulation") {
-      if (!isValidSimulation(ld)) {
-        console.warn(`[RepairModules] simulation fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.parameters) && ld.parameters.length >= 1) {
+        // AI generated something with parameters — repair it, don't replace
+        console.log(`[RepairModules] Repairing AI simulation for: "${title}" (${ld.parameters.length} params)`);
+        mod.lab_data = repairSimulation(ld, title);
+      } else if (!isValidSimulation(ld)) {
+        console.warn(`[RepairModules] Simulation completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateSimulationFallback(title);
-      } else {
-        const paramNames = ld.parameters.map((p: any) => p.name);
-        for (const p of ld.parameters) {
-          p.min = 0; p.max = 100;
-          p.default = Math.max(0, Math.min(100, p.default));
-        }
-        for (const d of ld.decisions) {
-          for (const c of d.choices) {
-            if (c.effects && !c.set_state) {
-              const ss: Record<string, number> = {};
-              for (const pn of paramNames) ss[pn] = Math.max(0, Math.min(100, 50 + (c.effects[pn] ?? 0)));
-              c.set_state = ss;
-              delete c.effects;
-            }
-            if (c.set_state) {
-              for (const pn of paramNames) {
-                if (typeof c.set_state[pn] !== "number") c.set_state[pn] = 50;
-                c.set_state[pn] = Math.max(0, Math.min(100, c.set_state[pn]));
-              }
-            }
-          }
-        }
       }
     } else if (mod.lab_type === "classification") {
-      if (!isValidClassification(ld)) {
-        console.warn(`[RepairModules] classification fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && (Array.isArray(ld.items) || Array.isArray(ld.categories))) {
+        console.log(`[RepairModules] Repairing AI classification for: "${title}"`);
+        mod.lab_data = repairClassification(ld, title);
+      } else if (!isValidClassification(ld)) {
+        console.warn(`[RepairModules] Classification completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateClassificationFallback(title);
       }
     } else if (mod.lab_type === "policy_optimization") {
-      if (!isValidPolicyOptimization(ld)) {
-        console.warn(`[RepairModules] policy_optimization fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.parameters) && ld.parameters.length >= 1) {
+        console.log(`[RepairModules] Repairing AI policy_optimization for: "${title}" (${ld.parameters.length} params)`);
+        mod.lab_data = repairPolicyOptimization(ld, title);
+      } else if (!isValidPolicyOptimization(ld)) {
+        console.warn(`[RepairModules] Policy optimization completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generatePolicyOptimizationFallback(title);
-      } else {
-        for (const p of ld.parameters) {
-          p.min = 0; p.max = 100;
-          p.default = Math.max(0, Math.min(100, p.default));
-        }
       }
     } else if (mod.lab_type === "ethical_dilemma") {
-      if (!isValidEthicalDilemma(ld)) {
-        console.warn(`[RepairModules] ethical_dilemma fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.dimensions) && ld.dimensions.length >= 1) {
+        console.log(`[RepairModules] Repairing AI ethical_dilemma for: "${title}" (${ld.dimensions.length} dims)`);
+        mod.lab_data = repairEthicalDilemma(ld, title);
+      } else if (!isValidEthicalDilemma(ld)) {
+        console.warn(`[RepairModules] Ethical dilemma completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateEthicalDilemmaFallback(title);
-      } else {
-        for (const dim of ld.dimensions) {
-          if (!dim.icon) dim.icon = "⚖️";
-          if (!dim.description) dim.description = "";
-        }
       }
+    } else if (mod.lab_type === "decision_lab") {
+      // Always attempt repair first — decision labs have the most varied AI output
+      console.log(`[RepairModules] Repairing AI decision_lab for: "${title}"`);
+      mod.lab_data = repairDecisionLab(ld || {}, title);
     } else if (mod.lab_type === "math_lab") {
       mod.lab_data = normalizeMathLabData(mod.lab_data, title, moduleIndex);
     }
 
-    // --- FINAL GUARD ---
-    const finalValid =
-      (mod.lab_type === "simulation" && isValidSimulation(mod.lab_data)) ||
-      (mod.lab_type === "classification" && isValidClassification(mod.lab_data)) ||
-      (mod.lab_type === "policy_optimization" && isValidPolicyOptimization(mod.lab_data)) ||
-      (mod.lab_type === "ethical_dilemma" && isValidEthicalDilemma(mod.lab_data)) ||
-      (mod.lab_type === "decision_lab" && isValidDecisionLab(mod.lab_data)) ||
-      (mod.lab_type === "math_lab" && mod.lab_data?.tasks?.length > 0);
+    // --- FINAL GUARD (relaxed) ---
+    // Only fallback if lab_data is completely empty/null after repair
+    const finalLD = mod.lab_data;
+    const hasAnyContent = finalLD && typeof finalLD === "object" && Object.keys(finalLD).length > 2;
 
-    if (!finalValid) {
-      console.error(`[RepairModules] FINAL GUARD - Forced simulation for: "${title}"`);
+    if (!hasAnyContent) {
+      console.error(`[RepairModules] FINAL GUARD - Lab still empty after repair for: "${title}" — generating fallback`);
       mod.lab_type = "simulation";
       mod.lab_data = generateSimulationFallback(title);
     }
