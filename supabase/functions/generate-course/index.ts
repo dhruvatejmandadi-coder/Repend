@@ -931,72 +931,53 @@ function repairModules(parsed: any) {
     const title = mod.title || "Topic";
 
     if (mod.lab_type === "simulation") {
-      if (!isValidSimulation(ld)) {
-        console.warn(`[RepairModules] simulation fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.parameters) && ld.parameters.length >= 1) {
+        // AI generated something with parameters — repair it, don't replace
+        console.log(`[RepairModules] Repairing AI simulation for: "${title}" (${ld.parameters.length} params)`);
+        mod.lab_data = repairSimulation(ld, title);
+      } else if (!isValidSimulation(ld)) {
+        console.warn(`[RepairModules] Simulation completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateSimulationFallback(title);
-      } else {
-        const paramNames = ld.parameters.map((p: any) => p.name);
-        for (const p of ld.parameters) {
-          p.min = 0; p.max = 100;
-          p.default = Math.max(0, Math.min(100, p.default));
-        }
-        for (const d of ld.decisions) {
-          for (const c of d.choices) {
-            if (c.effects && !c.set_state) {
-              const ss: Record<string, number> = {};
-              for (const pn of paramNames) ss[pn] = Math.max(0, Math.min(100, 50 + (c.effects[pn] ?? 0)));
-              c.set_state = ss;
-              delete c.effects;
-            }
-            if (c.set_state) {
-              for (const pn of paramNames) {
-                if (typeof c.set_state[pn] !== "number") c.set_state[pn] = 50;
-                c.set_state[pn] = Math.max(0, Math.min(100, c.set_state[pn]));
-              }
-            }
-          }
-        }
       }
     } else if (mod.lab_type === "classification") {
-      if (!isValidClassification(ld)) {
-        console.warn(`[RepairModules] classification fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && (Array.isArray(ld.items) || Array.isArray(ld.categories))) {
+        console.log(`[RepairModules] Repairing AI classification for: "${title}"`);
+        mod.lab_data = repairClassification(ld, title);
+      } else if (!isValidClassification(ld)) {
+        console.warn(`[RepairModules] Classification completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateClassificationFallback(title);
       }
     } else if (mod.lab_type === "policy_optimization") {
-      if (!isValidPolicyOptimization(ld)) {
-        console.warn(`[RepairModules] policy_optimization fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.parameters) && ld.parameters.length >= 1) {
+        console.log(`[RepairModules] Repairing AI policy_optimization for: "${title}" (${ld.parameters.length} params)`);
+        mod.lab_data = repairPolicyOptimization(ld, title);
+      } else if (!isValidPolicyOptimization(ld)) {
+        console.warn(`[RepairModules] Policy optimization completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generatePolicyOptimizationFallback(title);
-      } else {
-        for (const p of ld.parameters) {
-          p.min = 0; p.max = 100;
-          p.default = Math.max(0, Math.min(100, p.default));
-        }
       }
     } else if (mod.lab_type === "ethical_dilemma") {
-      if (!isValidEthicalDilemma(ld)) {
-        console.warn(`[RepairModules] ethical_dilemma fallback generated for: "${title}"`);
+      if (ld && typeof ld === "object" && Array.isArray(ld.dimensions) && ld.dimensions.length >= 1) {
+        console.log(`[RepairModules] Repairing AI ethical_dilemma for: "${title}" (${ld.dimensions.length} dims)`);
+        mod.lab_data = repairEthicalDilemma(ld, title);
+      } else if (!isValidEthicalDilemma(ld)) {
+        console.warn(`[RepairModules] Ethical dilemma completely unusable for: "${title}" — using fallback`);
         mod.lab_data = generateEthicalDilemmaFallback(title);
-      } else {
-        for (const dim of ld.dimensions) {
-          if (!dim.icon) dim.icon = "⚖️";
-          if (!dim.description) dim.description = "";
-        }
       }
+    } else if (mod.lab_type === "decision_lab") {
+      // Always attempt repair first — decision labs have the most varied AI output
+      console.log(`[RepairModules] Repairing AI decision_lab for: "${title}"`);
+      mod.lab_data = repairDecisionLab(ld || {}, title);
     } else if (mod.lab_type === "math_lab") {
       mod.lab_data = normalizeMathLabData(mod.lab_data, title, moduleIndex);
     }
 
-    // --- FINAL GUARD ---
-    const finalValid =
-      (mod.lab_type === "simulation" && isValidSimulation(mod.lab_data)) ||
-      (mod.lab_type === "classification" && isValidClassification(mod.lab_data)) ||
-      (mod.lab_type === "policy_optimization" && isValidPolicyOptimization(mod.lab_data)) ||
-      (mod.lab_type === "ethical_dilemma" && isValidEthicalDilemma(mod.lab_data)) ||
-      (mod.lab_type === "decision_lab" && isValidDecisionLab(mod.lab_data)) ||
-      (mod.lab_type === "math_lab" && mod.lab_data?.tasks?.length > 0);
+    // --- FINAL GUARD (relaxed) ---
+    // Only fallback if lab_data is completely empty/null after repair
+    const finalLD = mod.lab_data;
+    const hasAnyContent = finalLD && typeof finalLD === "object" && Object.keys(finalLD).length > 2;
 
-    if (!finalValid) {
-      console.error(`[RepairModules] FINAL GUARD - Forced simulation for: "${title}"`);
+    if (!hasAnyContent) {
+      console.error(`[RepairModules] FINAL GUARD - Lab still empty after repair for: "${title}" — generating fallback`);
       mod.lab_type = "simulation";
       mod.lab_data = generateSimulationFallback(title);
     }
