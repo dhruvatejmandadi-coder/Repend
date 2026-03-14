@@ -1129,13 +1129,7 @@ serve(async (req) => {
       userContent = topicMessage;
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const aiRequestBody = JSON.stringify({
         model: "google/gemini-3-flash-preview",
         temperature: 0.4,
         messages: [
@@ -1174,265 +1168,100 @@ Each slide is separated by "---". Slides must be VISUAL, CLEAN, and MODERN.
 
 MANDATORY FORMATTING RULES:
 • Use emojis in EVERY section header (🔥 🎯 📊 💡 🧪 🧠 ✅ ⚡ 🛠 📈 🌎 🎭)
-• Use TABLES when explaining concepts — formula tables, comparison tables, step tables, cause/effect tables, process tables, reaction tables, variable tables
+• Use TABLES when explaining concepts
 • Short paragraphs ONLY (2-3 sentences MAX)
 • Use bullet points for all lists
-• Leave blank lines between sections for breathing room
-• NEVER create text walls — if a section has 3+ sentences, break into bullets or a table
 • Include at least ONE table per module across all slides
-• Tables must HELP understanding, not just decorate
 
 SLIDE FORMAT:
 <!-- type: [concept|example|case_study|comparison|quick_think|myth_vs_reality|process|interactive_predict|key_takeaways] -->
 ## 🔥 Slide Title (emoji in EVERY title)
 
-- Bullet point 1
-- Bullet point 2
-
-| Column A | Column B | Column C |
-|----------|----------|----------|
-| Data 1   | Data 2   | Data 3   |
-
 STUDENT LESSON FLOW — mandatory 7-slide sequence:
-Slide 1: 🎯 Learning Objective — what the student will understand or be able to do
-Slide 2: 🧠 Core Concept Explanation — clear, simple, step-by-step with definitions, formulas, examples, and a table
-Slide 3: 📊 Visual Concept Summary — table summarizing key ideas (Concept | Explanation | Key Idea | Outcome)
-Slide 4: 🌎 Real-World Relevance — explain where this concept appears in real life (specific industries, jobs, situations)
-Slide 5: 🧪 Lab Preview — what the student will explore in the interactive lab (NOT a school lab format — describe the simulation they'll enter)
-Slide 6: 🧠 Challenge — problem to solve based on the concept
-Slide 7: ✅ Key Takeaways — clear meaning, why it matters, and what was learned
+Slide 1: 🎯 Learning Objective
+Slide 2: 🧠 Core Concept Explanation with definitions, formulas, examples, and a table
+Slide 3: 📊 Visual Concept Summary table
+Slide 4: 🌎 Real-World Relevance
+Slide 5: 🧪 Lab Preview — describe the simulation
+Slide 6: 🧠 Challenge — problem to solve
+Slide 7: ✅ Key Takeaways
 
-SLIDE 5 (Lab Preview) should set up the SIMULATION the student is about to enter:
-<!-- type: process -->
-## 🧪 Lab: [Lab Title]
-
-🎯 **What You'll Explore**
-- The interactive system you'll manipulate
-
-🔬 **Your Mission**
-- What decisions you'll make and why they matter
-
-📊 **Variables You'll Control**
-| Variable | What It Represents | Range |
-|----------|-------------------|-------|
-| Var A    | description       | 0-100 |
-
-This slide prepares the student for the interactive lab simulation that follows.
-
-SLIDE RULES:
-- 5-8 slides per module (7 is ideal)
-- 4-7 bullets per slide, each under 15 words
-- NO long paragraphs — use bullets, tables, and short text
-- No more than 2 slides of the same type per module
-- Tables should use emoji indicators (⬆️ ⬇️ ✅ ❌ ➡️)
+SLIDE RULES: 5-8 slides per module (7 ideal), 4-7 bullets per slide under 15 words, NO long paragraphs.
 
 === QUIZ RULES ===
-- 8-10 questions per module (students need 70% to pass)
-- 3 conceptual questions (test understanding)
-- 3 applied reasoning questions (apply concepts)
-- 2-3 scenario-based questions (given a scenario, what happens?)
-- 1 advanced challenge question
-- No definition-only questions, no trivia, no "All of the above"
-- Each question must connect to the module's learning objective
-- Mix easy, medium, and hard questions
+- 8-10 questions per module (70% to pass)
+- Mix: 3 conceptual, 3 applied reasoning, 2-3 scenario-based, 1 advanced challenge
+- No definition-only questions, no "All of the above"
 
-=== 🔥 DYNAMIC LAB ENGINE — NOT A TEMPLATE FILLER ===
-
+=== DYNAMIC LAB ENGINE ===
 You are generating the lab ENGINE, not filling a template.
 
 LAB DESIGN RULES:
-1. The lab structure must be DYNAMICALLY GENERATED from the concept.
-   Do NOT reuse standard school lab formats (hypothesis → procedure → conclusion).
+1. Dynamically generated from the concept — no school lab formats
+2. Interactive system with simulations, adjustable parameters, scenario-based decisions
+3. Visual component required (graphs, diagrams, dashboards)
+4. Student decisions must change outcomes
+5. Every lab must include tradeoffs — no choice improves everything
+6. Labs feel like system exploration, not worksheets
+7. Connect to real-world systems
+8. AI may invent new lab mechanics
+9. Each module MUST have a different lab experience
 
-2. The lab must contain an INTERACTIVE SYSTEM with:
-   - Simulations with adjustable parameters
-   - Dynamic visuals that respond to decisions
-   - Scenario-based decision making with system feedback
-   - Optimization challenges with tradeoffs
-   - Experimental modeling
+=== LAB TYPE SELECTION ===
+| Topic Type | Lab Type |
+|-----------|----------|
+| Systemic/process | simulation |
+| Analytical/sorting | classification |
+| Strategic/constraint | policy_optimization |
+| Ethical/moral | ethical_dilemma |
+| Strategic reasoning | decision_lab |
+| Math | math_lab |
 
-3. Every lab must include a VISUAL COMPONENT:
-   - Graphs, system diagrams, geometric models, dynamic tables
-   - Parameter dashboards, flow models, probability visualizations
-   - Decision trees, scientific models
-   The visual must directly help students understand the concept.
+MATH LAB RULE: If math-related, use "math_lab" for ALL modules with rotating visual_type.
 
-4. The lab must include STUDENT DECISIONS that CHANGE OUTCOMES:
-   - Variables, policies, parameters, environmental conditions, model inputs
-   - Each decision must create measurable system changes
-
-5. Every lab must include TRADEOFFS:
-   - No choice should improve everything
-   - Improving one parameter must worsen another or create risk
-   - This forces critical thinking
-
-6. Labs must feel like SYSTEM EXPLORATION, not worksheets:
-   - Students should experiment and observe outcomes
-   - The lab should feel like controlling a real system
-
-7. The lab must connect to a REAL-WORLD system or scenario:
-   - Climate models, population genetics, financial systems
-   - Physics simulations, chemical reaction dynamics
-   - Geometric design, probability simulations
-
-8. The AI may INVENT new lab mechanics when appropriate:
-   - Interactive reaction chamber, ecosystem simulator
-   - Physics sandbox, economic policy model
-   - Genetic inheritance simulator, geometry design tool
-
-9. Do NOT repeat previously generated labs across modules.
-   Each module MUST have a fundamentally different lab experience.
-
-=== INTELLIGENT LAB TYPE SELECTION ===
-Choose lab_type based on the topic's cognitive nature:
-
-| Topic Type | Lab Type | Why |
-|-----------|----------|-----|
-| Systemic/process (cause-effect) | simulation | Model interactions between system variables |
-| Analytical/sorting | classification | Categorize and identify patterns |
-| Strategic/constraint | policy_optimization | Reach targets within resource limits |
-| Ethical/moral | ethical_dilemma | Navigate tradeoffs with no perfect answer |
-| Strategic reasoning/applied | decision_lab | Evaluate options with real consequences |
-| Math (algebra, geometry, etc.) | math_lab | Interactive problem solving with visuals |
-
-MATH LAB RULE: If the course topic is math-related, use "math_lab" for ALL modules.
-MATH LAB DIVERSITY: Rotate visual_type across modules (graph, geometry, solution_steps, chart).
-
-=== 🔥 REPEND LEARNING FORMULA — ALL LABS ===
-Every lab follows: 🌎 Relevance → 🎭 Scenario → 📊 Information → 🧠 Decision → ⚡ Consequence → ✅ Insight
-
-Every lab_data object (except math_lab) MUST include:
+=== REPEND LEARNING FORMULA ===
+Every lab_data (except math_lab) MUST include:
 {
   "repend_intro": {
-    "relevance": "WHERE this concept is used in real life (specific jobs, industries, daily situations — name them)",
-    "role": "Specific role the student plays (e.g., 'the head nurse at a 200-bed hospital', 'a junior chemist at a pharmaceutical company', NOT 'a decision-maker')",
-    "scenario_context": "2-3 sentences setting the scene. What pressure exists? Why does it matter NOW?",
-    "information": ["Key fact 1 needed before deciding", "Key fact 2", "Key fact 3"],
-    "objective": "1 sentence: what skill or insight will the student gain?"
+    "relevance": "WHERE used in real life",
+    "role": "Specific role (e.g., 'the head nurse at a 200-bed hospital')",
+    "scenario_context": "2-3 sentences setting the scene",
+    "information": ["Key fact 1", "Key fact 2", "Key fact 3"],
+    "objective": "1 sentence skill/insight"
   },
-  "key_insight": "After the lab, explain the core lesson in 1-2 clear sentences — the 'clarity moment' that makes the concept click."
+  "key_insight": "Core lesson in 1-2 sentences"
 }
-
-REPEND RULES:
-- "role" MUST be specific and domain-appropriate (NOT "a decision-maker" → "the CFO of a struggling retail chain")
-- "relevance" MUST name a real industry, job, or situation — never say "this concept is important"
-- "information" MUST be data/facts/context the student needs BEFORE making decisions
-- "key_insight" MUST explain WHY the best approach works — the clarity moment
-- For school subjects: role can be a student researcher, lab assistant, junior scientist, etc.
 
 === SIMULATION LAB (lab_type: "simulation") ===
-{
-  "title": "<Topic> Simulation",
-  "repend_intro": { ... },
-  "key_insight": "...",
-  "parameters": [
-    {"name": "<TOPIC-SPECIFIC VARIABLE>", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50, "description": "What this variable measures"}
-  ],
-  "thresholds": [
-    {"label": "<TOPIC-SPECIFIC LEVEL>", "min_percent": 75, "message": "..."},
-    {"label": "<TOPIC-SPECIFIC LEVEL>", "min_percent": 50, "message": "..."},
-    {"label": "<TOPIC-SPECIFIC LEVEL>", "min_percent": 0, "message": "..."}
-  ],
-  "decisions": [
-    {
-      "question": "Scenario question?", "emoji": "🔬",
-      "choices": [
-        {"text": "Choice A", "explanation": "Why this matters", "set_state": {"Var1": 80, "Var2": 40, "Var3": 55}},
-        {"text": "Choice B", "explanation": "Why this matters", "set_state": {"Var1": 45, "Var2": 85, "Var3": 65}}
-      ]
-    }
-  ]
-}
-RULES: 3 parameters (system variables), 2-3 decisions with 2 choices each. Parameter names MUST be domain-specific measurable variables (e.g., Temperature/Pressure/Yield for chemistry, NOT Efficiency/Quality/Performance). Every choice MUST have set_state mapping ALL parameters to 0-100. Variables must influence each other logically.
+{ "title", "repend_intro", "key_insight", "parameters": [{"name": "<TOPIC-SPECIFIC>", "icon", "unit": "%", "min": 0, "max": 100, "default": 50}], "thresholds": [{label, min_percent, message}], "decisions": [{"question", "emoji", "choices": [{"text", "explanation", "set_state": {all params mapped to 0-100}}]}] }
+RULES: 3-5 parameters, 2-3 decisions with 2 choices each. Domain-specific variable names.
 
 === CLASSIFICATION LAB (lab_type: "classification") ===
-{
-  "title": "...", "description": "...",
-  "repend_intro": { ... },
-  "key_insight": "...",
-  "categories": [{"name": "Cat A", "description": "...", "color": "#hex"}],
-  "items": [{"content": "...", "correctCategory": "Cat A", "explanation": "..."}]
-}
-RULES: 3-4 categories, 6-8 items minimum. Items must require understanding to classify correctly.
+{ "title", "description", "repend_intro", "key_insight", "categories": [{"name", "description", "color"}], "items": [{"content", "correctCategory", "explanation"}] }
+RULES: 3-4 categories, 6-8 items minimum.
 
 === POLICY OPTIMIZATION LAB (lab_type: "policy_optimization") ===
-{
-  "title": "...", "description": "...",
-  "repend_intro": { ... },
-  "key_insight": "...",
-  "parameters": [{"name": "...", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50}],
-  "constraints": [{"parameter": "...", "operator": ">", "value": 70, "label": "..."}],
-  "max_decisions": 3,
-  "decisions": [{"question": "...", "emoji": "🎯", "choices": [{"text": "...", "explanation": "...", "set_state": {...}}]}]
-}
-RULES: 3 parameters, 2-3 constraints. Student must meet ALL constraints within limited decisions.
+{ "title", "description", "repend_intro", "key_insight", "parameters": [...], "constraints": [{"parameter", "operator", "value", "label"}], "max_decisions": 3, "decisions": [...] }
+RULES: 3 parameters, 2-3 constraints.
 
 === ETHICAL DILEMMA LAB (lab_type: "ethical_dilemma") ===
-{
-  "title": "...", "description": "...",
-  "repend_intro": { ... },
-  "key_insight": "...",
-  "dimensions": [{"name": "Profit", "icon": "💰", "description": "..."}],
-  "decisions": [{"question": "...", "emoji": "⚖️", "choices": [{"text": "...", "explanation": "...", "impacts": {"Profit": 15, "Ethics": -20}}]}]
-}
-RULES: 3-4 dimensions, 3-4 dilemmas. Every choice MUST improve one dimension and harm another. Use "impacts" (deltas -50 to +50). No perfect answers.
+{ "title", "description", "repend_intro", "key_insight", "dimensions": [{"name", "icon", "description"}], "decisions": [{"question", "emoji", "choices": [{"text", "explanation", "impacts": {dim: delta}}]}] }
+RULES: 3-4 dimensions, 3-4 dilemmas. Impacts are deltas -50 to +50.
 
 === DECISION LAB (lab_type: "decision_lab") ===
-{
-  "concept_knowledge": {
-    "definition": "Clear explanation (1-2 sentences)",
-    "key_ideas": ["Idea 1", "Idea 2", "Idea 3"],
-    "examples": ["Real example 1", "Real example 2"]
-  },
-  "real_world_relevance": {
-    "explanation": "Why this matters (2-3 sentences)",
-    "domain": "e.g. Government Policy, Business Strategy, Medical Practice"
-  },
-  "scenario": "Realistic situation (3-5 sentences). MUST be unique per topic and feel like a real-world problem.",
-  "decision_challenge": {
-    "question": "What would you do?",
-    "options": [
-      {"id": "a", "text": "Option A", "consequence": "What happens (2-3 sentences)", "is_best": false},
-      {"id": "b", "text": "Option B", "consequence": "What happens (2-3 sentences)", "is_best": true},
-      {"id": "c", "text": "Option C", "consequence": "What happens (2-3 sentences)", "is_best": false}
-    ]
-  },
-  "best_decision_explanation": "Why the best option is correct (2-3 sentences)"
-}
-RULES: concept_knowledge must TEACH before deciding. 3-4 options, no obviously wrong answers. Exactly 1 is_best: true.
+{ "concept_knowledge": {"definition", "key_ideas": [], "examples": []}, "real_world_relevance": {"explanation", "domain"}, "scenario": "3-5 sentences", "decision_challenge": {"question", "options": [{"id", "text", "consequence", "is_best": boolean}]}, "best_decision_explanation" }
+RULES: 3-4 options, exactly 1 is_best: true.
 
 === MATH LAB (lab_type: "math_lab") ===
-{
-  "title": "...",
-  "objective": "Specific math skill to practice",
-  "concept_overview": "2-4 sentence explanation with key formulas",
-  "visual_type": "graph" | "geometry" | "solution_steps" | "chart",
-  "graph_data": { "type": "function", "equation": "...", "x_label": "x", "y_label": "y", "x_range": [-5, 10], "y_range": [-5, 15], "key_points": [{"x": 2, "y": 4, "label": "..."}] },
-  "scenario": "Real-world application of THIS specific concept",
-  "instructions": "Step-by-step instructions",
-  "tasks": [{"id": 1, "description": "...", "type": "input"|"choice"|"explanation", "correct_answer": "..."}],
-  "hints": ["hint 1", "hint 2"],
-  "solution": "correct answer",
-  "solution_explanation": "step-by-step explanation"
-}
-MATH RELEVANCY: Every math lab MUST use the SPECIFIC concept from the module title. NEVER default to quadratics unless the module IS about quadratics.
+{ "title", "objective", "concept_overview", "visual_type": "graph"|"geometry"|"solution_steps"|"chart", "graph_data", "scenario", "instructions", "tasks": [{"id", "description", "type": "input"|"choice"|"explanation", "correct_answer"}], "hints", "solution", "solution_explanation" }
 
-=== ANTI-REPETITION RULES (STRICT) ===
+=== ANTI-REPETITION RULES ===
 - Each module MUST use a DIFFERENT lab mechanic and scenario
-- Do NOT repeat the same parameter names across modules
-- Do NOT reuse the same role in repend_intro across modules
-- Do NOT generate labs that feel like school worksheets or lab reports
-- If the topic is chemistry, use chemistry-specific variables (Temperature, Concentration, pH) NOT generic ones (Efficiency, Quality)
-- If the topic is physics, use physics variables (Velocity, Force, Mass) NOT business variables (Performance, Cost)
-- The lab must feel like the student is INSIDE a real system, not filling out a form
+- Domain-specific variables (chemistry: Temperature/pH, physics: Velocity/Force, NOT Efficiency/Quality)
+- For 4-6 modules, use AT LEAST 3 different lab_types
 
-=== LAB DIVERSITY ENFORCEMENT ===
-For a 4-6 module course, use AT LEAST 3 different lab_types.
-Example good mix: simulation, decision_lab, classification, ethical_dilemma, policy_optimization, simulation
-Example bad mix: simulation, simulation, simulation, simulation (NEVER do this)
-
-${filePath ? "IMPORTANT: The user has uploaded SOURCE MATERIAL. Base ALL content directly on the uploaded material. Extract key concepts from it. Do NOT generate generic content." : ""}
-Generate 4-6 modules with a good mix of lab types (at least 3 different types). Include at least 1-2 decision_lab modules. EVERY lab must feel like a unique interactive system exploration — NOT a template being filled. Lessons should feel visual, interactive, clear, structured, engaging.`,
+${filePath ? "IMPORTANT: Base ALL content on the uploaded SOURCE MATERIAL." : ""}
+Generate 4-6 modules with at least 3 different lab types. Include 1-2 decision_lab modules.`,
           },
           { role: "user", content: userContent },
         ],
@@ -1482,21 +1311,73 @@ Generate 4-6 modules with a good mix of lab types (at least 3 different types). 
           },
         ],
         tool_choice: { type: "function", function: { name: "create_course" } },
-      }),
-    });
+      });
 
-    const responseText = await response.text();
-    let aiData: any;
-    try {
-      aiData = JSON.parse(responseText);
-    } catch (parseErr) {
-      console.error("AI response was not valid JSON:", responseText.substring(0, 500));
-      throw new Error("AI returned an invalid response. Please try again.");
+    // Retry logic for transient AI gateway errors
+    const MAX_RETRIES = 2;
+    let aiData: any = null;
+    let lastError = "";
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      if (attempt > 0) {
+        const delay = attempt * 3000; // 3s, 6s
+        console.log(`[AI Retry] Attempt ${attempt + 1} after ${delay}ms delay...`);
+        await new Promise(r => setTimeout(r, delay));
+      }
+
+      try {
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: aiRequestBody,
+        });
+
+        if (response.status === 429) {
+          lastError = "Rate limit exceeded. Please wait a moment and try again.";
+          console.warn(`[AI Retry] 429 rate limited on attempt ${attempt + 1}`);
+          continue;
+        }
+        if (response.status === 402) {
+          throw new Error("AI credits exhausted. Please add credits to continue generating courses.");
+        }
+
+        const responseText = await response.text();
+        
+        if (!response.ok) {
+          console.warn(`[AI Retry] Gateway returned ${response.status} on attempt ${attempt + 1}:`, responseText.substring(0, 300));
+          lastError = `AI gateway error (${response.status}). Please try again.`;
+          continue;
+        }
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(responseText);
+        } catch {
+          console.error("AI response was not valid JSON:", responseText.substring(0, 500));
+          lastError = "AI returned an invalid response. Please try again.";
+          continue;
+        }
+
+        if (!parsed.choices?.length) {
+          console.warn(`[AI Retry] No choices on attempt ${attempt + 1}:`, JSON.stringify(parsed).substring(0, 300));
+          lastError = "Empty AI response. The model may have been overloaded — please try again.";
+          continue;
+        }
+
+        aiData = parsed;
+        break; // Success
+      } catch (fetchErr: any) {
+        if (fetchErr.message?.includes("credits")) throw fetchErr; // Don't retry payment errors
+        console.warn(`[AI Retry] Fetch error on attempt ${attempt + 1}:`, fetchErr.message);
+        lastError = fetchErr.message || "Network error contacting AI gateway.";
+      }
     }
 
-    if (!aiData.choices?.length) {
-      console.error("AI response had no choices:", JSON.stringify(aiData).substring(0, 500));
-      throw new Error("Empty AI response. The model may have been overloaded — please try again.");
+    if (!aiData) {
+      throw new Error(lastError || "Failed to get AI response after multiple attempts. Please try again.");
     }
 
     const message = aiData.choices[0].message;
