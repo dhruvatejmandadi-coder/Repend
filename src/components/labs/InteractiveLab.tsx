@@ -384,8 +384,16 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
     return <MathLab data={labData} onComplete={onComplete} isCompleted={isCompleted} />;
   }
 
-  // Default: Simulation
+  // Default: Try Simulation first, then DynamicLab as catch-all
   const hasSimulationData = labData?.parameters?.length > 0;
-  if (!hasSimulationData) return <LabEmptyState labType={labType} />;
-  return <SimulationLabInline data={labData} onComplete={onComplete} isCompleted={isCompleted} />;
-}
+  if (hasSimulationData) {
+    return <SimulationLabInline data={labData} onComplete={onComplete} isCompleted={isCompleted} />;
+  }
+
+  // Catch-all: DynamicLab renders any AI-generated structure
+  const hasAnyContent = labData && typeof labData === "object" && Object.keys(labData).length > 1;
+  if (hasAnyContent) {
+    return <DynamicLab data={labData} onComplete={onComplete} isCompleted={isCompleted} />;
+  }
+
+  return <LabEmptyState labType={labType} />;
