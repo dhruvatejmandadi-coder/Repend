@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { TrendingUp, TrendingDown, Minus, MessageCircleQuestion, RotateCcw, CheckCircle2, ChevronRight, Lightbulb } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import DynamicLab from "./DynamicLab";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
