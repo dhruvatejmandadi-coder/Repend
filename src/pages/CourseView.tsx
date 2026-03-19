@@ -268,6 +268,8 @@ export default function CourseView() {
                   labData={mod.lab_data}
                   labTitle={mod.lab_title}
                   labDescription={mod.lab_description}
+                  labGenerationStatus={mod.lab_generation_status}
+                  labError={mod.lab_error}
                   onComplete={handleLabComplete}
                   isCompleted={getSectionDone(mod.id, "lab")}
                 />
