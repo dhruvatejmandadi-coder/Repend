@@ -39,6 +39,8 @@ type Module = {
   lab_description: string | null;
   lab_type: string | null;
   lab_data: any;
+  lab_generation_status: string | null;
+  lab_error: string | null;
   quiz: any[];
   completed: boolean;
 };
