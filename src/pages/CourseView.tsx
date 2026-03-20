@@ -315,6 +315,7 @@ export default function CourseView() {
                   labError={mod.lab_error}
                   onComplete={handleLabComplete}
                   isCompleted={getSectionDone(mod.id, "lab")}
+                  onRetryGeneration={() => triggerLabGeneration(mod.id)}
                 />
               )}
 
