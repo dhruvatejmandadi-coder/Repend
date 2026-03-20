@@ -67,6 +67,7 @@ export default function CourseView() {
   const [activeModule, setActiveModule] = useState(0);
   const [activeContent, setActiveContent] = useState<ContentType>("lesson");
   const [loading, setLoading] = useState(true);
+  const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (id) fetchCourse();
@@ -83,8 +84,50 @@ export default function CourseView() {
       return;
     }
     setCourse(courseRes.data);
-    setModules((modulesRes.data || []).map((m: any) => ({ ...m, quiz: Array.isArray(m.quiz) ? m.quiz : [] })));
+    const parsed = (modulesRes.data || []).map((m: any) => ({ ...m, quiz: Array.isArray(m.quiz) ? m.quiz : [] }));
+    setModules(parsed);
     setLoading(false);
+
+    // Trigger lab generation for any pending/generating modules
+    for (const m of parsed) {
+      if (m.lab_generation_status === "pending" || m.lab_generation_status === "generating") {
+        triggerLabGeneration(m.id);
+      }
+    }
+  };
+
+  const triggerLabGeneration = async (moduleId: string) => {
+    if (generatingLabs.has(moduleId)) return;
+    setGeneratingLabs(prev => new Set(prev).add(moduleId));
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-lab-blueprint`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({ moduleId }),
+      });
+      if (resp.ok) {
+        // Refresh modules to get updated lab data
+        const { data } = await supabase
+          .from("course_modules")
+          .select("*")
+          .eq("id", moduleId)
+          .single();
+        if (data) {
+          setModules(prev => prev.map(m => m.id === moduleId ? { ...data, quiz: Array.isArray(data.quiz) ? data.quiz : [] } : m));
+        }
+      }
+    } catch (e) {
+      console.error("Lab generation failed for module", moduleId, e);
+    } finally {
+      setGeneratingLabs(prev => {
+        const next = new Set(prev);
+        next.delete(moduleId);
+        return next;
+      });
+    }
   };
 
   const mod = modules[activeModule];
