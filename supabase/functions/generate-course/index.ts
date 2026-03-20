@@ -330,33 +330,135 @@ Return a lab blueprint with these fields:
 7. The "kind" field should be unique and descriptive — it describes WHAT this lab IS.
 8. Be creative! Each lab should feel different.`;
 
-  try {
-    const aiData = await callAI(apiKey, {
-      model: "google/gemini-2.5-pro",
-      temperature: 0.7,
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: `Design a lab blueprint for the concept: "${moduleTitle}"\n\nTopic: ${topic}\nLab concept hint: ${labConcept}\n\nDesign a unique, creative, domain-specific interactive lab.` },
-      ],
-      tools: [{
-        type: "function",
-        function: {
-          name: "create_lab_blueprint",
-          description: "Create an interactive lab blueprint",
-          parameters: {
+  const blueprintToolSchema = {
+    type: "function" as const,
+    function: {
+      name: "create_lab_blueprint",
+      description: "Create an interactive lab blueprint with UI blocks, variables, and scenario",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string", description: "Lab title" },
+          kind: { type: "string", description: "Unique descriptive kind like 'ecosystem_balance', 'reaction_optimizer', 'market_simulator'" },
+          scenario: { type: "string", description: "2-3 sentence real-world scenario the student is placed in" },
+          learning_goal: { type: "string", description: "What the student should understand after completing this lab" },
+          variables: {
+            type: "array",
+            description: "Domain-specific variables that change based on student decisions",
+            items: {
+              type: "object",
+              properties: {
+                name: { type: "string" },
+                icon: { type: "string", description: "Single emoji" },
+                unit: { type: "string", description: "Unit like %, km, $, kJ" },
+                min: { type: "number" },
+                max: { type: "number" },
+                default: { type: "number" },
+                description: { type: "string" },
+              },
+              required: ["name", "icon", "unit", "min", "max", "default"],
+            },
+          },
+          blocks: {
+            type: "array",
+            description: "Ordered UI blocks. Must include at least 3 blocks mixing different types.",
+            items: {
+              type: "object",
+              properties: {
+                type: { type: "string", enum: ["text", "choice_set", "slider", "table", "step_task", "chart", "insight"] },
+                content: { type: "string", description: "For text/insight blocks" },
+                question: { type: "string", description: "For choice_set blocks" },
+                emoji: { type: "string", description: "For choice_set blocks" },
+                choices: {
+                  type: "array",
+                  description: "For choice_set blocks",
+                  items: {
+                    type: "object",
+                    properties: {
+                      text: { type: "string" },
+                      feedback: { type: "string" },
+                      effects: { type: "object", description: "Maps variable name → new value (0-100)" },
+                      is_best: { type: "boolean" },
+                    },
+                    required: ["text", "feedback", "effects"],
+                  },
+                },
+                variable: { type: "string", description: "For slider blocks" },
+                prompt: { type: "string", description: "For slider blocks" },
+                interactive: { type: "boolean", description: "For slider blocks" },
+                title: { type: "string", description: "For table/chart blocks" },
+                headers: { type: "array", items: { type: "string" }, description: "For table blocks" },
+                rows: { type: "array", items: { type: "array", items: { type: "string" } }, description: "For table blocks" },
+                tasks: {
+                  type: "array",
+                  description: "For step_task blocks",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      prompt: { type: "string" },
+                      type: { type: "string", enum: ["input", "choice"] },
+                      correct_answer: { type: "string" },
+                      hint: { type: "string" },
+                      explanation: { type: "string" },
+                      options: { type: "array", items: { type: "string" } },
+                    },
+                    required: ["id", "prompt", "type", "correct_answer"],
+                  },
+                },
+                chart_type: { type: "string", enum: ["line", "bar", "area"], description: "For chart blocks" },
+                x_label: { type: "string", description: "For chart blocks" },
+                y_label: { type: "string", description: "For chart blocks" },
+                datasets: {
+                  type: "array",
+                  description: "For chart blocks",
+                  items: {
+                    type: "object",
+                    properties: {
+                      label: { type: "string" },
+                      data: { type: "array", items: { type: "object", properties: { x: { type: "number" }, y: { type: "number" } } } },
+                    },
+                  },
+                },
+              },
+              required: ["type"],
+            },
+          },
+          completion_rule: { type: "string", enum: ["all_blocks", "all_choices", "all_tasks"] },
+          intro: {
             type: "object",
             properties: {
-              blueprint: { type: "object", description: "The complete lab blueprint" },
+              relevance: { type: "string" },
+              role: { type: "string" },
+              scenario_context: { type: "string" },
+              information: { type: "array", items: { type: "string" } },
+              objective: { type: "string" },
             },
-            required: ["blueprint"],
           },
         },
-      }],
+        required: ["title", "kind", "scenario", "variables", "blocks", "completion_rule"],
+      },
+    },
+  };
+
+  const userPrompt = `Design a lab blueprint for the concept: "${moduleTitle}"\n\nTopic: ${topic}\nLab concept hint: ${labConcept}\n\nDesign a unique, creative, domain-specific interactive lab. You MUST return at least 3 blocks mixing different types (choice_set, step_task, table, text, chart, insight). Every choice_set must set ALL variables.`;
+
+  try {
+    // Attempt 1: Full generation
+    let aiData = await callAI(apiKey, {
+      model: "google/gemini-2.5-pro",
+      temperature: 0.7,
+      max_tokens: 8192,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      tools: [blueprintToolSchema],
       tool_choice: { type: "function", function: { name: "create_lab_blueprint" } },
     });
 
-    const result = extractToolArgs(aiData);
-    const blueprint = result.blueprint || result;
+    let result = extractToolArgs(aiData);
+    let blueprint = result.blueprint || result;
 
     // Validate minimum structure
     if (!blueprint || typeof blueprint !== "object") {
@@ -366,7 +468,6 @@ Return a lab blueprint with these fields:
     // Repair: ensure blocks array exists
     if (!Array.isArray(blueprint.blocks)) {
       blueprint.blocks = [];
-      // Try to convert old-style data into blocks
       if (Array.isArray(blueprint.decisions)) {
         for (const d of blueprint.decisions) {
           blueprint.blocks.push({
@@ -396,6 +497,47 @@ Return a lab blueprint with these fields:
           })),
         });
       }
+    }
+
+    // Retry if blocks are still empty
+    if (!blueprint.blocks || blueprint.blocks.length === 0) {
+      console.warn(`[Phase 2] Attempt 1 returned 0 blocks for "${moduleTitle}". Retrying with direct prompt...`);
+      
+      const retryPrompt = `You MUST generate a lab blueprint with AT LEAST 3 blocks for: "${moduleTitle}" (${topic}).
+
+Return EXACTLY this structure with real content:
+- 1 text block with a scenario description
+- 2 choice_set blocks with 3 choices each, each choice must have effects setting all variables
+- 1 step_task block with 2 tasks
+- 1 insight block with the key takeaway
+
+Variables must be domain-specific to ${topic}. Create at least 3 variables.
+Do NOT return empty blocks or empty arrays.`;
+
+      aiData = await callAI(apiKey, {
+        model: "google/gemini-2.5-pro",
+        temperature: 0.5,
+        max_tokens: 8192,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: retryPrompt },
+        ],
+        tools: [blueprintToolSchema],
+        tool_choice: { type: "function", function: { name: "create_lab_blueprint" } },
+      });
+
+      result = extractToolArgs(aiData);
+      blueprint = result.blueprint || result;
+
+      if (!blueprint || typeof blueprint !== "object") {
+        return { blueprint: null, error: "Retry also returned empty blueprint" };
+      }
+      if (!Array.isArray(blueprint.blocks)) blueprint.blocks = [];
+    }
+
+    // If STILL empty after retry, fail cleanly
+    if (blueprint.blocks.length === 0) {
+      return { blueprint: null, error: "Blueprint generation produced no blocks after 2 attempts" };
     }
 
     // Repair: ensure variables array
