@@ -677,50 +677,10 @@ serve(async (req) => {
     const { data: insertedModules } = await supabase.from("course_modules").insert(moduleRows).select("id, title, lab_description, module_order");
     console.log(`[Phase 1] Inserted ${insertedModules?.length || 0} modules`);
 
-    // ===== PHASE 2: Generate Lab Blueprints Individually =====
-    if (insertedModules && insertedModules.length > 0) {
-      for (let i = 0; i < insertedModules.length; i++) {
-        const mod = insertedModules[i];
-        
-        // Update status to generating
-        await supabase.from("course_modules").update({ lab_generation_status: "generating" }).eq("id", mod.id);
-
-        const { blueprint, error } = await generateLabBlueprint(
-          LOVABLE_API_KEY,
-          topic,
-          mod.title,
-          mod.lab_description || mod.title,
-          i,
-        );
-
-        if (blueprint && blueprint.blocks?.length > 0) {
-          await supabase.from("course_modules").update({
-            lab_data: blueprint,
-            lab_blueprint: blueprint,
-            lab_type: "dynamic",
-            lab_generation_status: "done",
-            lab_error: null,
-          }).eq("id", mod.id);
-          console.log(`[Phase 2] Lab ${i + 1}/${insertedModules.length} saved for: "${mod.title}"`);
-        } else {
-          // Mark as failed — NOT empty. Can be retried.
-          await supabase.from("course_modules").update({
-            lab_generation_status: "failed",
-            lab_error: error || "Blueprint generation produced no blocks",
-            lab_data: null,
-          }).eq("id", mod.id);
-          console.warn(`[Phase 2] Lab ${i + 1} FAILED for: "${mod.title}" — ${error}`);
-        }
-
-        // Delay between generations
-        if (i < insertedModules.length - 1) {
-          await new Promise(r => setTimeout(r, 1500));
-        }
-      }
-    }
-
-    // Mark course as ready
+    // Mark course as ready immediately — labs will be generated on-demand by the client
+    // This prevents edge function timeouts (Phase 2 was taking ~40s per module)
     await supabase.from("courses").update({ status: "ready" }).eq("id", course.id);
+    console.log(`[Phase 1] Course "${outline.title}" ready. Labs will generate on-demand via generate-lab-blueprint.`);
 
     // Track usage
     if (filePath) {
