@@ -35,6 +35,7 @@ interface CertificateRow {
 
 export default function Profile() {
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const { toast } = useToast();
   const { totalPoints, streak, achievements } = usePoints();
   const fileInputRef = useRef<HTMLInputElement>(null);
