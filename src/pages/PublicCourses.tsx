@@ -113,7 +113,7 @@ export default function PublicCourses() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                     <User className="w-3 h-3" />
-                    <span>{course.profiles?.full_name || "Anonymous"}</span>
+                    <span>Published by {course.profiles?.full_name || "Anonymous"}</span>
                   </div>
                   <div className="flex items-center gap-1 text-xs text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                     View <ArrowRight className="w-3 h-3" />
