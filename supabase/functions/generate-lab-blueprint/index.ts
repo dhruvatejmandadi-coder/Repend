@@ -268,8 +268,8 @@ Variables must be domain-specific. Create at least 3 variables.`;
     }
 
     if (!blueprint || typeof blueprint !== "object") {
-      await supabase.from("course_modules").update({ lab_generation_status: "failed", lab_error: "AI returned empty blueprint" }).eq("id", moduleId);
-      return new Response(JSON.stringify({ status: "failed", error: "Empty blueprint" }), {
+      await supabase.from("course_modules").update({ lab_generation_status: "failed", lab_error: lastGenError || "AI returned empty blueprint" }).eq("id", moduleId);
+      return new Response(JSON.stringify({ status: "failed", error: lastGenError || "Empty blueprint" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -304,32 +304,6 @@ Variables must be domain-specific. Create at least 3 variables.`;
             ...(t.hint ? { hint: t.hint } : {}),
           })),
         });
-      }
-    }
-
-    // Retry if empty
-    if (!blueprint.blocks || blueprint.blocks.length === 0) {
-      console.warn(`Attempt 1 returned 0 blocks for "${moduleTitle}". Retrying...`);
-      const retryPrompt = `You MUST generate a lab blueprint with AT LEAST 3 blocks for: "${moduleTitle}" (${topic}).
-Return: 1 text block, 2 choice_set blocks with 3 choices each, 1 step_task block, 1 insight block.
-Variables must be domain-specific. Create at least 3 variables.`;
-
-      aiData = await callAI(LOVABLE_API_KEY, {
-        model: "google/gemini-2.5-pro",
-        temperature: 0.5,
-        max_tokens: 8192,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: retryPrompt },
-        ],
-        tools: [blueprintToolSchema],
-        tool_choice: { type: "function", function: { name: "create_lab_blueprint" } },
-      });
-
-      result = extractToolArgs(aiData);
-      blueprint = result.blueprint || result;
-      if (!blueprint || typeof blueprint !== "object" || !Array.isArray(blueprint.blocks)) {
-        blueprint = { blocks: [] };
       }
     }
 
