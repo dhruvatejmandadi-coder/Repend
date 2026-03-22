@@ -36,10 +36,14 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
 }
 
 function extractToolArgs(aiData: any): any {
+  const finishReason = aiData.choices?.[0]?.finish_reason;
+  if (finishReason === "error") {
+    throw new Error("MODEL_ERROR");
+  }
   const message = aiData.choices[0].message;
   const toolCall = message?.tool_calls?.[0];
   if (!toolCall) {
-    throw new Error(`AI did not return structured data (reason: ${aiData.choices[0]?.finish_reason || "unknown"}).`);
+    throw new Error(`AI did not return structured data (reason: ${finishReason || "unknown"}).`);
   }
   try {
     return JSON.parse(toolCall.function.arguments);
