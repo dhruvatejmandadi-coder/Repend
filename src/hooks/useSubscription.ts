@@ -87,7 +87,8 @@ export function useSubscription() {
   const isElite = isAdmin || state.plan === "elite";
 
   const getCoursesLimit = () => {
-    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
+    if (isAdmin) return Infinity;
+    if (state.plan === "elite") return PLAN_CONFIG.elite.coursesPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.coursesPerMonth;
     return STARTER_LIMITS.coursesPerMonth;
   };
