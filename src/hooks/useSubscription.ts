@@ -94,7 +94,8 @@ export function useSubscription() {
   };
 
   const getFileUploadsLimit = () => {
-    if (isAdmin || state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
+    if (isAdmin) return Infinity;
+    if (state.plan === "elite") return PLAN_CONFIG.elite.fileUploadsPerMonth;
     if (state.plan === "pro") return PLAN_CONFIG.pro.fileUploadsPerMonth;
     return STARTER_LIMITS.fileUploadsPerMonth;
   };
