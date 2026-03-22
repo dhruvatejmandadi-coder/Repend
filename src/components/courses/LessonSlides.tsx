@@ -54,10 +54,20 @@ function detectChallenge(body: string): { isChallenge: boolean; questionText: st
   return { isChallenge, questionText: body, answerHint };
 }
 
+// Replace $...$ math notation with parentheses for cleaner display
+function cleanMathNotation(text: string): string {
+  // Replace $$...$$  (display math) with [ ... ]
+  let result = text.replace(/\$\$(.+?)\$\$/g, '[ $1 ]');
+  // Replace $...$ (inline math) with ( ... )
+  result = result.replace(/\$(.+?)\$/g, '( $1 )');
+  return result;
+}
+
 function parseSlide(raw: string) {
   const typeMatch = raw.match(/<!--\s*type:\s*(\w+)\s*-->/);
   const slideType = typeMatch?.[1] || null;
   let cleaned = raw.replace(/<!--\s*type:\s*\w+\s*-->\n?/, "").trim();
+  cleaned = cleanMathNotation(cleaned);
   const headingMatch = cleaned.match(/^##\s+(.+)$/m);
   const title = headingMatch?.[1]?.trim() || null;
   if (headingMatch) cleaned = cleaned.replace(/^##\s+.+$/m, "").trim();
