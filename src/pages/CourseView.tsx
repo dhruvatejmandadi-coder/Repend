@@ -15,6 +15,9 @@ import {
   FileText,
   Beaker,
   ClipboardList,
+  Pencil,
+  Crown,
+  User,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
