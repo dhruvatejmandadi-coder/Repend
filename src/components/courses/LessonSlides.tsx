@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Youtube, CheckCircle2, Send, XCircle, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface LessonSlidesProps {
   content: string;
@@ -54,12 +57,10 @@ function detectChallenge(body: string): { isChallenge: boolean; questionText: st
   return { isChallenge, questionText: body, answerHint };
 }
 
-// Replace $...$ math notation with parentheses for cleaner display
+// Clean up double-escaped LaTeX that AI sometimes produces
 function cleanMathNotation(text: string): string {
-  // Replace $$...$$  (display math) with [ ... ]
-  let result = text.replace(/\$\$(.+?)\$\$/g, '[ $1 ]');
-  // Replace $...$ (inline math) with ( ... )
-  result = result.replace(/\$(.+?)\$/g, '( $1 )');
+  let result = text.replace(/\\\\\(/g, '$').replace(/\\\\\)/g, '$');
+  result = result.replace(/\\\\\[/g, '$$').replace(/\\\\\]/g, '$$');
   return result;
 }
 
@@ -162,7 +163,8 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComp
             className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-img:max-h-[400px] prose-table:border-collapse prose-th:bg-muted/50 prose-th:border prose-th:border-border prose-th:px-3 prose-th:py-2 prose-th:text-left prose-th:text-sm prose-th:font-semibold prose-td:border prose-td:border-border prose-td:px-3 prose-td:py-2 prose-td:text-sm min-h-[200px] animate-fade-in"
           >
             <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={[remarkGfm, remarkMath]}
+              rehypePlugins={[rehypeKatex]}
               components={{
                 img: ({ node, ...props }) => (
                   <img {...props} loading="lazy" className="rounded-lg shadow-md mx-auto max-h-[400px] object-contain" />
