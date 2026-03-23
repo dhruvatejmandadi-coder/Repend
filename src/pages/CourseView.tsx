@@ -77,6 +77,7 @@ export default function CourseView() {
   const [activeModule, setActiveModule] = useState(0);
   const [activeContent, setActiveContent] = useState<ContentType>("lesson");
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
