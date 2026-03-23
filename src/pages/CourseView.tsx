@@ -299,6 +299,16 @@ export default function CourseView() {
           </div>
         </aside>
 
+        {/* Sidebar toggle */}
+        <button
+          onClick={() => setSidebarOpen(prev => !prev)}
+          className="absolute top-3 z-10 h-8 w-8 flex items-center justify-center rounded-md border border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+          style={{ left: sidebarOpen ? "17.25rem" : "0.5rem" }}
+          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+        </button>
+
         {/* Main Content */}
         {mod && (
           <main className="flex-1 overflow-y-auto p-8">
