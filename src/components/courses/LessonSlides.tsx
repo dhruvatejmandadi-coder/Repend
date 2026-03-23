@@ -7,6 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, Youtube, CheckCircle2, Send, XCircle, Lightbulb } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 
 interface LessonSlidesProps {
   content: string;
