@@ -218,9 +218,9 @@ export default function CourseView() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-3rem)]">
+      <div className="flex h-[calc(100vh-3rem)] relative">
         {/* Sidebar */}
-        <aside className="w-72 border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0">
+        <aside className={`border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0 transition-all duration-300 ${sidebarOpen ? "w-72" : "w-0 overflow-hidden border-r-0"}`}>
           <div className="p-4 border-b border-border/40">
             <Button variant="ghost" size="sm" onClick={() => navigate("/courses")} className="-ml-2 mb-2 text-muted-foreground text-[13px]">
               <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
