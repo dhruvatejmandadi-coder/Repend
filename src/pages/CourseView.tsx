@@ -18,6 +18,8 @@ import {
   Pencil,
   Crown,
   User,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
@@ -75,6 +77,7 @@ export default function CourseView() {
   const [activeModule, setActiveModule] = useState(0);
   const [activeContent, setActiveContent] = useState<ContentType>("lesson");
   const [loading, setLoading] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -215,9 +218,9 @@ export default function CourseView() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-3rem)]">
+      <div className="flex h-[calc(100vh-3rem)] relative">
         {/* Sidebar */}
-        <aside className="w-72 border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0">
+        <aside className={`border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0 transition-all duration-300 ${sidebarOpen ? "w-72" : "w-0 overflow-hidden border-r-0"}`}>
           <div className="p-4 border-b border-border/40">
             <Button variant="ghost" size="sm" onClick={() => navigate("/courses")} className="-ml-2 mb-2 text-muted-foreground text-[13px]">
               <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
@@ -295,6 +298,16 @@ export default function CourseView() {
             </Accordion>
           </div>
         </aside>
+
+        {/* Sidebar toggle */}
+        <button
+          onClick={() => setSidebarOpen(prev => !prev)}
+          className="absolute top-3 z-10 h-8 w-8 flex items-center justify-center rounded-md border border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
+          style={{ left: sidebarOpen ? "17.25rem" : "0.5rem" }}
+          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+        >
+          {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
+        </button>
 
         {/* Main Content */}
         {mod && (

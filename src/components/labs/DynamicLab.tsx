@@ -74,7 +74,15 @@ function getParamLevel(value: number, min: number, max: number) {
   return { color: "text-red-500", icon: TrendingDown };
 }
 
-/* ── Step-based renderer ─────────────────────────────────────── */
+const BLOCK_LABELS: Record<string, { label: string; emoji: string; color: string }> = {
+  text: { label: "Read", emoji: "📖", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
+  choice_set: { label: "Decide", emoji: "🔮", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
+  slider: { label: "Adjust", emoji: "🎚️", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" },
+  table: { label: "Data", emoji: "📊", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
+  step_task: { label: "Challenge", emoji: "📋", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
+  chart: { label: "Chart", emoji: "📈", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20" },
+  insight: { label: "Key Insight", emoji: "💡", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
+};
 
 export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
   const variables = useMemo(() => data?.variables ?? [], [data]);
@@ -88,10 +96,10 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
   const [taskAnswers, setTaskAnswers] = useState<Record<string, string>>({});
   const [taskSubmitted, setTaskSubmitted] = useState<Record<string, boolean>>({});
   const [completionFired, setCompletionFired] = useState(false);
+  const [showHint, setShowHint] = useState<Record<string, boolean>>({});
 
   const totalSteps = blocks.length;
 
-  // Init
   useEffect(() => {
     const initial = Object.fromEntries(variables.map(v => [v.name, v.default ?? 50]));
     setValues(initial);
@@ -101,34 +109,29 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setCompletionFired(false);
     setShowIntro(true);
     setCurrentStep(0);
+    setShowHint({});
   }, [data]);
 
-  // ── helpers ──
   const isStepCompleted = useCallback((idx: number): boolean => {
     const block = blocks[idx];
     if (!block) return false;
     switch (block.type) {
-      case "choice_set":
-        return choiceAnswers[idx] !== undefined;
+      case "choice_set": return choiceAnswers[idx] !== undefined;
       case "step_task": {
         const tasks: TaskItem[] = (block as any).tasks || [];
         return tasks.length > 0 && tasks.every(t => taskSubmitted[t.id]);
       }
       case "slider":
-        return true; // sliders are always "complete" – they're exploratory
       case "text":
       case "table":
       case "chart":
       case "insight":
-        return true; // passive blocks
-      default:
         return true;
+      default: return true;
     }
   }, [blocks, choiceAnswers, taskSubmitted]);
 
   const canAdvance = isStepCompleted(currentStep);
-
-  // Completion
   const allDone = useMemo(() => blocks.every((_, i) => isStepCompleted(i)), [blocks, isStepCompleted]);
 
   useEffect(() => {
@@ -138,7 +141,6 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     }
   }, [allDone, currentStep, totalSteps, completionFired, onComplete]);
 
-  // ── handlers ──
   const handleChoice = useCallback((blockIdx: number, choiceIdx: number) => {
     if (choiceAnswers[blockIdx] !== undefined) return;
     const block = blocks[blockIdx] as any;
@@ -171,9 +173,9 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setCompletionFired(false);
     setShowIntro(true);
     setCurrentStep(0);
+    setShowHint({});
   };
 
-  // Keyboard nav
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" && canAdvance && currentStep < totalSteps - 1) setCurrentStep(s => s + 1);
@@ -183,14 +185,14 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     return () => window.removeEventListener("keydown", handler);
   }, [canAdvance, currentStep, totalSteps]);
 
-  // ── Already completed ──
+  // ── Already completed state ──
   if (isCompleted && !allDone) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
-        <CardContent className="p-6 text-center space-y-3">
-          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+        <CardContent className="p-8 text-center space-y-4">
+          <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
           <h3 className="font-bold text-lg">Lab Complete</h3>
-          <p className="text-sm text-muted-foreground">You've already completed this lab.</p>
+          <p className="text-sm text-muted-foreground max-w-sm mx-auto">You've already completed this lab. Replay to explore different outcomes.</p>
           <Button variant="outline" onClick={reset}>
             <RotateCcw className="w-4 h-4 mr-1" /> Replay Lab
           </Button>
@@ -199,39 +201,51 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     );
   }
 
-  // ── Intro ──
+  // ── Intro screen ──
   if (showIntro && introData) {
-    return (
-      <LabIntro
-        title={data.title || "Interactive Lab"}
-        intro={introData}
-        labType={data.kind || "dynamic"}
-        onStart={() => setShowIntro(false)}
-      />
-    );
+    return <LabIntro title={data.title || "Interactive Lab"} intro={introData} labType={data.kind || "dynamic"} onStart={() => setShowIntro(false)} />;
   }
 
   if (showIntro && !introData) {
     return (
       <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🧪</span>
-            <h3 className="font-bold text-lg">{data.title || "Interactive Lab"}</h3>
+        <CardContent className="p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">🧪</span>
+            <div>
+              <h3 className="font-bold text-lg">{data.title || "Interactive Lab"}</h3>
+              {data.kind && <p className="text-xs text-muted-foreground capitalize">{data.kind.replace(/_/g, " ")}</p>}
+            </div>
           </div>
-          {data.scenario && <p className="text-sm leading-relaxed">{data.scenario}</p>}
-          {data.learning_goal && <p className="text-xs text-muted-foreground">🎯 {data.learning_goal}</p>}
+          {data.scenario && <p className="text-sm leading-relaxed text-foreground/80">{data.scenario}</p>}
+          {data.learning_goal && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <span className="text-sm mt-0.5">🎯</span>
+              <p className="text-sm text-foreground/70">{data.learning_goal}</p>
+            </div>
+          )}
           {variables.length > 0 && (
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variables</span>
-              <div className="flex flex-wrap gap-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variables you'll work with</span>
+              <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => (
-                  <Badge key={v.name} variant="outline" className="text-xs">{v.icon} {v.name}</Badge>
+                  <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
+                    <span className="text-base">{v.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium truncate">{v.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{v.min}–{v.max} {v.unit}</p>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
           )}
-          <Button onClick={() => setShowIntro(false)} className="w-full">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{totalSteps} steps</span>
+            <span>·</span>
+            <span>~{Math.max(2, totalSteps * 2)} min</span>
+          </div>
+          <Button onClick={() => setShowIntro(false)} className="w-full" size="lg">
             Start Lab <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </CardContent>
@@ -239,148 +253,172 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     );
   }
 
-  // ── No blocks ──
   if (totalSteps === 0) {
-    return (
-      <Card><CardContent className="p-6 text-center text-muted-foreground text-sm">No lab blocks available.</CardContent></Card>
-    );
+    return <Card><CardContent className="p-6 text-center text-muted-foreground text-sm">No lab blocks available.</CardContent></Card>;
   }
 
-  // ── Lab finished screen ──
+  // ── Lab finished ──
   if (allDone && currentStep >= totalSteps) {
     return (
-      <div className="space-y-4">
-        <Card className="border-green-500/20 bg-green-500/[0.04]">
-          <CardContent className="p-6 text-center space-y-3">
-            <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
-            <h3 className="font-bold text-lg">Lab Complete!</h3>
-            {data.key_insight && (
-              <div className="text-left mt-4 p-4 rounded-lg bg-primary/5 border border-primary/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Lightbulb className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-semibold">Key Insight</span>
-                </div>
-                <p className="text-sm leading-relaxed">{data.key_insight}</p>
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-8 space-y-5">
+          <div className="text-center space-y-3">
+            <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
+            <h3 className="font-bold text-xl">Lab Complete!</h3>
+          </div>
+          {data.key_insight && (
+            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+              <div className="flex items-center gap-2 mb-2">
+                <Lightbulb className="w-4 h-4 text-primary" />
+                <span className="text-sm font-semibold">Key Takeaway</span>
               </div>
-            )}
-            {variables.length > 0 && (
-              <div className="text-left mt-3 space-y-2">
-                <span className="text-xs font-semibold text-muted-foreground uppercase">Final Outcomes</span>
+              <p className="text-sm leading-relaxed text-foreground/80">{data.key_insight}</p>
+            </div>
+          )}
+          {variables.length > 0 && (
+            <div className="space-y-3">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Final Outcomes</span>
+              <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => {
                   const value = values[v.name] ?? v.default;
+                  const pct = ((value - v.min) / (v.max - v.min)) * 100;
                   const { color, icon: Icon } = getParamLevel(value, v.min, v.max);
                   return (
-                    <div key={v.name} className="flex items-center justify-between text-sm">
-                      <span>{v.icon} {v.name}</span>
-                      <div className="flex items-center gap-1">
-                        <Icon className={`w-3 h-3 ${color}`} />
-                        <span className="font-medium">{value} {v.unit}</span>
+                    <div key={v.name} className="rounded-lg border border-border bg-card p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{v.icon} {v.name}</span>
+                        <div className="flex items-center gap-1">
+                          <Icon className={`w-3.5 h-3.5 ${color}`} />
+                          <span className="text-sm font-semibold">{value} {v.unit}</span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 bg-secondary rounded-full overflow-hidden">
+                        <div className={`h-full rounded-full transition-all ${pct >= 75 ? "bg-green-500" : pct >= 35 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                   );
                 })}
               </div>
-            )}
-            <Button variant="outline" onClick={reset} className="mt-4">
+            </div>
+          )}
+          <div className="text-center pt-2">
+            <Button variant="outline" onClick={reset}>
               <RotateCcw className="w-4 h-4 mr-1" /> Replay Lab
             </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   const block = blocks[currentStep];
   const progressPercent = totalSteps > 1 ? ((currentStep + 1) / totalSteps) * 100 : 100;
+  const meta = BLOCK_LABELS[block.type] || { label: block.type, emoji: "📄", color: "bg-muted text-muted-foreground border-border" };
 
-  // ── Render current step ──
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Progress header */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span className="font-medium">Step {currentStep + 1} of {totalSteps}</span>
-          <span>{Math.round(progressPercent)}%</span>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Step {currentStep + 1} / {totalSteps}</span>
+            <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.emoji} {meta.label}</Badge>
+          </div>
+          <span className="text-xs font-medium text-muted-foreground tabular-nums">{Math.round(progressPercent)}%</span>
         </div>
         <Progress value={progressPercent} className="h-1.5" />
-        {/* Step dots */}
-        <div className="flex items-center gap-1 justify-center pt-1">
-          {blocks.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => { if (i <= currentStep || isStepCompleted(i)) setCurrentStep(i); }}
-              className={`w-2 h-2 rounded-full transition-all ${
-                i === currentStep ? "bg-primary scale-125" :
-                isStepCompleted(i) ? "bg-primary/40" : "bg-muted-foreground/30"
-              }`}
-              aria-label={`Go to step ${i + 1}`}
-            />
-          ))}
+        {/* Step indicators */}
+        <div className="flex items-center gap-1.5 justify-center">
+          {blocks.map((b, i) => {
+            const bMeta = BLOCK_LABELS[b.type];
+            return (
+              <button
+                key={i}
+                onClick={() => { if (i <= currentStep || isStepCompleted(i)) setCurrentStep(i); }}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  i === currentStep ? "w-6 bg-primary" :
+                  isStepCompleted(i) ? "w-2 bg-primary/40" : "w-2 bg-muted-foreground/20"
+                }`}
+                title={`Step ${i + 1}: ${bMeta?.label || b.type}`}
+              />
+            );
+          })}
         </div>
       </div>
 
-      {/* Variable gauges (persistent across steps) */}
+      {/* Variable dashboard — compact, persistent */}
       {variables.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {variables.map(v => {
             const value = values[v.name] ?? v.default;
-            const { color, icon: Icon } = getParamLevel(value, v.min, v.max);
+            const pct = ((value - v.min) / (v.max - v.min)) * 100;
+            const { color } = getParamLevel(value, v.min, v.max);
             return (
-              <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
-                <span className="text-sm">{v.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{v.name}</p>
+              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium truncate">{v.icon} {v.name}</span>
+                  <span className={`text-xs font-bold tabular-nums ${color}`}>{value}</span>
                 </div>
-                <Icon className={`w-3 h-3 ${color}`} />
-                <span className="text-xs font-semibold">{value}</span>
+                <div className="h-1 bg-secondary rounded-full overflow-hidden">
+                  <div className={`h-full rounded-full transition-all duration-500 ${pct >= 75 ? "bg-green-500" : pct >= 35 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
+                </div>
               </div>
             );
           })}
         </div>
       )}
 
-      {/* Current block */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-5 min-h-[250px]">
-          <div key={currentStep} className="animate-fade-in space-y-4">
+      {/* Current block card */}
+      <Card className="overflow-hidden border-border/60">
+        <CardContent className="p-6 min-h-[280px]">
+          <div key={currentStep} className="animate-fade-in space-y-5">
+
+            {/* TEXT */}
             {block.type === "text" && (
-              <div>
-                <Badge variant="outline" className="mb-3 text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">📖 Information</Badge>
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{block.content}</p>
+              <div className="space-y-3">
+                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{(block as any).content}</p>
               </div>
             )}
 
+            {/* CHOICE SET */}
             {block.type === "choice_set" && (() => {
               const isAnswered = choiceAnswers[currentStep] !== undefined;
+              const choiceBlock = block as any;
               return (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <MessageCircleQuestion className="w-5 h-5 text-primary" />
-                    <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20">🔮 Decision</Badge>
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-base font-semibold">{choiceBlock.emoji || "🔬"} {choiceBlock.question}</p>
                   </div>
-                  <p className="text-sm font-medium">{(block as any).emoji || "🔬"} {(block as any).question}</p>
-                  <div className="space-y-2">
-                    {(block as any).choices.map((c: Choice, i: number) => {
+                  <div className="space-y-2.5">
+                    {choiceBlock.choices.map((c: Choice, i: number) => {
                       const isChosen = choiceAnswers[currentStep] === i;
+                      const isBest = c.is_best && isAnswered;
                       return (
-                        <div key={i} className="space-y-1">
+                        <div key={i} className="space-y-1.5">
                           <button
                             onClick={() => handleChoice(currentStep, i)}
                             disabled={isAnswered}
-                            className={`w-full text-left px-4 py-3 rounded-lg border text-sm transition-all ${
+                            className={`w-full text-left px-4 py-3.5 rounded-xl border text-sm transition-all duration-200 ${
                               isChosen
-                                ? "border-primary bg-primary/10 ring-1 ring-primary/20"
+                                ? isBest
+                                  ? "border-green-500 bg-green-500/10 ring-1 ring-green-500/20"
+                                  : "border-primary bg-primary/10 ring-1 ring-primary/20"
                                 : isAnswered
-                                  ? "opacity-40 border-border"
-                                  : "border-border hover:border-primary/40 hover:bg-primary/5"
+                                  ? "opacity-30 border-border cursor-not-allowed"
+                                  : "border-border hover:border-primary/40 hover:bg-primary/5 hover:shadow-sm"
                             }`}
                           >
-                            {c.text}
+                            <div className="flex items-center gap-3">
+                              <span className="flex items-center justify-center w-6 h-6 rounded-full border border-border text-xs font-medium shrink-0">
+                                {String.fromCharCode(65 + i)}
+                              </span>
+                              <span>{c.text}</span>
+                            </div>
                           </button>
                           {isChosen && c.feedback && (
-                            <p className="text-xs px-4 py-2 bg-muted/50 rounded-md text-muted-foreground animate-fade-in">
-                              ⚡ {c.feedback}
-                            </p>
+                            <div className="ml-9 text-xs px-4 py-2.5 bg-muted/50 rounded-lg text-muted-foreground animate-fade-in border border-border/30">
+                              {c.feedback}
+                            </div>
                           )}
                         </div>
                       );
@@ -390,53 +428,60 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
+            {/* SLIDER */}
             {block.type === "slider" && (() => {
               const sliderBlock = block as any;
               const v = variables.find(vr => vr.name === sliderBlock.variable);
               if (!v) return <p className="text-sm text-muted-foreground">Variable not found.</p>;
               const value = values[v.name] ?? v.default;
+              const pct = ((value - v.min) / (v.max - v.min)) * 100;
               return (
-                <div className="space-y-4">
-                  <Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20">🎚️ Adjust</Badge>
+                <div className="space-y-5">
                   {sliderBlock.prompt && <p className="text-sm font-medium">{sliderBlock.prompt}</p>}
-                  <Slider
-                    value={[value]}
-                    min={v.min}
-                    max={v.max}
-                    step={1}
-                    disabled={!sliderBlock.interactive}
-                    onValueChange={sliderBlock.interactive ? (val) => setValues(prev => ({ ...prev, [v.name]: val[0] })) : undefined}
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{v.min} {v.unit}</span>
-                    <span className="font-semibold text-foreground text-sm">{value} {v.unit}</span>
-                    <span>{v.max} {v.unit}</span>
+                  <div className="p-5 rounded-xl border border-border bg-card space-y-4">
+                    <div className="text-center">
+                      <span className="text-3xl font-bold tabular-nums">{value}</span>
+                      <span className="text-sm text-muted-foreground ml-1">{v.unit}</span>
+                    </div>
+                    <Slider
+                      value={[value]}
+                      min={v.min}
+                      max={v.max}
+                      step={1}
+                      disabled={!sliderBlock.interactive}
+                      onValueChange={sliderBlock.interactive ? (val) => setValues(prev => ({ ...prev, [v.name]: val[0] })) : undefined}
+                      className="py-2"
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>{v.min} {v.unit}</span>
+                      <span>{v.max} {v.unit}</span>
+                    </div>
                   </div>
-                  {v.description && <p className="text-xs text-muted-foreground">{v.description}</p>}
+                  {v.description && <p className="text-xs text-muted-foreground italic">{v.description}</p>}
                 </div>
               );
             })()}
 
+            {/* TABLE */}
             {block.type === "table" && (() => {
               const tableBlock = block as any;
               return (
                 <div className="space-y-3">
-                  <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20">📊 Data</Badge>
                   {tableBlock.title && <h4 className="text-sm font-bold">{tableBlock.title}</h4>}
-                  <div className="overflow-x-auto rounded-lg border border-border">
+                  <div className="overflow-x-auto rounded-xl border border-border">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="border-b border-border bg-muted/30">
+                        <tr className="border-b border-border bg-muted/40">
                           {tableBlock.headers?.map((h: string, i: number) => (
-                            <th key={i} className="text-left py-2 px-3 font-semibold text-xs text-muted-foreground">{h}</th>
+                            <th key={i} className="text-left py-2.5 px-4 font-semibold text-xs text-muted-foreground uppercase tracking-wide">{h}</th>
                           ))}
                         </tr>
                       </thead>
                       <tbody>
                         {tableBlock.rows?.map((row: string[], i: number) => (
-                          <tr key={i} className="border-b border-border/50">
+                          <tr key={i} className="border-b border-border/40 hover:bg-muted/20 transition-colors">
                             {row.map((cell: string, j: number) => (
-                              <td key={j} className="py-2 px-3 text-sm">{cell}</td>
+                              <td key={j} className="py-2.5 px-4 text-sm">{cell}</td>
                             ))}
                           </tr>
                         ))}
@@ -447,83 +492,99 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
+            {/* STEP TASK */}
             {block.type === "step_task" && (() => {
               const tasks: TaskItem[] = (block as any).tasks || [];
               return (
                 <div className="space-y-4">
-                  <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">📋 Challenge</Badge>
-                  {tasks.map((task) => {
+                  {tasks.map((task, idx) => {
                     const submitted = taskSubmitted[task.id];
                     const userAnswer = taskAnswers[task.id] || "";
                     const correct = String(task.correct_answer || "").toLowerCase().trim();
                     const isCorrect = userAnswer.toLowerCase().trim() === correct;
 
                     return (
-                      <div key={task.id} className="space-y-3 p-4 rounded-lg border border-border bg-card">
-                        <p className="text-sm font-medium">{task.prompt}</p>
+                      <div key={task.id} className="space-y-4 p-5 rounded-xl border border-border bg-card">
+                        <div className="flex items-start gap-3">
+                          <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">{idx + 1}</span>
+                          <p className="text-sm font-medium leading-relaxed">{task.prompt}</p>
+                        </div>
 
                         {!submitted && task.hint && (
-                          <p className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Lightbulb className="w-3 h-3" /> {task.hint}
-                          </p>
-                        )}
-
-                        {task.type === "choice" && Array.isArray(task.options) ? (
-                          <div className="space-y-1.5">
-                            {task.options.map((opt, i) => (
-                              <button
-                                key={i}
-                                onClick={() => {
-                                  if (!submitted) setTaskAnswers(prev => ({ ...prev, [task.id]: opt }));
-                                }}
-                                disabled={submitted}
-                                className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition-all ${
-                                  submitted && taskAnswers[task.id] === opt
-                                    ? (opt.toLowerCase().trim() === correct ? "border-green-500 bg-green-500/10" : "border-red-500 bg-red-500/10")
-                                    : taskAnswers[task.id] === opt
-                                      ? "border-primary bg-primary/10"
-                                      : submitted ? "opacity-40 border-border" : "border-border hover:border-primary/40"
-                                }`}
-                              >
-                                {opt}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <Input
-                            placeholder="Type your answer..."
-                            value={taskAnswers[task.id] || ""}
-                            onChange={(e) => {
-                              if (!submitted) setTaskAnswers(prev => ({ ...prev, [task.id]: e.target.value }));
-                            }}
-                            disabled={submitted}
-                            className={submitted ? (isCorrect ? "border-green-500" : "border-red-500") : ""}
-                          />
-                        )}
-
-                        {!submitted && userAnswer && (
-                          <Button size="sm" onClick={() => submitTask(task.id)} className="w-full">
-                            Submit Answer
-                          </Button>
-                        )}
-
-                        {submitted && (
-                          <div className={`text-sm p-3 rounded-lg animate-fade-in ${isCorrect ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
-                            {isCorrect ? (
-                              <p className="flex items-center gap-1.5">
-                                <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                <span className="font-medium text-green-600 dark:text-green-400">Correct!</span>
-                              </p>
-                            ) : (
-                              <p className="text-red-600 dark:text-red-400">
-                                ❌ Incorrect — correct answer: <span className="font-medium">{task.correct_answer}</span>
-                              </p>
-                            )}
-                            {task.explanation && (
-                              <p className="text-xs text-muted-foreground mt-1">{task.explanation}</p>
+                          <div className="ml-10">
+                            <button
+                              onClick={() => setShowHint(prev => ({ ...prev, [task.id]: !prev[task.id] }))}
+                              className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
+                            >
+                              <Lightbulb className="w-3 h-3" />
+                              {showHint[task.id] ? "Hide hint" : "Show hint"}
+                            </button>
+                            {showHint[task.id] && (
+                              <p className="text-xs text-muted-foreground mt-1.5 pl-4 border-l-2 border-primary/20 animate-fade-in">{task.hint}</p>
                             )}
                           </div>
                         )}
+
+                        <div className="ml-10">
+                          {task.type === "choice" && Array.isArray(task.options) ? (
+                            <div className="space-y-2">
+                              {task.options.map((opt, i) => {
+                                const isSelected = taskAnswers[task.id] === opt;
+                                const optCorrect = opt.toLowerCase().trim() === correct;
+                                return (
+                                  <button
+                                    key={i}
+                                    onClick={() => { if (!submitted) setTaskAnswers(prev => ({ ...prev, [task.id]: opt })); }}
+                                    disabled={submitted}
+                                    className={`w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-all ${
+                                      submitted && isSelected
+                                        ? (optCorrect ? "border-green-500 bg-green-500/10" : "border-red-500 bg-red-500/10")
+                                        : submitted && optCorrect
+                                          ? "border-green-500/50 bg-green-500/5"
+                                          : isSelected
+                                            ? "border-primary bg-primary/10"
+                                            : submitted ? "opacity-30 border-border" : "border-border hover:border-primary/40"
+                                    }`}
+                                  >
+                                    {opt}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <Input
+                              placeholder="Type your answer..."
+                              value={taskAnswers[task.id] || ""}
+                              onChange={(e) => { if (!submitted) setTaskAnswers(prev => ({ ...prev, [task.id]: e.target.value })); }}
+                              disabled={submitted}
+                              className={`text-sm ${submitted ? (isCorrect ? "border-green-500 bg-green-500/5" : "border-red-500 bg-red-500/5") : ""}`}
+                            />
+                          )}
+
+                          {!submitted && userAnswer && (
+                            <Button size="sm" onClick={() => submitTask(task.id)} className="w-full mt-3">
+                              Submit Answer
+                            </Button>
+                          )}
+
+                          {submitted && (
+                            <div className={`mt-3 text-sm p-3.5 rounded-lg animate-fade-in ${isCorrect ? "bg-green-500/10 border border-green-500/20" : "bg-red-500/10 border border-red-500/20"}`}>
+                              {isCorrect ? (
+                                <p className="flex items-center gap-2">
+                                  <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                                  <span className="font-medium text-green-600 dark:text-green-400">Correct!</span>
+                                </p>
+                              ) : (
+                                <p className="text-red-600 dark:text-red-400">
+                                  Incorrect — the answer is: <span className="font-medium">{task.correct_answer}</span>
+                                </p>
+                              )}
+                              {task.explanation && (
+                                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{task.explanation}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -531,30 +592,31 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
+            {/* CHART */}
             {block.type === "chart" && (() => {
               const chartBlock = block as any;
               return (
                 <div className="space-y-3">
-                  <Badge variant="outline" className="text-xs bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20">📈 Chart</Badge>
                   {chartBlock.title && <h4 className="text-sm font-bold">{chartBlock.title}</h4>}
-                  <div className="h-48 bg-muted/30 rounded-lg flex items-center justify-center border border-border/50">
-                    <div className="text-center text-sm text-muted-foreground">
-                      <p>📊 {chartBlock.chart_type || "line"} chart</p>
+                  <div className="h-52 bg-muted/20 rounded-xl flex items-center justify-center border border-border/50 p-4">
+                    <div className="text-center space-y-2 w-full">
                       {chartBlock.x_label && chartBlock.y_label && (
-                        <p className="text-xs">{chartBlock.x_label} vs {chartBlock.y_label}</p>
+                        <p className="text-xs text-muted-foreground">{chartBlock.x_label} vs {chartBlock.y_label}</p>
                       )}
                       {chartBlock.datasets?.[0]?.data && (
-                        <div className="mt-2 flex items-end gap-1 justify-center h-16">
-                          {chartBlock.datasets[0].data.slice(0, 8).map((d: any, i: number) => {
+                        <div className="flex items-end gap-1.5 justify-center h-24 px-4">
+                          {chartBlock.datasets[0].data.slice(0, 10).map((d: any, i: number) => {
                             const maxY = Math.max(...chartBlock.datasets[0].data.map((p: any) => p.y || 0));
                             const h = maxY > 0 ? ((d.y || 0) / maxY) * 100 : 50;
                             return (
-                              <div
-                                key={i}
-                                className="bg-primary/60 rounded-t w-4 transition-all"
-                                style={{ height: `${Math.max(4, h)}%` }}
-                                title={`${d.x}: ${d.y}`}
-                              />
+                              <div key={i} className="flex flex-col items-center gap-1 flex-1">
+                                <div
+                                  className="bg-primary/70 rounded-t w-full min-w-[12px] transition-all hover:bg-primary"
+                                  style={{ height: `${Math.max(6, h)}%` }}
+                                  title={`${d.x}: ${d.y}`}
+                                />
+                                <span className="text-[9px] text-muted-foreground truncate max-w-[40px]">{d.x}</span>
+                              </div>
                             );
                           })}
                         </div>
@@ -565,13 +627,14 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
+            {/* INSIGHT */}
             {block.type === "insight" && (
-              <div className="space-y-2">
+              <div className="p-5 rounded-xl bg-primary/5 border border-primary/15 space-y-3">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="w-5 h-5 text-primary" />
-                  <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">✅ Key Insight</Badge>
+                  <span className="text-sm font-semibold">Key Insight</span>
                 </div>
-                <p className="text-sm leading-relaxed">{(block as any).content}</p>
+                <p className="text-sm leading-relaxed text-foreground/80">{(block as any).content}</p>
               </div>
             )}
           </div>
@@ -579,35 +642,38 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
       </Card>
 
       {/* Navigation */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pt-1">
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => setCurrentStep(s => Math.max(0, s - 1))}
           disabled={currentStep === 0}
+          className="gap-1.5"
         >
-          <ChevronLeft className="w-4 h-4 mr-1" /> Back
+          <ChevronLeft className="w-4 h-4" /> Back
         </Button>
 
-        <span className="text-xs text-muted-foreground">
-          {canAdvance ? "" : "Complete this step to continue"}
-        </span>
+        {!canAdvance && (
+          <span className="text-xs text-muted-foreground animate-pulse">Complete this step to continue</span>
+        )}
 
         {currentStep < totalSteps - 1 ? (
           <Button
             size="sm"
             onClick={() => setCurrentStep(s => s + 1)}
             disabled={!canAdvance}
+            className="gap-1.5"
           >
-            Next <ChevronRight className="w-4 h-4 ml-1" />
+            Next <ChevronRight className="w-4 h-4" />
           </Button>
         ) : (
           <Button
             size="sm"
             onClick={() => setCurrentStep(totalSteps)}
             disabled={!canAdvance}
+            className="gap-1.5"
           >
-            Finish Lab <CheckCircle2 className="w-4 h-4 ml-1" />
+            Finish Lab <CheckCircle2 className="w-4 h-4" />
           </Button>
         )}
       </div>
