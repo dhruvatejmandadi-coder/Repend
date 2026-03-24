@@ -37,7 +37,9 @@ type Block =
   | { type: "table"; title?: string; headers: string[]; rows: string[][] }
   | { type: "step_task"; tasks: TaskItem[] }
   | { type: "chart"; chart_type?: string; title?: string; x_label?: string; y_label?: string; datasets?: any[] }
-  | { type: "insight"; content: string };
+  | { type: "insight"; content: string }
+  | { type: "image"; image_prompt?: string; image_caption?: string; image_url?: string; diagram_type?: string }
+  | { type: "diagram"; image_prompt?: string; image_caption?: string; image_url?: string; diagram_type?: string };
 
 type TaskItem = {
   id: string;
