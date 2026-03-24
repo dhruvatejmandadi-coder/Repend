@@ -8,3 +8,6 @@ verify_jwt = false
 
 [functions.generate-lab-blueprint]
 verify_jwt = false
+
+[functions.generate-lab-image]
+verify_jwt = false

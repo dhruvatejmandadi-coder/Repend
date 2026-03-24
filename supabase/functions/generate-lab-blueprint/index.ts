@@ -90,7 +90,7 @@ const blueprintToolSchema = {
           items: {
             type: "object",
             properties: {
-              type: { type: "string", enum: ["text", "choice_set", "slider", "table", "step_task", "chart", "insight"] },
+              type: { type: "string", enum: ["text", "choice_set", "slider", "table", "step_task", "chart", "insight", "image", "diagram"] },
               content: { type: "string" },
               question: { type: "string" },
               emoji: { type: "string" },
