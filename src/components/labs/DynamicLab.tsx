@@ -170,7 +170,13 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     const block = blocks[blockIdx] as any;
     const choice = block?.choices?.[choiceIdx];
     if (!choice) return;
-    if (choice.effects && typeof choice.effects === "object") {
+
+    // Use XState simulation engine if available
+    if (sim.isSimulation) {
+      // Find the choice_set index among all choice_set blocks
+      const choiceSetIndex = blocks.slice(0, blockIdx + 1).filter(b => b.type === "choice_set").length - 1;
+      sim.sendEvent(`CHOOSE_${choiceSetIndex}_${choiceIdx}`);
+    } else if (choice.effects && typeof choice.effects === "object") {
       setValues(prev => {
         const next = { ...prev };
         for (const v of variables) {
@@ -182,13 +188,16 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
       });
     }
     setChoiceAnswers(prev => ({ ...prev, [blockIdx]: choiceIdx }));
-  }, [choiceAnswers, blocks, variables]);
+  }, [choiceAnswers, blocks, variables, sim]);
 
-  const submitTask = useCallback((taskId: string) => {
+  const submitTask = useCallback((taskId: string, userAnswer?: string, correctAnswer?: string) => {
     setTaskSubmitted(prev => ({ ...prev, [taskId]: true }));
   }, []);
 
   const reset = () => {
+    if (sim.isSimulation) {
+      sim.reset();
+    }
     const initial = Object.fromEntries(variables.map(v => [v.name, v.default ?? 50]));
     setValues(initial);
     setChoiceAnswers({});
