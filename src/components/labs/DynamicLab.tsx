@@ -426,6 +426,26 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         </div>
       )}
 
+      {/* Simulation feedback toast */}
+      {sim.isSimulation && sim.lastFeedback && (
+        <div className="p-3 rounded-lg bg-accent/50 border border-accent text-sm text-foreground/80 animate-fade-in flex items-start gap-2">
+          <Zap className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+          <span>{sim.lastFeedback}</span>
+        </div>
+      )}
+
+      {/* Derived values from mathjs formulas */}
+      {sim.isSimulation && Object.keys(sim.derivedValues).length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(sim.derivedValues).map(([key, val]) => (
+            <div key={key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs">
+              <span className="text-muted-foreground">{key}:</span>
+              <span className="font-semibold tabular-nums">{typeof val === "number" ? val.toFixed(1) : val}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Current block card */}
       <Card className="overflow-hidden border-border/60">
         <CardContent className="p-6 min-h-[280px]">
