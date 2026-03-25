@@ -7,13 +7,16 @@ import { Input } from "@/components/ui/input";
 import { Slider } from "@/components/ui/slider";
 import {
   CheckCircle2, ChevronRight, ChevronLeft, RotateCcw, Lightbulb,
-  MessageCircleQuestion, TrendingUp, TrendingDown, Minus, ImageIcon, Loader2
+  MessageCircleQuestion, TrendingUp, TrendingDown, Minus, ImageIcon, Loader2,
+  Zap, Activity
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LabIntro from "./LabIntro";
 import DiagramBlock from "./DiagramBlock";
 import type { DiagramData } from "./DiagramBlock";
 import type { LabIntroData } from "./LabIntro";
+import { useLabSimulation } from "@/hooks/useLabSimulation";
+import { evaluateFormula, checkAnswer } from "@/lib/labSimulationEngine";
 
 type Variable = {
   name: string;
