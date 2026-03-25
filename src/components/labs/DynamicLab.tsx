@@ -376,6 +376,11 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
           <div className="flex items-center gap-2">
             <span className="text-xs font-semibold text-muted-foreground">Step {currentStep + 1} / {totalSteps}</span>
             <Badge variant="outline" className={`text-[10px] ${meta.color}`}>{meta.emoji} {meta.label}</Badge>
+            {sim.isSimulation && (
+              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 gap-1">
+                <Activity className="w-2.5 h-2.5" /> Live Simulation
+              </Badge>
+            )}
           </div>
           <span className="text-xs font-medium text-muted-foreground tabular-nums">{Math.round(progressPercent)}%</span>
         </div>
