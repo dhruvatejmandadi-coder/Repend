@@ -338,7 +338,7 @@ serve(async (req) => {
     }
 
     // ===== PHASE 1: Outline + Lessons + Quizzes =====
-    const outline = await generateOutline(LOVABLE_API_KEY, topic, userContent, !!filePath, preferences);
+    const outline = await generateOutline(LOVABLE_API_KEY, topic, userContent, allFilePaths.length > 0, preferences);
     console.log(`[Phase 1] Complete: "${outline.title}" with ${outline.modules.length} modules`);
 
     // Update course title/description
