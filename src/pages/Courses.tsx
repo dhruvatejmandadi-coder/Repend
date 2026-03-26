@@ -13,6 +13,7 @@ import { useSubscription, PLAN_CONFIG, STARTER_LIMITS } from "@/hooks/useSubscri
 import PersonalizationModal, { type CoursePreferences } from "@/components/courses/PersonalizationModal";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILES = 5;
 const ACCEPTED_TYPES = ".pdf,.txt,.md,.csv,.png,.jpg,.jpeg,.webp";
 
 type Course = {
@@ -36,7 +37,7 @@ export default function Courses() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [showPersonalization, setShowPersonalization] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -59,14 +60,32 @@ export default function Courses() {
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > MAX_FILE_SIZE) {
-      toast({ title: "File too large", description: "Maximum file size is 10MB.", variant: "destructive" });
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    const remaining = MAX_FILES - selectedFiles.length;
+    if (remaining <= 0) {
+      toast({ title: "File limit reached", description: `Maximum ${MAX_FILES} files per course.`, variant: "destructive" });
       return;
     }
-    setSelectedFile(file);
+
+    const toAdd: File[] = [];
+    for (const file of files.slice(0, remaining)) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast({ title: "File too large", description: `${file.name} exceeds 10MB limit.`, variant: "destructive" });
+        continue;
+      }
+      // Prevent duplicates by name
+      if (selectedFiles.some(f => f.name === file.name)) continue;
+      toAdd.push(file);
+    }
+
+    if (toAdd.length) setSelectedFiles(prev => [...prev, ...toAdd]);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAttachClick = () => {
@@ -74,27 +93,35 @@ export default function Courses() {
       toast({ title: "Sign up required", description: "Create an account to upload files for personalized courses.", variant: "destructive" });
       return;
     }
+    if (selectedFiles.length >= MAX_FILES) {
+      toast({ title: "File limit reached", description: `Maximum ${MAX_FILES} files per course.`, variant: "destructive" });
+      return;
+    }
     fileInputRef.current?.click();
   };
 
-  const uploadFile = async (): Promise<string | null> => {
-    if (!selectedFile || !user) return null;
+  const uploadFiles = async (): Promise<string[]> => {
+    if (!selectedFiles.length || !user) return [];
     setIsUploading(true);
-    const path = `${user.id}/${Date.now()}_${selectedFile.name}`;
-    const { error } = await supabase.storage.from("course-uploads").upload(path, selectedFile);
-    if (error) {
-      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
-      setIsUploading(false);
-      return null;
+    const paths: string[] = [];
+    for (const file of selectedFiles) {
+      const path = `${user.id}/${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage.from("course-uploads").upload(path, file);
+      if (error) {
+        toast({ title: "Upload failed", description: `${file.name}: ${error.message}`, variant: "destructive" });
+        setIsUploading(false);
+        return [];
+      }
+      paths.push(path);
     }
     setIsUploading(false);
-    return path;
+    return paths;
   };
 
   const { plan, getCoursesLimit, getFileUploadsLimit } = useSubscription();
 
   const handleCreateClick = () => {
-    const hasInput = topic.trim() || selectedFile;
+    const hasInput = topic.trim() || selectedFiles.length > 0;
     if (!hasInput || isGenerating) return;
 
     if (!user) {
@@ -103,7 +130,6 @@ export default function Courses() {
       return;
     }
 
-    // Check limits before showing personalization
     const coursesLimit = getCoursesLimit();
     if (courses.length >= coursesLimit) {
       toast({ title: "Course limit reached", description: `Your ${plan} plan allows ${coursesLimit} courses/month. Upgrade for more!`, variant: "destructive" });
@@ -111,13 +137,12 @@ export default function Courses() {
       return;
     }
 
-    if (selectedFile && getFileUploadsLimit() === 0) {
+    if (selectedFiles.length > 0 && getFileUploadsLimit() === 0) {
       toast({ title: "File uploads not available", description: "Upgrade to Pro or Elite to generate courses from uploaded files.", variant: "destructive" });
       navigate("/pricing");
       return;
     }
 
-    // Show personalization step
     setShowPersonalization(true);
   };
 
@@ -126,17 +151,22 @@ export default function Courses() {
     setIsGenerating(true);
 
     try {
-      let filePath: string | null = null;
-      if (selectedFile) {
-        filePath = await uploadFile();
-        if (!filePath) { setIsGenerating(false); return; }
+      let filePaths: string[] = [];
+      if (selectedFiles.length > 0) {
+        filePaths = await uploadFiles();
+        if (selectedFiles.length > 0 && filePaths.length === 0) { setIsGenerating(false); return; }
       }
 
       const body: Record<string, any> = {
-        topic: topic.trim() || selectedFile?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document",
+        topic: topic.trim() || selectedFiles[0]?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document",
         preferences: prefs,
       };
-      if (filePath) body.filePath = filePath;
+      // Support both single and multiple file paths
+      if (filePaths.length === 1) {
+        body.filePath = filePaths[0];
+      } else if (filePaths.length > 1) {
+        body.filePaths = filePaths;
+      }
 
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-course`, {
         method: "POST",
@@ -154,7 +184,7 @@ export default function Courses() {
 
       const { courseId } = await resp.json();
       setTopic("");
-      setSelectedFile(null);
+      setSelectedFiles([]);
       toast({ title: "Course created! 🎉", description: "Your personalized course is ready." });
       navigate(`/courses/${courseId}`);
     } catch (error) {
@@ -178,6 +208,8 @@ export default function Courses() {
     setShowSignUpPrompt(false);
     setIsGenerating(false);
   };
+
+  const firstFileName = selectedFiles[0]?.name || "";
 
   return (
     <>
@@ -211,7 +243,7 @@ export default function Courses() {
                 className="shrink-0 h-10 w-10 border-border/60"
                 onClick={handleAttachClick}
                 disabled={isGenerating}
-                title="Attach a file (PDF, image, text) for personalized course generation"
+                title={`Attach files (up to ${MAX_FILES}). PDF, image, text supported.`}
               >
                 <Paperclip className="w-4 h-4" />
               </Button>
@@ -219,6 +251,7 @@ export default function Courses() {
                 ref={fileInputRef}
                 type="file"
                 accept={ACCEPTED_TYPES}
+                multiple
                 className="hidden"
                 onChange={handleFileSelect}
               />
@@ -232,7 +265,7 @@ export default function Courses() {
               />
             </div>
 
-            <Button variant="hero" onClick={handleCreateClick} disabled={(!topic.trim() && !selectedFile) || isGenerating}>
+            <Button variant="hero" onClick={handleCreateClick} disabled={(!topic.trim() && selectedFiles.length === 0) || isGenerating}>
               {isGenerating ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -247,17 +280,27 @@ export default function Courses() {
             </Button>
           </div>
 
-          {/* File chip */}
-          {selectedFile && (
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/60 border border-border/50 text-[13px]">
-                <FileText className="w-3.5 h-3.5 text-primary" />
-                <span className="text-foreground max-w-[200px] truncate">{selectedFile.name}</span>
-                <span className="text-muted-foreground">({formatFileSize(selectedFile.size)})</span>
-                <button onClick={() => setSelectedFile(null)} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
-                  <X className="w-3.5 h-3.5" />
+          {/* File chips */}
+          {selectedFiles.length > 0 && (
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-3">
+              {selectedFiles.map((file, idx) => (
+                <div key={`${file.name}-${idx}`} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/60 border border-border/50 text-[13px]">
+                  <FileText className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-foreground max-w-[160px] truncate">{file.name}</span>
+                  <span className="text-muted-foreground">({formatFileSize(file.size)})</span>
+                  <button onClick={() => removeFile(idx)} className="ml-1 text-muted-foreground hover:text-destructive transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {selectedFiles.length < MAX_FILES && (
+                <button
+                  onClick={handleAttachClick}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-dashed border-border/60 text-[13px] text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
+                >
+                  <Plus className="w-3 h-3" /> Add more
                 </button>
-              </div>
+              )}
             </div>
           )}
 
@@ -354,11 +397,11 @@ export default function Courses() {
         open={showPersonalization}
         onClose={() => setShowPersonalization(false)}
         onSubmit={handlePersonalizationSubmit}
-        topic={topic || selectedFile?.name || ""}
+        topic={topic || firstFileName || ""}
       />
 
       {/* Course generation loading screen */}
-      <CourseGeneratingScreen topic={topic || selectedFile?.name || ""} isVisible={isGenerating && !!user} />
+      <CourseGeneratingScreen topic={topic || firstFileName || ""} isVisible={isGenerating && !!user} />
 
       <GeneratingSignUpPrompt open={showSignUpPrompt} onOpenChange={handleSignUpPromptClose} topic={topic} />
     </>
