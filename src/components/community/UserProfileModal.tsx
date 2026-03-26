@@ -139,14 +139,14 @@ export function UserProfileModal({ open, onOpenChange, userId }: UserProfileModa
                 <p className="text-[10px] text-muted-foreground">Courses</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/50">
-                <Trophy className="w-4 h-4 mx-auto mb-1 text-orange-500" />
-                <p className="text-lg font-bold">{challenges.length}</p>
-                <p className="text-[10px] text-muted-foreground">Challenges</p>
+                <GraduationCap className="w-4 h-4 mx-auto mb-1 text-primary" />
+                <p className="text-lg font-bold">{completedCourses.length}</p>
+                <p className="text-[10px] text-muted-foreground">Completed</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-muted/50">
-                <GraduationCap className="w-4 h-4 mx-auto mb-1 text-green-500" />
+                <Trophy className="w-4 h-4 mx-auto mb-1 text-primary" />
                 <p className="text-lg font-bold">{completedChallenges.length}</p>
-                <p className="text-[10px] text-muted-foreground">Completed</p>
+                <p className="text-[10px] text-muted-foreground">Challenges</p>
               </div>
             </div>
 
@@ -155,6 +155,7 @@ export function UserProfileModal({ open, onOpenChange, userId }: UserProfileModa
               <Tabs defaultValue="courses">
                 <TabsList className="w-full">
                   <TabsTrigger value="courses" className="flex-1 text-xs">Courses</TabsTrigger>
+                  <TabsTrigger value="completed" className="flex-1 text-xs">Completed</TabsTrigger>
                   <TabsTrigger value="challenges" className="flex-1 text-xs">Challenges</TabsTrigger>
                 </TabsList>
 
@@ -164,9 +165,36 @@ export function UserProfileModal({ open, onOpenChange, userId }: UserProfileModa
                   ) : (
                     courses.map((c) => (
                       <Card key={c.id} className="bg-muted/30">
+                        <CardContent className="p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <BookOpen className="w-4 h-4 text-primary" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{c.title}</p>
+                              <p className="text-[10px] text-muted-foreground capitalize">{c.topic}</p>
+                            </div>
+                          </div>
+                          {c.completed && (
+                            <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary shrink-0">
+                              ✓ Done
+                            </Badge>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </TabsContent>
+
+                <TabsContent value="completed" className="mt-3 space-y-2">
+                  {completedCourses.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-6">No completed courses yet</p>
+                  ) : (
+                    completedCourses.map((c) => (
+                      <Card key={c.id} className="bg-muted/30">
                         <CardContent className="p-3 flex items-center gap-3">
                           <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                            <BookOpen className="w-4 h-4 text-primary" />
+                            <GraduationCap className="w-4 h-4 text-primary" />
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-medium truncate">{c.title}</p>
