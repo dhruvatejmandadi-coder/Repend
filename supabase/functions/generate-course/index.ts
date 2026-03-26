@@ -370,7 +370,7 @@ serve(async (req) => {
     console.log(`[Phase 1] Course "${outline.title}" ready. Labs will generate on-demand.`);
 
     // Track usage
-    if (filePath) {
+    if (allFilePaths.length > 0) {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       const { data: existing } = await supabaseAdmin.from("usage_tracking").select("id, file_courses_generated").eq("user_id", user.id).eq("month", currentMonth).single();
