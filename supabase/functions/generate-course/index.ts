@@ -283,17 +283,25 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { topic, filePath, preferences } = await req.json();
+    const { topic, filePath, filePaths, preferences } = await req.json();
     if (!topic?.trim()) throw new Error("Topic is required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    // Extract file content if provided
-    let fileContent: { text?: string; imageBase64?: string; mimeType?: string } = {};
-    if (filePath) {
+    // Collect all file paths (support both single and multiple)
+    const allFilePaths: string[] = [];
+    if (filePaths && Array.isArray(filePaths)) allFilePaths.push(...filePaths);
+    else if (filePath) allFilePaths.push(filePath);
+
+    // Extract content from all files
+    const allFileContents: { text?: string; imageBase64?: string; mimeType?: string }[] = [];
+    if (allFilePaths.length > 0) {
       const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      fileContent = await extractFileContent(filePath, supabaseAdmin);
+      for (const fp of allFilePaths) {
+        const content = await extractFileContent(fp, supabaseAdmin);
+        if (content.text || content.imageBase64) allFileContents.push(content);
+      }
     }
 
     // Create course row
@@ -302,17 +310,31 @@ serve(async (req) => {
       .insert({ user_id: user.id, title: topic.trim(), topic: topic.trim(), status: "generating" })
       .select().single();
 
-    // Build user message content
+    // Build user message content from all files
     let userContent: any;
-    if (fileContent.imageBase64 && fileContent.mimeType) {
+    if (allFileContents.length === 0) {
+      userContent = `Create a course on: ${topic}`;
+    } else if (allFileContents.length === 1 && allFileContents[0].imageBase64 && allFileContents[0].mimeType) {
       userContent = [
-        { type: "image_url", image_url: { url: `data:${fileContent.mimeType};base64,${fileContent.imageBase64}` } },
+        { type: "image_url", image_url: { url: `data:${allFileContents[0].mimeType};base64,${allFileContents[0].imageBase64}` } },
         { type: "text", text: `Create a course on: ${topic}\n\nThe attached image/document is the SOURCE MATERIAL.` },
       ];
-    } else if (fileContent.text) {
-      userContent = `Create a course on: ${topic}\n\nSOURCE MATERIAL:\n\n${fileContent.text}`;
     } else {
-      userContent = `Create a course on: ${topic}`;
+      // Combine all text + image content into a multipart message
+      const parts: any[] = [];
+      const textParts: string[] = [];
+      for (const fc of allFileContents) {
+        if (fc.imageBase64 && fc.mimeType) {
+          parts.push({ type: "image_url", image_url: { url: `data:${fc.mimeType};base64,${fc.imageBase64}` } });
+        }
+        if (fc.text) textParts.push(fc.text);
+      }
+      const combinedText = textParts.length > 0
+        ? `Create a course on: ${topic}\n\nSOURCE MATERIALS (${allFileContents.length} files):\n\n${textParts.join("\n\n--- NEXT FILE ---\n\n")}`
+        : `Create a course on: ${topic}\n\nThe attached images/documents are the SOURCE MATERIALS.`;
+      parts.push({ type: "text", text: combinedText });
+      // If only text parts, flatten to string
+      userContent = parts.length === 1 && parts[0].type === "text" ? parts[0].text : parts;
     }
 
     // ===== PHASE 1: Outline + Lessons + Quizzes =====
