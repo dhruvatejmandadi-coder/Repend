@@ -531,7 +531,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         <div className="flex flex-wrap gap-2">
           {Object.entries(sim.derivedValues).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs">
-              <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}:</span>
+              <span className="text-muted-foreground">{formatVarName(key)}:</span>
               <span className="font-semibold tabular-nums">{typeof val === "number" ? val.toFixed(1) : val}</span>
             </div>
           ))}
