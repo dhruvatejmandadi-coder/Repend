@@ -444,6 +444,19 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
   }
 
   const block = blocks[currentStep];
+  if (!block) {
+    return (
+      <Card className="border-border bg-card">
+        <CardContent className="p-8 text-center space-y-3">
+          <AlertTriangle className="w-8 h-8 text-muted-foreground mx-auto" />
+          <p className="text-sm text-muted-foreground">No lab content available for this step.</p>
+          <Button variant="outline" size="sm" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Reset Lab
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
   const progressPercent = totalSteps > 1 ? ((currentStep + 1) / totalSteps) * 100 : 100;
   const meta = BLOCK_LABELS[block.type] || { label: block.type, emoji: "📄", color: "bg-muted text-muted-foreground border-border" };
 
