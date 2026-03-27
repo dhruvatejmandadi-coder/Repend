@@ -8,7 +8,7 @@ import { Slider } from "@/components/ui/slider";
 import {
   CheckCircle2, ChevronRight, ChevronLeft, RotateCcw, Lightbulb,
   MessageCircleQuestion, TrendingUp, TrendingDown, Minus, ImageIcon, Loader2,
-  Zap, Activity
+  Zap, Activity, Target, Shuffle, AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import LabIntro from "./LabIntro";
@@ -39,12 +39,14 @@ type Block =
   | { type: "text"; content: string }
   | { type: "choice_set"; question: string; emoji?: string; choices: Choice[] }
   | { type: "slider"; variable: string; prompt?: string; interactive?: boolean }
+  | { type: "control_panel"; variables: string[]; prompt?: string }
   | { type: "table"; title?: string; headers: string[]; rows: string[][] }
   | { type: "step_task"; tasks: TaskItem[] }
   | { type: "chart"; chart_type?: string; title?: string; x_label?: string; y_label?: string; datasets?: any[] }
   | { type: "insight"; content: string }
   | { type: "image"; image_prompt?: string; image_caption?: string; image_url?: string; diagram_type?: string }
-  | { type: "diagram"; diagram_type?: string; diagram_nodes?: any[]; diagram_edges?: any[]; diagram_caption?: string; image_prompt?: string; image_caption?: string; image_url?: string };
+  | { type: "diagram"; diagram_type?: string; diagram_nodes?: any[]; diagram_edges?: any[]; diagram_caption?: string; image_prompt?: string; image_caption?: string; image_url?: string }
+  | { type: "output_display"; outputs: string[]; prompt?: string };
 
 type TaskItem = {
   id: string;
@@ -67,6 +69,10 @@ type LabBlueprint = {
   intro?: LabIntroData;
   repend_intro?: LabIntroData;
   key_insight?: string;
+  goal?: { description: string; condition?: string };
+  random_events?: Array<{ probability: number; effects: Record<string, string | number>; message: string }>;
+  rules?: any[];
+  formulas?: Record<string, string>;
 };
 
 type Props = {
@@ -86,12 +92,14 @@ const BLOCK_LABELS: Record<string, { label: string; emoji: string; color: string
   text: { label: "Read", emoji: "📖", color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" },
   choice_set: { label: "Decide", emoji: "🔮", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" },
   slider: { label: "Adjust", emoji: "🎚️", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" },
+  control_panel: { label: "Control", emoji: "🎛️", color: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20" },
   table: { label: "Data", emoji: "📊", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20" },
   step_task: { label: "Challenge", emoji: "📋", color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" },
   chart: { label: "Chart", emoji: "📈", color: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20" },
   insight: { label: "Key Insight", emoji: "💡", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" },
   image: { label: "Visual", emoji: "🖼️", color: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20" },
   diagram: { label: "Diagram", emoji: "📐", color: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20" },
+  output_display: { label: "Live Output", emoji: "📡", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
 };
 
 export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
@@ -112,6 +120,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
   const [showHint, setShowHint] = useState<Record<string, boolean>>({});
   const [generatedImages, setGeneratedImages] = useState<Record<number, string>>({});
   const [imageLoading, setImageLoading] = useState<Record<number, boolean>>({});
+  const [eventLog, setEventLog] = useState<string[]>([]);
 
   const totalSteps = blocks.length;
 
@@ -121,6 +130,13 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
       setValues(sim.variables);
     }
   }, [sim.isSimulation, sim.variables]);
+
+  // Track rule feedback in event log
+  useEffect(() => {
+    if (sim.lastFeedback) {
+      setEventLog(prev => [...prev.slice(-9), sim.lastFeedback!]);
+    }
+  }, [sim.lastFeedback]);
 
   useEffect(() => {
     const initial = Object.fromEntries(variables.map(v => [v.name, v.default ?? 50]));
@@ -132,6 +148,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setShowIntro(true);
     setCurrentStep(0);
     setShowHint({});
+    setEventLog([]);
   }, [data]);
 
   const isStepCompleted = useCallback((idx: number): boolean => {
@@ -144,6 +161,8 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         return tasks.length > 0 && tasks.every(t => taskSubmitted[t.id]);
       }
       case "slider":
+      case "control_panel":
+      case "output_display":
       case "text":
       case "table":
       case "chart":
@@ -171,9 +190,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     const choice = block?.choices?.[choiceIdx];
     if (!choice) return;
 
-    // Use XState simulation engine if available
     if (sim.isSimulation) {
-      // Find the choice_set index among all choice_set blocks
       const choiceSetIndex = blocks.slice(0, blockIdx + 1).filter(b => b.type === "choice_set").length - 1;
       sim.sendEvent(`CHOOSE_${choiceSetIndex}_${choiceIdx}`);
     } else if (choice.effects && typeof choice.effects === "object") {
@@ -190,7 +207,16 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setChoiceAnswers(prev => ({ ...prev, [blockIdx]: choiceIdx }));
   }, [choiceAnswers, blocks, variables, sim]);
 
-  const submitTask = useCallback((taskId: string, userAnswer?: string, correctAnswer?: string) => {
+  /** Handle slider change — triggers live rule evaluation */
+  const handleSliderChange = useCallback((varName: string, newValue: number) => {
+    if (sim.isSimulation) {
+      sim.updateVariable(varName, newValue);
+    } else {
+      setValues(prev => ({ ...prev, [varName]: newValue }));
+    }
+  }, [sim]);
+
+  const submitTask = useCallback((taskId: string) => {
     setTaskSubmitted(prev => ({ ...prev, [taskId]: true }));
   }, []);
 
@@ -209,6 +235,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setShowHint({});
     setGeneratedImages({});
     setImageLoading({});
+    setEventLog([]);
   };
 
   const generateImage = useCallback(async (blockIdx: number, prompt: string) => {
@@ -277,9 +304,19 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               <p className="text-sm text-foreground/70">{data.learning_goal}</p>
             </div>
           )}
+          {/* Goal display */}
+          {data.goal?.description && (
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+              <Target className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Your Objective</p>
+                <p className="text-sm text-foreground/80 mt-1">{data.goal.description}</p>
+              </div>
+            </div>
+          )}
           {variables.length > 0 && (
             <div className="space-y-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variables you'll work with</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">System Variables</span>
               <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => (
                   <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
@@ -294,12 +331,13 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
             </div>
           )}
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{totalSteps} steps</span>
+            <Shuffle className="w-3 h-3" />
+            <span>Randomized start · Each run is different</span>
             <span>·</span>
-            <span>~{Math.max(2, totalSteps * 2)} min</span>
+            <span>{totalSteps} steps</span>
           </div>
           <Button onClick={() => { setShowIntro(false); if (sim.isSimulation) sim.sendEvent("START"); }} className="w-full" size="lg">
-            Start Lab <ChevronRight className="w-4 h-4 ml-1" />
+            Start Simulation <ChevronRight className="w-4 h-4 ml-1" />
           </Button>
         </CardContent>
       </Card>
@@ -317,7 +355,12 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         <CardContent className="p-8 space-y-5">
           <div className="text-center space-y-3">
             <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto" />
-            <h3 className="font-bold text-xl">Lab Complete!</h3>
+            <h3 className="font-bold text-xl">Simulation Complete!</h3>
+            {sim.goalReached && (
+              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                <Target className="w-3 h-3 mr-1" /> Objective Achieved!
+              </Badge>
+            )}
           </div>
           {data.key_insight && (
             <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
@@ -328,9 +371,23 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               <p className="text-sm leading-relaxed text-foreground/80">{data.key_insight}</p>
             </div>
           )}
+          {/* Derived values summary */}
+          {Object.keys(sim.derivedValues).length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Computed Outputs</span>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(sim.derivedValues).map(([key, val]) => (
+                  <div key={key} className="rounded-lg border border-border bg-card px-3 py-2.5 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground capitalize">{key.replace(/_/g, " ")}</span>
+                    <span className="text-sm font-bold tabular-nums">{typeof val === "number" ? val.toFixed(1) : val}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {variables.length > 0 && (
             <div className="space-y-3">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Final Outcomes</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Final State</span>
               <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => {
                   const value = values[v.name] ?? v.default;
@@ -354,9 +411,23 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               </div>
             </div>
           )}
+          {/* Event log */}
+          {eventLog.length > 0 && (
+            <div className="space-y-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">System Events</span>
+              <div className="max-h-32 overflow-y-auto space-y-1 p-3 rounded-lg bg-muted/30 border border-border/40">
+                {eventLog.map((msg, i) => (
+                  <p key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                    <Zap className="w-3 h-3 text-primary shrink-0 mt-0.5" />
+                    {msg}
+                  </p>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="text-center pt-2">
             <Button variant="outline" onClick={reset}>
-              <RotateCcw className="w-4 h-4 mr-1" /> Replay Lab
+              <RotateCcw className="w-4 h-4 mr-1" /> Replay (New Randomization)
             </Button>
           </div>
         </CardContent>
@@ -385,7 +456,6 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
           <span className="text-xs font-medium text-muted-foreground tabular-nums">{Math.round(progressPercent)}%</span>
         </div>
         <Progress value={progressPercent} className="h-1.5" />
-        {/* Step indicators */}
         <div className="flex items-center gap-1.5 justify-center">
           {blocks.map((b, i) => {
             const bMeta = BLOCK_LABELS[b.type];
@@ -403,6 +473,20 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
           })}
         </div>
       </div>
+
+      {/* Goal tracker */}
+      {data.goal?.description && (
+        <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs transition-all ${
+          sim.goalReached 
+            ? "bg-green-500/10 border-green-500/30 text-green-600 dark:text-green-400" 
+            : "bg-amber-500/5 border-amber-500/20 text-amber-600 dark:text-amber-400"
+        }`}>
+          <Target className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-medium">Goal:</span>
+          <span className="truncate">{data.goal.description}</span>
+          {sim.goalReached && <CheckCircle2 className="w-3.5 h-3.5 shrink-0 ml-auto" />}
+        </div>
+      )}
 
       {/* Variable dashboard — compact, persistent */}
       {variables.length > 0 && (
@@ -439,7 +523,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         <div className="flex flex-wrap gap-2">
           {Object.entries(sim.derivedValues).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs">
-              <span className="text-muted-foreground">{key}:</span>
+              <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}:</span>
               <span className="font-semibold tabular-nums">{typeof val === "number" ? val.toFixed(1) : val}</span>
             </div>
           ))}
@@ -506,7 +590,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
-            {/* SLIDER */}
+            {/* SLIDER — single variable, interactive with live updates */}
             {block.type === "slider" && (() => {
               const sliderBlock = block as any;
               const v = variables.find(vr => vr.name === sliderBlock.variable);
@@ -526,8 +610,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                       min={v.min}
                       max={v.max}
                       step={1}
-                      disabled={!sliderBlock.interactive}
-                      onValueChange={sliderBlock.interactive ? (val) => setValues(prev => ({ ...prev, [v.name]: val[0] })) : undefined}
+                      onValueChange={(val) => handleSliderChange(v.name, val[0])}
                       className="py-2"
                     />
                     <div className="flex justify-between text-xs text-muted-foreground">
@@ -536,6 +619,111 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                     </div>
                   </div>
                   {v.description && <p className="text-xs text-muted-foreground italic">{v.description}</p>}
+                </div>
+              );
+            })()}
+
+            {/* CONTROL PANEL — multiple sliders for multiple variables */}
+            {block.type === "control_panel" && (() => {
+              const cpBlock = block as any;
+              const controlVars = (cpBlock.variables || [])
+                .map((name: string) => variables.find(v => v.name === name))
+                .filter(Boolean);
+              if (controlVars.length === 0) {
+                // Fallback: show all variables as sliders
+                return (
+                  <div className="space-y-5">
+                    {cpBlock.prompt && <p className="text-sm font-medium">{cpBlock.prompt}</p>}
+                    <div className="space-y-4">
+                      {variables.map((v: Variable) => {
+                        const value = values[v.name] ?? v.default;
+                        return (
+                          <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
+                            <div className="flex items-center justify-between">
+                              <span className="text-sm font-medium">{v.icon} {v.name}</span>
+                              <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
+                            </div>
+                            <Slider
+                              value={[value]}
+                              min={v.min}
+                              max={v.max}
+                              step={1}
+                              onValueChange={(val) => handleSliderChange(v.name, val[0])}
+                            />
+                            <div className="flex justify-between text-[10px] text-muted-foreground">
+                              <span>{v.min}</span>
+                              <span>{v.max}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="space-y-5">
+                  {cpBlock.prompt && <p className="text-sm font-medium">{cpBlock.prompt}</p>}
+                  <div className="space-y-4">
+                    {controlVars.map((v: Variable) => {
+                      const value = values[v.name] ?? v.default;
+                      return (
+                        <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">{v.icon} {v.name}</span>
+                            <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
+                          </div>
+                          <Slider
+                            value={[value]}
+                            min={v.min}
+                            max={v.max}
+                            step={1}
+                            onValueChange={(val) => handleSliderChange(v.name, val[0])}
+                          />
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>{v.min}</span>
+                            <span>{v.max}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* OUTPUT DISPLAY — live computed values */}
+            {block.type === "output_display" && (() => {
+              const outBlock = block as any;
+              const outputKeys = outBlock.outputs || Object.keys(sim.derivedValues);
+              return (
+                <div className="space-y-5">
+                  {outBlock.prompt && <p className="text-sm font-medium">{outBlock.prompt}</p>}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {outputKeys.map((key: string) => {
+                      const val = sim.derivedValues[key];
+                      const varVal = values[key];
+                      const displayVal = val !== undefined ? val : varVal;
+                      if (displayVal === undefined) return null;
+                      return (
+                        <div key={key} className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-1">
+                          <p className="text-xs text-muted-foreground capitalize font-medium">{key.replace(/_/g, " ")}</p>
+                          <p className="text-2xl font-bold tabular-nums">{typeof displayVal === "number" ? displayVal.toFixed(1) : displayVal}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {/* Show formula definitions if available */}
+                  {data.formulas && (
+                    <div className="space-y-1 p-3 rounded-lg bg-muted/30 border border-border/40">
+                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Formulas</p>
+                      {Object.entries(data.formulas).filter(([k]) => outputKeys.includes(k)).map(([key, formula]) => (
+                        <p key={key} className="text-xs text-muted-foreground font-mono">
+                          {key} = {formula}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -716,7 +904,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               </div>
             )}
 
-            {/* IMAGE (AI-generated visuals) */}
+            {/* IMAGE */}
             {block.type === "image" && (() => {
               const imgBlock = block as any;
               const existingUrl = imgBlock.image_url || generatedImages[currentStep];
@@ -761,7 +949,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               );
             })()}
 
-            {/* DIAGRAM (structured interactive) */}
+            {/* DIAGRAM */}
             {block.type === "diagram" && (() => {
               const diagBlock = block as any;
               const hasStructuredData = Array.isArray(diagBlock.diagram_nodes) && diagBlock.diagram_nodes.length > 0;
@@ -777,7 +965,6 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                 return <DiagramBlock data={diagramData} />;
               }
 
-              // Fallback: treat as image block if no structured data
               const existingUrl = diagBlock.image_url || generatedImages[currentStep];
               const isLoading = imageLoading[currentStep];
 
