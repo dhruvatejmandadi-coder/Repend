@@ -302,8 +302,8 @@ export default function DiagramBlock({ data }: Props) {
           {/* Nodes */}
           {nodes.map(node => {
             const textLen = node.text.length;
-            const boxW = Math.max(90, Math.min(180, textLen * 8 + 24));
-            const boxH = 40;
+            const boxW = Math.max(130, Math.min(240, textLen * 9 + 32));
+            const boxH = 52;
             const nx = (node.x || 0) - boxW / 2;
             const ny = (node.y || 0) - boxH / 2;
             const isDragging = dragNode === node.id;
@@ -329,9 +329,9 @@ export default function DiagramBlock({ data }: Props) {
                   y={(node.y || 0) + 1}
                   textAnchor="middle"
                   dominantBaseline="middle"
-                  className="fill-foreground text-[11px] font-medium select-none pointer-events-none"
+                  className="fill-foreground text-[13px] font-semibold select-none pointer-events-none"
                 >
-                  {node.text.length > 22 ? node.text.slice(0, 20) + "..." : node.text}
+                  {node.text.length > 26 ? node.text.slice(0, 24) + "…" : node.text}
                 </text>
               </g>
             );

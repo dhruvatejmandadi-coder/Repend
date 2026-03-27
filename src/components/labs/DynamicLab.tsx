@@ -18,6 +18,14 @@ import type { LabIntroData } from "./LabIntro";
 import { useLabSimulation } from "@/hooks/useLabSimulation";
 import { evaluateFormula, checkAnswer } from "@/lib/labSimulationEngine";
 
+/** Convert snake_case/camelCase variable names to readable labels */
+function formatVarName(name: string): string {
+  return name
+    .replace(/_/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/\b\w/g, c => c.toUpperCase());
+}
+
 type Variable = {
   name: string;
   icon: string;
@@ -322,7 +330,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                   <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
                     <span className="text-base">{v.icon}</span>
                     <div className="min-w-0">
-                      <p className="text-xs font-medium truncate">{v.name}</p>
+                      <p className="text-xs font-medium truncate">{formatVarName(v.name)}</p>
                       <p className="text-[10px] text-muted-foreground">{v.min}–{v.max} {v.unit}</p>
                     </div>
                   </div>
@@ -396,7 +404,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                   return (
                     <div key={v.name} className="rounded-lg border border-border bg-card p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">{v.icon} {v.name}</span>
+                        <span className="text-sm">{v.icon} {formatVarName(v.name)}</span>
                         <div className="flex items-center gap-1">
                           <Icon className={`w-3.5 h-3.5 ${color}`} />
                           <span className="text-sm font-semibold">{value} {v.unit}</span>
@@ -498,7 +506,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
             return (
               <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium truncate">{v.icon} {v.name}</span>
+                  <span className="text-xs font-medium truncate">{v.icon} {formatVarName(v.name)}</span>
                   <span className={`text-xs font-bold tabular-nums ${color}`}>{value}</span>
                 </div>
                 <div className="h-1 bg-secondary rounded-full overflow-hidden">
@@ -523,7 +531,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
         <div className="flex flex-wrap gap-2">
           {Object.entries(sim.derivedValues).map(([key, val]) => (
             <div key={key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-card text-xs">
-              <span className="text-muted-foreground capitalize">{key.replace(/_/g, " ")}:</span>
+              <span className="text-muted-foreground">{formatVarName(key)}:</span>
               <span className="font-semibold tabular-nums">{typeof val === "number" ? val.toFixed(1) : val}</span>
             </div>
           ))}
@@ -640,7 +648,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                         return (
                           <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
                             <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{v.icon} {v.name}</span>
+                              <span className="text-sm font-medium">{v.icon} {formatVarName(v.name)}</span>
                               <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
                             </div>
                             <Slider
@@ -670,7 +678,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                       return (
                         <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{v.icon} {v.name}</span>
+                            <span className="text-sm font-medium">{v.icon} {formatVarName(v.name)}</span>
                             <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
                           </div>
                           <Slider
