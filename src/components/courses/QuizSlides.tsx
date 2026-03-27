@@ -84,11 +84,11 @@ export default function QuizSlides({ questions, onSubmit, isCompleted, initialAn
             </div>
 
             <div key={current} className="min-h-[300px] animate-fade-in">
-              <h2 className="font-display text-lg font-bold text-foreground mb-6">
+              <h2 className="font-display text-xl font-bold text-foreground mb-6 leading-snug">
                 {questions[current]?.question}
               </h2>
 
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {questions[current]?.options?.map((opt, oi) => {
                   const selected = answers[current] === oi;
                   const isCorrect = oi === questions[current].correct;

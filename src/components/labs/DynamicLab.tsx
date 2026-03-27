@@ -553,13 +553,25 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
 
       {/* Current block card */}
       <Card className="overflow-hidden border-border/60">
-        <CardContent className="p-6 min-h-[280px]">
-          <div key={currentStep} className="animate-fade-in space-y-5">
+        <CardContent className="p-6 sm:p-8 min-h-[280px]">
+          <div key={currentStep} className="animate-fade-in space-y-6">
+
+            {/* Step instruction header */}
+            {meta && (
+              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+                <span className="text-lg">{meta.emoji}</span>
+                <span className="text-base font-semibold text-foreground">{meta.label}</span>
+                {block.type === "control_panel" && <span className="text-xs text-muted-foreground ml-auto">Drag the sliders to adjust values</span>}
+                {block.type === "choice_set" && <span className="text-xs text-muted-foreground ml-auto">Select one option to continue</span>}
+                {block.type === "output_display" && <span className="text-xs text-muted-foreground ml-auto">Observe how outputs change</span>}
+                {block.type === "step_task" && <span className="text-xs text-muted-foreground ml-auto">Complete all tasks to proceed</span>}
+              </div>
+            )}
 
             {/* TEXT */}
             {block.type === "text" && (
               <div className="space-y-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{(block as any).content}</p>
+                <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">{(block as any).content}</p>
               </div>
             )}
 
