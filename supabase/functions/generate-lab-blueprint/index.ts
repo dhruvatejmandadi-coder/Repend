@@ -79,7 +79,7 @@ const blueprintToolSchema = {
         },
         variables: {
           type: "array",
-          description: "3-6 domain-specific system variables. These represent the state of the simulation.",
+          description: "3-6 domain-specific system variables. Each MUST have a clear description explaining what it controls in plain language (e.g. 'Controls how much budget is allocated to advertising — higher values increase reach but cost more').",
           items: {
             type: "object",
             properties: {
@@ -89,9 +89,9 @@ const blueprintToolSchema = {
               min: { type: "number" },
               max: { type: "number" },
               default: { type: "number" },
-              description: { type: "string" },
+              description: { type: "string", description: "REQUIRED. A clear 1-sentence explanation of what this variable controls and how it affects the system. Written for students, not engineers." },
             },
-            required: ["name", "icon", "unit", "min", "max", "default"],
+            required: ["name", "icon", "unit", "min", "max", "default", "description"],
           },
         },
         blocks: {
