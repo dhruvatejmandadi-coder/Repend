@@ -404,7 +404,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                   return (
                     <div key={v.name} className="rounded-lg border border-border bg-card p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">{v.icon} {v.name}</span>
+                        <span className="text-sm">{v.icon} {formatVarName(v.name)}</span>
                         <div className="flex items-center gap-1">
                           <Icon className={`w-3.5 h-3.5 ${color}`} />
                           <span className="text-sm font-semibold">{value} {v.unit}</span>
