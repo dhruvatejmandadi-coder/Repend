@@ -553,13 +553,25 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
 
       {/* Current block card */}
       <Card className="overflow-hidden border-border/60">
-        <CardContent className="p-6 min-h-[280px]">
-          <div key={currentStep} className="animate-fade-in space-y-5">
+        <CardContent className="p-6 sm:p-8 min-h-[280px]">
+          <div key={currentStep} className="animate-fade-in space-y-6">
+
+            {/* Step instruction header */}
+            {meta && (
+              <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+                <span className="text-lg">{meta.emoji}</span>
+                <span className="text-base font-semibold text-foreground">{meta.label}</span>
+                {block.type === "control_panel" && <span className="text-xs text-muted-foreground ml-auto">Drag the sliders to adjust values</span>}
+                {block.type === "choice_set" && <span className="text-xs text-muted-foreground ml-auto">Select one option to continue</span>}
+                {block.type === "output_display" && <span className="text-xs text-muted-foreground ml-auto">Observe how outputs change</span>}
+                {block.type === "step_task" && <span className="text-xs text-muted-foreground ml-auto">Complete all tasks to proceed</span>}
+              </div>
+            )}
 
             {/* TEXT */}
             {block.type === "text" && (
               <div className="space-y-3">
-                <p className="text-sm leading-relaxed whitespace-pre-wrap text-foreground/90">{(block as any).content}</p>
+                <p className="text-base leading-relaxed whitespace-pre-wrap text-foreground/90">{(block as any).content}</p>
               </div>
             )}
 
@@ -650,50 +662,24 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               const controlVars = (cpBlock.variables || [])
                 .map((name: string) => variables.find(v => v.name === name))
                 .filter(Boolean);
-              if (controlVars.length === 0) {
-                // Fallback: show all variables as sliders
-                return (
-                  <div className="space-y-5">
-                    {cpBlock.prompt && <p className="text-sm font-medium">{cpBlock.prompt}</p>}
-                    <div className="space-y-4">
-                      {variables.map((v: Variable) => {
-                        const value = values[v.name] ?? v.default;
-                        return (
-                          <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
-                            <div className="flex items-center justify-between">
-                              <span className="text-sm font-medium">{v.icon} {formatVarName(v.name)}</span>
-                              <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
-                            </div>
-                            <Slider
-                              value={[value]}
-                              min={v.min}
-                              max={v.max}
-                              step={1}
-                              onValueChange={(val) => handleSliderChange(v.name, val[0])}
-                            />
-                            <div className="flex justify-between text-[10px] text-muted-foreground">
-                              <span>{v.min}</span>
-                              <span>{v.max}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              }
+              const displayVars = controlVars.length > 0 ? controlVars : variables;
               return (
                 <div className="space-y-5">
-                  {cpBlock.prompt && <p className="text-sm font-medium">{cpBlock.prompt}</p>}
+                  {cpBlock.prompt && <p className="text-base font-semibold text-foreground">{cpBlock.prompt}</p>}
                   <div className="space-y-4">
-                    {controlVars.map((v: Variable) => {
+                    {displayVars.map((v: Variable) => {
                       const value = values[v.name] ?? v.default;
                       return (
                         <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium">{v.icon} {formatVarName(v.name)}</span>
+                            <span className="text-sm font-semibold">{v.icon} {formatVarName(v.name)}</span>
                             <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
                           </div>
+                          {v.description && (
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {v.description}
+                            </p>
+                          )}
                           <Slider
                             value={[value]}
                             min={v.min}
@@ -702,8 +688,8 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
                             onValueChange={(val) => handleSliderChange(v.name, val[0])}
                           />
                           <div className="flex justify-between text-[10px] text-muted-foreground">
-                            <span>{v.min}</span>
-                            <span>{v.max}</span>
+                            <span>{v.min} {v.unit}</span>
+                            <span>{v.max} {v.unit}</span>
                           </div>
                         </div>
                       );
@@ -719,32 +705,26 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
               const outputKeys = outBlock.outputs || Object.keys(sim.derivedValues);
               return (
                 <div className="space-y-5">
-                  {outBlock.prompt && <p className="text-sm font-medium">{outBlock.prompt}</p>}
+                  {outBlock.prompt && <p className="text-base font-semibold text-foreground">{outBlock.prompt}</p>}
+                  <p className="text-xs text-muted-foreground">These values update in real time as you adjust the sliders above. Watch how your changes affect the system.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {outputKeys.map((key: string) => {
                       const val = sim.derivedValues[key];
                       const varVal = values[key];
                       const displayVal = val !== undefined ? val : varVal;
                       if (displayVal === undefined) return null;
+                      const formula = data.formulas?.[key];
                       return (
-                        <div key={key} className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-1">
-                          <p className="text-xs text-muted-foreground capitalize font-medium">{key.replace(/_/g, " ")}</p>
+                        <div key={key} className="p-4 rounded-xl border border-primary/20 bg-primary/5 space-y-1.5">
+                          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">{formatVarName(key)}</p>
                           <p className="text-2xl font-bold tabular-nums">{typeof displayVal === "number" ? displayVal.toFixed(1) : displayVal}</p>
+                          {formula && (
+                            <p className="text-[10px] text-muted-foreground/70 font-mono mt-1">= {formula}</p>
+                          )}
                         </div>
                       );
                     })}
                   </div>
-                  {/* Show formula definitions if available */}
-                  {data.formulas && (
-                    <div className="space-y-1 p-3 rounded-lg bg-muted/30 border border-border/40">
-                      <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Formulas</p>
-                      {Object.entries(data.formulas).filter(([k]) => outputKeys.includes(k)).map(([key, formula]) => (
-                        <p key={key} className="text-xs text-muted-foreground font-mono">
-                          {key} = {formula}
-                        </p>
-                      ))}
-                    </div>
-                  )}
                 </div>
               );
             })()}

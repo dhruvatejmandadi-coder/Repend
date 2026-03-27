@@ -79,7 +79,7 @@ const blueprintToolSchema = {
         },
         variables: {
           type: "array",
-          description: "3-6 domain-specific system variables. These represent the state of the simulation.",
+          description: "3-6 domain-specific system variables. Each MUST have a clear description explaining what it controls in plain language (e.g. 'Controls how much budget is allocated to advertising — higher values increase reach but cost more').",
           items: {
             type: "object",
             properties: {
@@ -89,9 +89,9 @@ const blueprintToolSchema = {
               min: { type: "number" },
               max: { type: "number" },
               default: { type: "number" },
-              description: { type: "string" },
+              description: { type: "string", description: "REQUIRED. A clear 1-sentence explanation of what this variable controls and how it affects the system. Written for students, not engineers." },
             },
-            required: ["name", "icon", "unit", "min", "max", "default"],
+            required: ["name", "icon", "unit", "min", "max", "default", "description"],
           },
         },
         blocks: {
@@ -290,6 +290,30 @@ You are NOT making quizzes or static content. You are building a CONTROLLABLE SY
 - Different inputs lead to different outcomes
 - No single "correct" path — students explore and discover
 
+=== CLARITY REQUIREMENTS (CRITICAL) ===
+Every lab MUST be immediately understandable. Students should NEVER feel confused.
+
+1. TITLE: Clear, descriptive title
+2. SCENARIO: 2-3 sentences explaining the student's role and what they're managing
+3. LEARNING_GOAL: One sentence stating what the student will understand after completing the lab
+4. GOAL: A measurable objective so the student knows what "success" looks like
+
+For EVERY variable:
+- description MUST explain what it controls in plain language
+- Example: "Controls the temperature of the reaction chamber — higher values speed up the reaction but risk instability"
+
+For EVERY control_panel block:
+- prompt MUST explain what the student should do with these controls
+- Example: "Adjust these parameters to optimize the reaction. Watch how changing one affects the others."
+
+For EVERY output_display block:
+- prompt MUST explain what these outputs represent
+- Example: "These metrics show the current state of your system. Your goal is to get efficiency above 80%."
+
+For EVERY choice_set block:
+- question MUST clearly present the decision and its context
+- EVERY choice feedback MUST describe CONSEQUENCES (what happens to the system), NOT "correct/incorrect"
+
 === TOPIC CLASSIFICATION ===
 Classify the topic into a simulation type:
 - Math → calculation_simulation (inputs → computed outputs)
@@ -299,10 +323,10 @@ Classify the topic into a simulation type:
 - General → interactive_scenario (decisions with consequences)
 
 === REQUIRED BLOCK STRUCTURE (8-10 blocks) ===
-1. text — Set the scene. Student's role and scenario context.
-2. diagram — System architecture. Use diagram_nodes + diagram_edges (NOT images).
-3. control_panel — 2-4 INTERACTIVE SLIDERS the student adjusts. List variable names in "variables" array. This is the PRIMARY interaction point.
-4. output_display — Show 2-3 LIVE computed values from formulas. List formula keys in "outputs" array. These update as sliders move.
+1. text — Set the scene. Explain the student's role, what they're managing, and what they need to achieve.
+2. diagram — System architecture showing how variables connect.
+3. control_panel — 2-4 INTERACTIVE SLIDERS. Include a prompt explaining what to adjust and why.
+4. output_display — Show 2-3 LIVE computed values. Include a prompt explaining what these numbers mean.
 5. table — Reference data for decision-making.
 6. choice_set — Strategic decision with 3-4 options. Each creates different tradeoffs.
 7. control_panel — Second round of adjustments after seeing effects.
@@ -310,36 +334,36 @@ Classify the topic into a simulation type:
 9. step_task — 1-2 analysis tasks using current variable values.
 10. insight — Key takeaway connecting to real-world applications.
 
-=== VARIABLE DESIGN (CRITICAL) ===
+=== LESSON ALIGNMENT (CRITICAL) ===
+The lab MUST reinforce concepts from the lesson. Use the same terminology, examples, and variables that students learned about. Do NOT introduce new concepts that weren't covered in the lesson.
+
+=== VARIABLE DESIGN ===
 - Create 4-6 DOMAIN-SPECIFIC variables (NEVER generic like "quality" or "efficiency")
-- Variables MUST interconnect via rules (changing one affects others)
+- Variables MUST interconnect via rules
 - Use realistic units and ranges from the actual domain
-- Example for Chemistry: temperature (°C, 20-500), pressure (atm, 1-50), catalyst_concentration (mol/L, 0-10)
-- Example for Economics: interest_rate (%, 0-20), inflation (%, 0-15), gdp_growth (%, -5 to 10)
+- EVERY variable MUST have a description field
 
 === RULES (3-5, MANDATORY) ===
 Rules fire automatically when conditions are met. They make the system FEEL ALIVE.
 Use mathjs syntax. Effects use relative changes ("+10", "-15") or formulas.
-Example: { "condition": "temperature > 400", "effects": { "stability": "-20", "yield": "+5" }, "message": "High temperature increases yield but destabilizes the reaction!" }
 
 === FORMULAS (2-4, MANDATORY) ===
 Derived values computed from variables. These update LIVE as sliders change.
-Example: { "efficiency": "yield / (energy_input * 0.1) * 100", "profit": "revenue - operating_costs - raw_material_costs" }
 
 === RANDOM EVENTS (1-3) ===
 Low-probability events that add variability. Probability between 0.05 and 0.2.
-Example: { "probability": 0.15, "effects": { "supply": "-20" }, "message": "Supply chain disruption! Raw materials delayed." }
 
 === GOAL (MANDATORY) ===
 Every lab MUST have a clear, measurable objective.
-Example: { "description": "Achieve >85% efficiency while keeping costs below $3000", "condition": "efficiency > 85 and total_cost < 3000" }
 
 === ANTI-PATTERNS (NEVER DO) ===
 - NO generic variable names (Topic Quality, Topic Efficiency)
 - NO "correct/incorrect" feedback — describe CONSEQUENCES
 - NO static content without interactivity
 - NO labs where sliders don't affect outputs
-- NO single obvious correct answer — every choice has tradeoffs`;
+- NO single obvious correct answer — every choice has tradeoffs
+- NO missing descriptions on variables — every slider must be explained
+- NO confusing jargon without explanation`;
 
     const userPrompt = `Design an interactive SIMULATION for: "${moduleTitle}"
 

@@ -84,11 +84,11 @@ export default function QuizSlides({ questions, onSubmit, isCompleted, initialAn
             </div>
 
             <div key={current} className="min-h-[300px] animate-fade-in">
-              <h2 className="font-display text-lg font-bold text-foreground mb-6">
+              <h2 className="font-display text-xl font-bold text-foreground mb-6 leading-snug">
                 {questions[current]?.question}
               </h2>
 
-              <div className="space-y-2.5">
+              <div className="space-y-3">
                 {questions[current]?.options?.map((opt, oi) => {
                   const selected = answers[current] === oi;
                   const isCorrect = oi === questions[current].correct;
@@ -131,8 +131,15 @@ export default function QuizSlides({ questions, onSubmit, isCompleted, initialAn
 
               {/* Show explanation ONLY after submit (review mode) */}
               {submitted && questions[current]?.explanation && (
-                <div className="mt-4 p-3 rounded-lg bg-secondary/30 border border-border/30">
-                  <p className="text-sm text-muted-foreground">💡 {questions[current].explanation}</p>
+                <div className={`mt-5 p-4 rounded-xl border space-y-1.5 ${
+                  answers[current] === questions[current].correct
+                    ? "bg-green-500/5 border-green-500/20"
+                    : "bg-destructive/5 border-destructive/20"
+                }`}>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    {answers[current] === questions[current].correct ? "✅ Why this is correct" : "📖 Explanation"}
+                  </p>
+                  <p className="text-sm text-foreground/80 leading-relaxed">{questions[current].explanation}</p>
                 </div>
               )}
             </div>

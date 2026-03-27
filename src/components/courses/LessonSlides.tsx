@@ -120,11 +120,11 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComp
     <div className="space-y-4">
       <Card className="overflow-hidden">
         <Progress value={progressPercent} className="h-1.5 rounded-none" />
-        <CardContent className="p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <CardContent className="p-6 sm:p-8">
+          <div className="mb-5 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className="text-[10px] font-medium bg-muted/50 text-muted-foreground border-border/50">
-                {current + 1} / {total}
+              <Badge variant="outline" className="text-xs font-medium bg-muted/50 text-muted-foreground border-border/50">
+                Slide {current + 1} of {total}
               </Badge>
               {typeConfig && (
                 <Badge variant="outline" className={`text-xs font-medium ${typeConfig.className}`}>
@@ -141,12 +141,12 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComp
 
           {/* Slide title */}
           {title && (
-            <h2 className="font-display text-xl font-bold text-foreground mb-4">{title}</h2>
+            <h2 className="font-display text-2xl font-bold text-foreground mb-5 leading-tight">{title}</h2>
           )}
 
           <div
             key={current}
-            className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-img:max-h-[400px] prose-table:border-collapse prose-th:bg-muted/50 prose-th:border prose-th:border-border prose-th:px-4 prose-th:py-2.5 prose-th:text-left prose-th:text-sm prose-th:font-semibold prose-td:border prose-td:border-border prose-td:px-4 prose-td:py-2.5 prose-td:text-sm min-h-[200px] animate-fade-in"
+            className="prose prose-base dark:prose-invert max-w-none text-foreground prose-headings:text-foreground prose-headings:mt-6 prose-headings:mb-3 prose-p:text-foreground prose-p:leading-relaxed prose-p:mb-4 prose-strong:text-foreground prose-code:text-accent prose-code:bg-secondary prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-pre:bg-secondary prose-pre:border prose-pre:border-border prose-li:text-foreground prose-li:mb-1.5 prose-ul:space-y-1 prose-img:rounded-lg prose-img:shadow-md prose-img:mx-auto prose-img:max-h-[400px] prose-img:my-6 prose-table:border-collapse prose-table:my-5 prose-th:bg-muted/50 prose-th:border prose-th:border-border prose-th:px-4 prose-th:py-3 prose-th:text-left prose-th:text-sm prose-th:font-semibold prose-td:border prose-td:border-border prose-td:px-4 prose-td:py-3 prose-td:text-sm min-h-[200px] animate-fade-in"
           >
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}

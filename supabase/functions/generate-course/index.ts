@@ -196,7 +196,15 @@ Focus on SIMULATION-style interactions: decisions with consequences, not quiz-st
 
 === QUIZ RULES ===
 8-10 questions per module. Mix: conceptual, applied, scenario-based. No "all of the above".
-Each question MUST have an explanation field.
+Each question MUST have an explanation field that references what was taught in the lesson.
+Example explanation: "Correct — as explained in the lesson, increasing temperature speeds up reactions because molecules move faster and collide more often."
+Quiz questions MUST only test concepts that appear in the lesson content. Do NOT introduce new information in quizzes.
+
+=== CONSISTENCY (CRITICAL) ===
+- Lesson defines all concepts and variables → Lab lets students interact with those same concepts → Quiz tests understanding of those concepts
+- Every variable used in the lab MUST be introduced and explained in the lesson first
+- Every quiz question MUST relate to content from the lesson, NOT random new information
+- Use the SAME terminology across lesson, lab description, and quiz
 
 ${personalization ? `=== PERSONALIZATION ===\n${personalization}\n` : ""}
 ${hasFile ? "IMPORTANT: Base ALL content on the uploaded SOURCE MATERIAL." : ""}
