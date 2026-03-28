@@ -9,19 +9,47 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { messages, moduleTitle, courseTitle } = await req.json();
+    const { messages, moduleTitle, courseTitle, currentSlideContent, slideIndex, totalSlides, activeSection } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `You are a concise AI tutor for the Repend learning platform helping with "${moduleTitle}" in "${courseTitle}".
+    // Build context-aware system prompt
+    let contextBlock = "";
+    if (currentSlideContent) {
+      contextBlock = `\n\n## Current Slide (${slideIndex + 1}/${totalSlides})
+\`\`\`
+${currentSlideContent.slice(0, 1500)}
+\`\`\``;
+    }
+    if (activeSection) {
+      contextBlock += `\nThe student is in the ${activeSection} section.`;
+    }
 
-Rules:
-- Keep ALL responses to 2-3 sentences max
-- Be direct — no filler or pleasantries
-- Use bullet points only when listing 3+ items
-- Give one clear example if needed
-- Never give quiz/test answers directly
-- Stay on topic`;
+    const systemPrompt = `You are an expert AI tutor on the Repend learning platform.
+You are helping a student with "${moduleTitle}" in the course "${courseTitle}".
+${contextBlock}
+
+## Response Rules
+
+**Structure every response like this:**
+
+### 📍 About This Slide
+- Explain the current slide content first (2-3 bullet points max)
+- Connect it to the bigger picture
+
+### 💡 Your Question
+- Answer the student's specific question
+- Use bullet points and short sentences
+- Include ONE clear example if helpful
+
+## Formatting Rules
+- Use **bold** for key terms
+- Use bullet points, never long paragraphs
+- Keep each section to 2-4 bullet points max
+- Use emoji headers for visual separation
+- If the question IS about the current slide, combine both sections into one
+- Never give quiz/test answers directly — guide the student to think
+- Stay on topic for this module`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -30,7 +58,7 @@ Rules:
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-5",
         messages: [
           { role: "system", content: systemPrompt },
           ...messages,

@@ -211,7 +211,7 @@ ${hasFile ? "IMPORTANT: Base ALL content on the uploaded SOURCE MATERIAL." : ""}
 Generate 4-6 modules.`;
 
   const aiData = await callAI(apiKey, {
-    model: "google/gemini-3-flash-preview",
+    model: "openai/gpt-5",
     temperature: 0.4,
     messages: [
       { role: "system", content: systemPrompt },

@@ -79,6 +79,7 @@ export default function CourseView() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
+  const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
 
   useEffect(() => {
     if (id) fetchCourse();
@@ -334,6 +335,7 @@ export default function CourseView() {
                   youtubeTitle={mod.youtube_title}
                   onComplete={handleLessonComplete}
                   isCompleted={getSectionDone(mod.id, "lesson")}
+                  onSlideChange={(idx) => setCurrentSlideIndex(idx)}
                 />
               )}
 
@@ -362,9 +364,16 @@ export default function CourseView() {
               )}
             </div>
 
-            {/* AI Tutor */}
-            {activeContent === "lesson" && course && (
-              <AiTutor moduleTitle={mod.title} courseTitle={course.title} />
+            {/* AI Tutor — available across lesson, lab, quiz */}
+            {course && (
+              <AiTutor
+                moduleTitle={mod.title}
+                courseTitle={course.title}
+                currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[currentSlideIndex] || "") : undefined}
+                slideIndex={currentSlideIndex}
+                totalSlides={mod.lesson_content.split(/\n---\n/).length}
+                activeSection={activeContent}
+              />
             )}
           </main>
         )}

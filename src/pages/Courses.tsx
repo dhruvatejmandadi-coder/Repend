@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText, Crown, PenTool, Globe } from "lucide-react";
+import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText, Crown, PenTool, Globe, RotateCcw, Clock } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -34,6 +34,7 @@ function formatFileSize(bytes: number) {
 export default function Courses() {
   const [topic, setTopic] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
+  const [deletedCourses, setDeletedCourses] = useState<(Course & { deleted_at?: string })[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
@@ -48,15 +49,21 @@ export default function Courses() {
   useEffect(() => {
     if (user) {
       fetchCourses();
+      fetchDeletedCourses();
     } else {
       setLoading(false);
     }
   }, [user]);
 
   const fetchCourses = async () => {
-    const { data, error } = await supabase.from("courses").select("*").order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("courses").select("*").is("deleted_at" as any, null).order("created_at", { ascending: false });
     if (!error && data) setCourses(data);
     setLoading(false);
+  };
+
+  const fetchDeletedCourses = async () => {
+    const { data } = await supabase.from("courses").select("*").not("deleted_at" as any, "is", null).order("created_at", { ascending: false });
+    if (data) setDeletedCourses(data as any);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,9 +206,23 @@ export default function Courses() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("courses").delete().eq("id", id);
+    // Soft delete — mark with deleted_at timestamp
+    await supabase.from("courses").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
     setCourses((prev) => prev.filter((c) => c.id !== id));
-    toast({ title: "Course deleted" });
+    toast({ title: "Course moved to trash", description: "You can restore it within 30 days." });
+  };
+
+  const handleRestore = async (id: string) => {
+    await supabase.from("courses").update({ deleted_at: null } as any).eq("id", id);
+    setDeletedCourses((prev) => prev.filter((c) => c.id !== id));
+    fetchCourses();
+    toast({ title: "Course restored!" });
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    await supabase.from("courses").delete().eq("id", id);
+    setDeletedCourses((prev) => prev.filter((c) => c.id !== id));
+    toast({ title: "Course permanently deleted" });
   };
 
   const handleSignUpPromptClose = () => {
@@ -389,6 +410,40 @@ export default function Courses() {
               </div>
             )}
           </>
+        )}
+
+        {/* Recently Deleted */}
+        {user && deletedCourses.length > 0 && (
+          <div className="max-w-5xl mx-auto mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h2 className="font-display text-lg font-semibold text-muted-foreground">Recently Deleted</h2>
+              <span className="text-xs text-muted-foreground/60">Auto-removed after 30 days</span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {deletedCourses.map((course) => {
+                const deletedAt = course.deleted_at ? new Date(course.deleted_at) : new Date();
+                const daysLeft = Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24)));
+                return (
+                  <Card key={course.id} className="bg-card/40 border-border/30 opacity-70">
+                    <CardContent className="p-5">
+                      <h3 className="font-display font-semibold text-[15px] mb-1 line-clamp-2">{course.title}</h3>
+                      <p className="text-[13px] text-muted-foreground line-clamp-1 mb-3">{course.topic}</p>
+                      <p className="text-[11px] text-muted-foreground/60 mb-3">{daysLeft} days until permanent deletion</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleRestore(course.id)}>
+                          <RotateCcw className="w-3 h-3" /> Restore
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => handlePermanentDelete(course.id)}>
+                          <Trash2 className="w-3 h-3" /> Delete Forever
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 

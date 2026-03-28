@@ -17,6 +17,7 @@ interface LessonSlidesProps {
   youtubeTitle?: string | null;
   onComplete?: () => void;
   isCompleted?: boolean;
+  onSlideChange?: (slideIndex: number) => void;
 }
 
 const SLIDE_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
@@ -63,7 +64,7 @@ function parseSlide(raw: string) {
   return { slideType, title, body: cleaned };
 }
 
-export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComplete, isCompleted }: LessonSlidesProps) {
+export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComplete, isCompleted, onSlideChange }: LessonSlidesProps) {
   const slides = content.split(/\n---\n/).map((s) => s.trim()).filter(Boolean);
   const [current, setCurrent] = useState(0);
   const [visitedSlides, setVisitedSlides] = useState<Set<number>>(new Set([0]));
@@ -83,7 +84,7 @@ export default function LessonSlides({ content, youtubeUrl, youtubeTitle, onComp
 
   const goPrev = useCallback(() => setCurrent((c) => Math.max(c - 1, 0)), []);
 
-  useEffect(() => { setVisitedSlides((prev) => new Set(prev).add(current)); }, [current]);
+  useEffect(() => { setVisitedSlides((prev) => new Set(prev).add(current)); onSlideChange?.(current); }, [current, onSlideChange]);
 
   useEffect(() => {
     if (visitedSlides.size >= total && !isCompleted && onComplete) onComplete();

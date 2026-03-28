@@ -102,7 +102,7 @@ Critique this ${phase === "initial" ? "initial strategy" : phase === "twist" ? "
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "openai/gpt-5",
         temperature: 0.3,
         messages: [
           { role: "system", content: systemPrompt },

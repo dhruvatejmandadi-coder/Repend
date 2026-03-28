@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Bot, X, Send, Loader2, Minimize2 } from "lucide-react";
+import { Bot, X, Send, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 type Message = { role: "user" | "assistant"; content: string };
@@ -10,9 +10,13 @@ type Message = { role: "user" | "assistant"; content: string };
 interface AiTutorProps {
   moduleTitle: string;
   courseTitle: string;
+  currentSlideContent?: string;
+  slideIndex?: number;
+  totalSlides?: number;
+  activeSection?: string;
 }
 
-export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
+export default function AiTutor({ moduleTitle, courseTitle, currentSlideContent, slideIndex, totalSlides, activeSection }: AiTutorProps) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -42,6 +46,10 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
           messages: allMessages,
           moduleTitle,
           courseTitle,
+          currentSlideContent,
+          slideIndex,
+          totalSlides,
+          activeSection,
         }),
       });
 
@@ -50,7 +58,6 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
         throw new Error(err.error || "Failed to get response");
       }
 
-      // Stream response
       if (!resp.body) throw new Error("No response body");
       const reader = resp.body.getReader();
       const decoder = new TextDecoder();
@@ -106,7 +113,7 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
   }
 
   return (
-    <Card className="fixed bottom-6 right-6 z-50 w-[380px] h-[500px] flex flex-col shadow-2xl border-border/60">
+    <Card className="fixed bottom-6 right-6 z-50 w-[400px] h-[520px] flex flex-col shadow-2xl border-border/60">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/40 bg-muted/30 rounded-t-lg">
         <div className="flex items-center gap-2">
@@ -115,7 +122,7 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
           </div>
           <div>
             <p className="text-sm font-semibold">AI Tutor</p>
-            <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">{moduleTitle}</p>
+            <p className="text-[10px] text-muted-foreground truncate max-w-[220px]">{moduleTitle}</p>
           </div>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
@@ -129,18 +136,18 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
           <div className="text-center py-8">
             <Bot className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">Ask me anything about this lesson!</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">I'm here to help you understand the material</p>
+            <p className="text-xs text-muted-foreground/60 mt-1">I know what slide you're on and will explain it first.</p>
           </div>
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
+            <div className={`max-w-[90%] px-3 py-2 rounded-xl text-sm ${
               msg.role === "user"
                 ? "bg-primary text-primary-foreground rounded-br-sm"
                 : "bg-muted/60 border border-border/30 rounded-bl-sm"
             }`}>
               {msg.role === "assistant" ? (
-                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5">
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-li:my-0.5 prose-headings:my-2 prose-headings:text-sm prose-h3:text-[13px] prose-h3:font-semibold">
                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                 </div>
               ) : (
@@ -165,7 +172,7 @@ export default function AiTutor({ moduleTitle, courseTitle }: AiTutorProps) {
           className="flex gap-2"
         >
           <Input
-            placeholder="Ask a question..."
+            placeholder="Ask about this slide..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             className="flex-1 h-9 text-sm"
