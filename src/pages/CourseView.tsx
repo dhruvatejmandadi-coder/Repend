@@ -369,8 +369,8 @@ export default function CourseView() {
               <AiTutor
                 moduleTitle={mod.title}
                 courseTitle={course.title}
-                currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[0] || "") : undefined}
-                slideIndex={0}
+                currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[currentSlideIndex] || "") : undefined}
+                slideIndex={currentSlideIndex}
                 totalSlides={mod.lesson_content.split(/\n---\n/).length}
                 activeSection={activeContent}
               />
