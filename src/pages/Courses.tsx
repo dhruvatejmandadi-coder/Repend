@@ -34,6 +34,7 @@ function formatFileSize(bytes: number) {
 export default function Courses() {
   const [topic, setTopic] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
+  const [deletedCourses, setDeletedCourses] = useState<(Course & { deleted_at?: string })[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showSignUpPrompt, setShowSignUpPrompt] = useState(false);
