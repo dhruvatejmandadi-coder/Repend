@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText, Crown, PenTool, Globe } from "lucide-react";
+import { BookOpen, Plus, Sparkles, Loader2, Trash2, ArrowRight, Paperclip, X, FileText, Crown, PenTool, Globe, RotateCcw, Clock } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
