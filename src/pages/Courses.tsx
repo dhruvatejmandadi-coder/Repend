@@ -199,9 +199,23 @@ export default function Courses() {
   };
 
   const handleDelete = async (id: string) => {
-    await supabase.from("courses").delete().eq("id", id);
+    // Soft delete — mark with deleted_at timestamp
+    await supabase.from("courses").update({ deleted_at: new Date().toISOString() } as any).eq("id", id);
     setCourses((prev) => prev.filter((c) => c.id !== id));
-    toast({ title: "Course deleted" });
+    toast({ title: "Course moved to trash", description: "You can restore it within 30 days." });
+  };
+
+  const handleRestore = async (id: string) => {
+    await supabase.from("courses").update({ deleted_at: null } as any).eq("id", id);
+    setDeletedCourses((prev) => prev.filter((c) => c.id !== id));
+    fetchCourses();
+    toast({ title: "Course restored!" });
+  };
+
+  const handlePermanentDelete = async (id: string) => {
+    await supabase.from("courses").delete().eq("id", id);
+    setDeletedCourses((prev) => prev.filter((c) => c.id !== id));
+    toast({ title: "Course permanently deleted" });
   };
 
   const handleSignUpPromptClose = () => {

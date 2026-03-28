@@ -362,9 +362,16 @@ export default function CourseView() {
               )}
             </div>
 
-            {/* AI Tutor */}
-            {activeContent === "lesson" && course && (
-              <AiTutor moduleTitle={mod.title} courseTitle={course.title} />
+            {/* AI Tutor — available across lesson, lab, quiz */}
+            {course && (
+              <AiTutor
+                moduleTitle={mod.title}
+                courseTitle={course.title}
+                currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[0] || "") : undefined}
+                slideIndex={0}
+                totalSlides={mod.lesson_content.split(/\n---\n/).length}
+                activeSection={activeContent}
+              />
             )}
           </main>
         )}
