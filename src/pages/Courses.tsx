@@ -411,6 +411,40 @@ export default function Courses() {
             )}
           </>
         )}
+
+        {/* Recently Deleted */}
+        {user && deletedCourses.length > 0 && (
+          <div className="max-w-5xl mx-auto mt-10">
+            <div className="flex items-center gap-2 mb-4">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <h2 className="font-display text-lg font-semibold text-muted-foreground">Recently Deleted</h2>
+              <span className="text-xs text-muted-foreground/60">Auto-removed after 30 days</span>
+            </div>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {deletedCourses.map((course) => {
+                const deletedAt = course.deleted_at ? new Date(course.deleted_at) : new Date();
+                const daysLeft = Math.max(0, 30 - Math.floor((Date.now() - deletedAt.getTime()) / (1000 * 60 * 60 * 24)));
+                return (
+                  <Card key={course.id} className="bg-card/40 border-border/30 opacity-70">
+                    <CardContent className="p-5">
+                      <h3 className="font-display font-semibold text-[15px] mb-1 line-clamp-2">{course.title}</h3>
+                      <p className="text-[13px] text-muted-foreground line-clamp-1 mb-3">{course.topic}</p>
+                      <p className="text-[11px] text-muted-foreground/60 mb-3">{daysLeft} days until permanent deletion</p>
+                      <div className="flex gap-2">
+                        <Button variant="outline" size="sm" className="gap-1.5 text-xs" onClick={() => handleRestore(course.id)}>
+                          <RotateCcw className="w-3 h-3" /> Restore
+                        </Button>
+                        <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-destructive hover:text-destructive" onClick={() => handlePermanentDelete(course.id)}>
+                          <Trash2 className="w-3 h-3" /> Delete Forever
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Personalization modal */}
