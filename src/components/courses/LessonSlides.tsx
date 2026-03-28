@@ -17,6 +17,7 @@ interface LessonSlidesProps {
   youtubeTitle?: string | null;
   onComplete?: () => void;
   isCompleted?: boolean;
+  onSlideChange?: (slideIndex: number) => void;
 }
 
 const SLIDE_TYPE_CONFIG: Record<string, { label: string; className: string }> = {
