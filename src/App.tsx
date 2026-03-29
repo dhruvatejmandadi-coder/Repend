@@ -45,6 +45,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/waitlist" element={<Waitlist />} />
+            <Route path="/lab/demo-business" element={<BusinessLabDemo />} />
 
             {/* Dashboard pages — persistent sidebar */}
             <Route element={<DashboardLayout />}>
