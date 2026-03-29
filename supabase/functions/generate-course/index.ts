@@ -178,7 +178,6 @@ ${hasFile ? "\nBase content on the uploaded source material." : ""}
 Generate 4-6 modules.`;
 
   const aiData = await callAIWithFallback(apiKey, {
-    temperature: 0.4,
     max_completion_tokens: 2048,
     messages: [
       { role: "system", content: systemPrompt },
