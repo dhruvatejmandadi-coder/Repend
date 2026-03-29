@@ -407,8 +407,7 @@ Do NOT return empty blocks.`;
 
         const aiData = await callAI(LOVABLE_API_KEY, {
           model: "openai/gpt-5",
-          temperature: genAttempt === 0 ? 0.7 : 0.5,
-          max_tokens: 8192,
+          max_completion_tokens: 8192,
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: prompt },

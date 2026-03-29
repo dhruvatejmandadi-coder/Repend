@@ -68,7 +68,6 @@ Evaluate this student's math response. Return structured feedback via the functi
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
-        temperature: 0.2,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

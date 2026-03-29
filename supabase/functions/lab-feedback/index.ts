@@ -103,7 +103,6 @@ Critique this ${phase === "initial" ? "initial strategy" : phase === "twist" ? "
       },
       body: JSON.stringify({
         model: "openai/gpt-5",
-        temperature: 0.3,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
