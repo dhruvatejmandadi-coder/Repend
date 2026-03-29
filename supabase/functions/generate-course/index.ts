@@ -7,6 +7,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+const PRIMARY_MODEL = "openai/gpt-5";
+const FALLBACK_MODEL = "google/gemini-2.5-pro";
+
 async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
   let lastError = "";
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -24,7 +27,11 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
       if (response.status === 429) { lastError = "Rate limit exceeded."; continue; }
       if (response.status === 402) throw new Error("AI credits exhausted. Please add funds in Settings > Workspace > Usage.");
       const text = await response.text();
-      if (!response.ok) { console.error(`[AI Error ${response.status}]`, text.slice(0, 500)); lastError = `AI error (${response.status}): ${text.slice(0, 200)}`; continue; }
+      if (!response.ok) {
+        console.error(`[AI Error ${response.status}] Body:`, text.slice(0, 500));
+        lastError = `AI error (${response.status}): ${text.slice(0, 200)}`;
+        continue;
+      }
       let parsed: any;
       try { parsed = JSON.parse(text); } catch { lastError = "Invalid AI response."; continue; }
       if (!parsed.choices?.length) { lastError = "Empty AI response."; continue; }
@@ -35,6 +42,19 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
     }
   }
   throw new Error(lastError || "AI call failed after retries.");
+}
+
+/** Try primary model, if 400 error retry with fallback model */
+async function callAIWithFallback(apiKey: string, body: any): Promise<any> {
+  try {
+    return await callAI(apiKey, { ...body, model: PRIMARY_MODEL });
+  } catch (e: any) {
+    if (e.message?.includes("400") || e.message?.includes("AI error")) {
+      console.warn(`[Fallback] ${PRIMARY_MODEL} failed, trying ${FALLBACK_MODEL}...`);
+      return await callAI(apiKey, { ...body, model: FALLBACK_MODEL });
+    }
+    throw e;
+  }
 }
 
 function extractToolArgs(aiData: any): any {
@@ -107,120 +127,67 @@ async function extractFileContent(filePath: string, supabaseAdmin: any): Promise
 function buildPersonalizationContext(prefs: any): string {
   if (!prefs) return "";
   const parts: string[] = [];
-
   if (prefs.level) {
     const levelMap: Record<string, string> = {
-      beginner: "Student is a BEGINNER. Use simple language, define all terms, provide many examples. Start from first principles.",
-      intermediate: "Student has INTERMEDIATE knowledge. Assume basic familiarity. Focus on deeper connections and applied understanding.",
-      advanced: "Student is ADVANCED. Skip basics, focus on nuance, edge cases, expert-level analysis, and complex tradeoffs.",
+      beginner: "Student is a BEGINNER. Use simple language, define all terms, provide many examples.",
+      intermediate: "Student has INTERMEDIATE knowledge. Assume basic familiarity.",
+      advanced: "Student is ADVANCED. Skip basics, focus on nuance and edge cases.",
     };
     parts.push(levelMap[prefs.level] || "");
   }
-
   if (prefs.style) {
     const styleMap: Record<string, string> = {
-      visual: "LEARNING STYLE: Visual. Use many tables, diagrams descriptions, charts, and visual comparisons. Minimize long paragraphs.",
-      "hands-on": "LEARNING STYLE: Hands-on. Include many challenges, interactive examples, and practice problems in every slide.",
-      conceptual: "LEARNING STYLE: Conceptual. Focus on WHY things work, underlying principles, and theoretical frameworks.",
-      mixed: "LEARNING STYLE: Mixed. Balance theory, visuals, and practice across slides.",
+      visual: "LEARNING STYLE: Visual. Use tables, diagrams, charts.",
+      "hands-on": "LEARNING STYLE: Hands-on. Include challenges and practice.",
+      conceptual: "LEARNING STYLE: Conceptual. Focus on WHY things work.",
+      mixed: "LEARNING STYLE: Mixed. Balance theory, visuals, and practice.",
     };
     parts.push(styleMap[prefs.style] || "");
   }
-
   if (prefs.goal) {
     const goalMap: Record<string, string> = {
-      basics: "GOAL: Understand basics. Focus on foundational concepts, clear definitions, and simple real-world examples.",
-      "test-prep": "GOAL: Test preparation. Include exam-style questions, key formulas, common mistakes to avoid, and memory aids.",
-      "real-world": "GOAL: Real-world application. Every concept must connect to practical uses, industry examples, and career relevance.",
-      mastery: "GOAL: Deep mastery. Cover advanced theory, research-level insights, edge cases, and complex problem-solving.",
+      basics: "GOAL: Understand basics.",
+      "test-prep": "GOAL: Test preparation. Include exam-style questions.",
+      "real-world": "GOAL: Real-world application.",
+      mastery: "GOAL: Deep mastery.",
     };
     parts.push(goalMap[prefs.goal] || "");
   }
-
   if (prefs.pace) {
     const paceMap: Record<string, string> = {
-      fast: "PACE: Fast. Keep slides concise. Key points only. No redundancy.",
-      balanced: "PACE: Balanced. Standard depth with clear explanations.",
-      detailed: "PACE: Detailed. Thorough explanations. Multiple examples per concept. Step-by-step breakdowns.",
+      fast: "PACE: Fast. Key points only.",
+      balanced: "PACE: Balanced.",
+      detailed: "PACE: Detailed. Thorough explanations.",
     };
     parts.push(paceMap[prefs.pace] || "");
   }
-
   return parts.filter(Boolean).join("\n");
 }
 
 /* ===============================
-   🚀 PHASE 1: OUTLINE + LESSONS + QUIZZES
+   🚀 STEP 1: OUTLINE ONLY (small call)
 ================================ */
 
-async function generateOutline(apiKey: string, topic: string, userContent: any, hasFile: boolean, preferences: any): Promise<any> {
-  console.log("[Phase 1] Generating course outline, lessons, and quizzes...");
-
+async function generateOutline(apiKey: string, topic: string, hasFile: boolean, preferences: any): Promise<any> {
+  console.log("[Step 1] Generating course outline structure...");
   const personalization = buildPersonalizationContext(preferences);
 
-  const systemPrompt = `You are an expert educational designer for Repend, a decision-based interactive learning platform.
-
-Generate a course OUTLINE with lessons and quizzes. Do NOT generate lab data — just describe what each lab should teach.
-
-=== LESSON FORMAT ===
-Each lesson is a series of slides separated by "---". Each slide must focus on ONE idea.
-
-SLIDE STRUCTURE (follow this for each slide):
-- Clear title with emoji (## 🎯 Title)
-- Short bullet points (2-4 max)
-- Include at least one of: table, visual description, real-world example, or formula
-- End with a one-line takeaway or question
-
-SLIDE SEQUENCE (7 slides per lesson):
-1. 🎯 Objective — what student will learn, why it matters
-2. 🧠 Core Concept — main idea with clear definition
-3. 📊 Visual/Example — table, comparison, or diagram description
-4. 🌎 Real-World Context — where this is used, why it matters
-5. 🧪 Lab Preview — brief preview of the lab exercise
-6. 📋 Challenge — practice question with clear answer expected
-7. ✅ Key Takeaways — 3-4 bullet summary
-
-RULES:
-- Every slide must have a clear title
-- Use emoji headers
-- Use tables for comparisons (NOT long paragraphs)
-- Keep bullet points SHORT (under 15 words each)
-- Include a challenge/question in slide 6 that requires an answer
-- Do NOT clutter — one idea per slide
-- Every visual/table needs a 1-2 line explanation below it
-
-=== LAB CONCEPT ===
-For each module, describe what concept the lab should explore. Do NOT pick a lab_type — the AI will design the interaction later.
-Just describe: what concept to simulate, what tradeoffs exist, what decisions students should face.
-Focus on SIMULATION-style interactions: decisions with consequences, not quiz-style Q&A.
-
-=== QUIZ RULES ===
-8-10 questions per module. Mix: conceptual, applied, scenario-based. No "all of the above".
-Each question MUST have an explanation field that references what was taught in the lesson.
-Example explanation: "Correct — as explained in the lesson, increasing temperature speeds up reactions because molecules move faster and collide more often."
-Quiz questions MUST only test concepts that appear in the lesson content. Do NOT introduce new information in quizzes.
-
-=== CONSISTENCY (CRITICAL) ===
-- Lesson defines all concepts and variables → Lab lets students interact with those same concepts → Quiz tests understanding of those concepts
-- Every variable used in the lab MUST be introduced and explained in the lesson first
-- Every quiz question MUST relate to content from the lesson, NOT random new information
-- Use the SAME terminology across lesson, lab description, and quiz
-
-${personalization ? `=== PERSONALIZATION ===\n${personalization}\n` : ""}
-${hasFile ? "IMPORTANT: Base ALL content on the uploaded SOURCE MATERIAL." : ""}
+  const systemPrompt = `You are an expert educational designer. Generate a course OUTLINE — just the structure, NOT full lesson content.
+${personalization ? `\nPERSONALIZATION:\n${personalization}` : ""}
+${hasFile ? "\nBase content on the uploaded source material." : ""}
 Generate 4-6 modules.`;
 
-  const aiData = await callAI(apiKey, {
-    model: "google/gemini-2.5-pro",
+  const aiData = await callAIWithFallback(apiKey, {
     temperature: 0.4,
+    max_tokens: 2048,
     messages: [
       { role: "system", content: systemPrompt },
-      { role: "user", content: userContent },
+      { role: "user", content: `Create a course outline for: ${topic}` },
     ],
     tools: [{
       type: "function",
       function: {
-        name: "create_course_outline",
+        name: "create_outline",
         parameters: {
           type: "object",
           properties: {
@@ -232,26 +199,11 @@ Generate 4-6 modules.`;
                 type: "object",
                 properties: {
                   title: { type: "string" },
-                  lesson_content: { type: "string", description: "Markdown lesson with --- slide separators. 7 slides. Each slide has ONE idea, emoji title, short bullets, tables for comparisons." },
-                  youtube_query: { type: "string" },
-                  youtube_title: { type: "string" },
-                  lab_concept: { type: "string", description: "What simulation/decision-making scenario the lab should present. Focus on tradeoffs and consequences, NOT quiz-style Q&A." },
+                  lab_concept: { type: "string", description: "What simulation/decision scenario the lab should present" },
                   lab_title: { type: "string" },
-                  quiz: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        question: { type: "string" },
-                        options: { type: "array", items: { type: "string" } },
-                        correct: { type: "number" },
-                        explanation: { type: "string" },
-                      },
-                      required: ["question", "options", "correct", "explanation"],
-                    },
-                  },
+                  youtube_query: { type: "string" },
                 },
-                required: ["title", "lesson_content", "lab_concept", "quiz"],
+                required: ["title", "lab_concept"],
               },
             },
           },
@@ -259,19 +211,78 @@ Generate 4-6 modules.`;
         },
       },
     }],
-    tool_choice: { type: "function", function: { name: "create_course_outline" } },
+    tool_choice: { type: "function", function: { name: "create_outline" } },
   });
 
-  const parsed = extractToolArgs(aiData);
-  if (parsed.modules) {
-    for (const mod of parsed.modules) {
-      mod.lesson_content = repairLessonContent(mod.lesson_content || "");
-      if (!mod.quiz || !Array.isArray(mod.quiz) || mod.quiz.length === 0) {
-        mod.quiz = [{ question: `What is a key concept from "${mod.title}"?`, options: ["A", "B", "C", "D"], correct: 0, explanation: "Review the lesson." }];
-      }
-    }
-  }
-  return parsed;
+  return extractToolArgs(aiData);
+}
+
+/* ===============================
+   🚀 STEP 2: LESSON + QUIZ per module (small call each)
+================================ */
+
+async function generateModuleContent(apiKey: string, topic: string, moduleTitle: string, moduleIndex: number, totalModules: number, hasFile: boolean, fileContext: string, preferences: any): Promise<{ lesson_content: string; quiz: any[] }> {
+  console.log(`[Step 2] Generating lesson+quiz for module ${moduleIndex + 1}/${totalModules}: "${moduleTitle}"`);
+  const personalization = buildPersonalizationContext(preferences);
+
+  const systemPrompt = `You are an expert lesson writer. Generate ONE lesson and ONE quiz for a specific module.
+
+=== LESSON FORMAT ===
+7 slides separated by "---". Each slide: emoji title, short bullets, tables for comparisons.
+Slide sequence: 🎯 Objective, 🧠 Core Concept, 📊 Visual/Example, 🌎 Real-World, 🧪 Lab Preview, 📋 Challenge, ✅ Takeaways
+
+=== QUIZ ===
+8-10 questions. Mix conceptual + applied. Each has explanation referencing the lesson.
+${personalization ? `\n${personalization}` : ""}
+${hasFile ? "\nBase content on the source material provided." : ""}`;
+
+  const userMsg = fileContext
+    ? `Module ${moduleIndex + 1}/${totalModules} of course "${topic}": "${moduleTitle}"\n\nSource material context:\n${fileContext.slice(0, 8000)}`
+    : `Module ${moduleIndex + 1}/${totalModules} of course "${topic}": "${moduleTitle}"`;
+
+  const aiData = await callAIWithFallback(apiKey, {
+    temperature: 0.4,
+    max_tokens: 4096,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userMsg },
+    ],
+    tools: [{
+      type: "function",
+      function: {
+        name: "create_module_content",
+        parameters: {
+          type: "object",
+          properties: {
+            lesson_content: { type: "string", description: "Markdown lesson with --- slide separators. 7 slides." },
+            quiz: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  question: { type: "string" },
+                  options: { type: "array", items: { type: "string" } },
+                  correct: { type: "number" },
+                  explanation: { type: "string" },
+                },
+                required: ["question", "options", "correct", "explanation"],
+              },
+            },
+          },
+          required: ["lesson_content", "quiz"],
+        },
+      },
+    }],
+    tool_choice: { type: "function", function: { name: "create_module_content" } },
+  });
+
+  const result = extractToolArgs(aiData);
+  return {
+    lesson_content: repairLessonContent(result.lesson_content || ""),
+    quiz: Array.isArray(result.quiz) && result.quiz.length > 0
+      ? result.quiz
+      : [{ question: `What is a key concept from "${moduleTitle}"?`, options: ["A", "B", "C", "D"], correct: 0, explanation: "Review the lesson." }],
+  };
 }
 
 /* ===============================
@@ -297,20 +308,21 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
-    // Collect all file paths (support both single and multiple)
+    // Collect all file paths
     const allFilePaths: string[] = [];
     if (filePaths && Array.isArray(filePaths)) allFilePaths.push(...filePaths);
     else if (filePath) allFilePaths.push(filePath);
 
-    // Extract content from all files
-    const allFileContents: { text?: string; imageBase64?: string; mimeType?: string }[] = [];
+    // Extract file content
+    let fileTextContext = "";
     if (allFilePaths.length > 0) {
       const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
       for (const fp of allFilePaths) {
         const content = await extractFileContent(fp, supabaseAdmin);
-        if (content.text || content.imageBase64) allFileContents.push(content);
+        if (content.text) fileTextContext += content.text.slice(0, 10000) + "\n\n";
       }
     }
+    const hasFile = fileTextContext.length > 0;
 
     // Create course row
     const { data: course } = await supabase
@@ -318,64 +330,65 @@ serve(async (req) => {
       .insert({ user_id: user.id, title: topic.trim(), topic: topic.trim(), status: "generating" })
       .select().single();
 
-    // Build user message content from all files
-    let userContent: any;
-    if (allFileContents.length === 0) {
-      userContent = `Create a course on: ${topic}`;
-    } else if (allFileContents.length === 1 && allFileContents[0].imageBase64 && allFileContents[0].mimeType) {
-      userContent = [
-        { type: "image_url", image_url: { url: `data:${allFileContents[0].mimeType};base64,${allFileContents[0].imageBase64}` } },
-        { type: "text", text: `Create a course on: ${topic}\n\nThe attached image/document is the SOURCE MATERIAL.` },
-      ];
-    } else {
-      // Combine all text + image content into a multipart message
-      const parts: any[] = [];
-      const textParts: string[] = [];
-      for (const fc of allFileContents) {
-        if (fc.imageBase64 && fc.mimeType) {
-          parts.push({ type: "image_url", image_url: { url: `data:${fc.mimeType};base64,${fc.imageBase64}` } });
-        }
-        if (fc.text) textParts.push(fc.text);
-      }
-      const combinedText = textParts.length > 0
-        ? `Create a course on: ${topic}\n\nSOURCE MATERIALS (${allFileContents.length} files):\n\n${textParts.join("\n\n--- NEXT FILE ---\n\n")}`
-        : `Create a course on: ${topic}\n\nThe attached images/documents are the SOURCE MATERIALS.`;
-      parts.push({ type: "text", text: combinedText });
-      // If only text parts, flatten to string
-      userContent = parts.length === 1 && parts[0].type === "text" ? parts[0].text : parts;
-    }
+    // ===== STEP 1: Generate outline only (small payload) =====
+    const outline = await generateOutline(LOVABLE_API_KEY, topic, hasFile, preferences);
+    console.log(`[Step 1] Outline: "${outline.title}" with ${outline.modules?.length || 0} modules`);
 
-    // ===== PHASE 1: Outline + Lessons + Quizzes =====
-    const outline = await generateOutline(LOVABLE_API_KEY, topic, userContent, allFilePaths.length > 0, preferences);
-    console.log(`[Phase 1] Complete: "${outline.title}" with ${outline.modules.length} modules`);
-
-    // Update course title/description
     await supabase.from("courses").update({ title: outline.title, description: outline.description, status: "generating" }).eq("id", course.id);
 
-    // Insert modules with lab_generation_status = 'pending'
-    const moduleRows = outline.modules.map((mod: any, index: number) => ({
-      course_id: course.id,
-      module_order: index + 1,
-      title: mod.title,
-      lesson_content: mod.lesson_content,
-      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
-      youtube_title: mod.youtube_title || mod.title,
-      lab_type: "dynamic",
-      lab_title: mod.lab_title || mod.title,
-      lab_description: mod.lab_concept || null,
-      lab_data: null,
-      lab_generation_status: "pending",
-      lab_blueprint: null,
-      lab_error: null,
-      quiz: mod.quiz,
-    }));
+    // ===== STEP 2: Generate each module's lesson+quiz separately =====
+    const modules = outline.modules || [];
+    const moduleRows: any[] = [];
 
-    const { data: insertedModules } = await supabase.from("course_modules").insert(moduleRows).select("id, title, lab_description, module_order");
-    console.log(`[Phase 1] Inserted ${insertedModules?.length || 0} modules`);
+    for (let i = 0; i < modules.length; i++) {
+      const mod = modules[i];
+      try {
+        const content = await generateModuleContent(
+          LOVABLE_API_KEY, topic, mod.title, i, modules.length, hasFile, fileTextContext, preferences
+        );
+        moduleRows.push({
+          course_id: course.id,
+          module_order: i + 1,
+          title: mod.title,
+          lesson_content: content.lesson_content,
+          youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
+          youtube_title: mod.youtube_title || mod.title,
+          lab_type: "dynamic",
+          lab_title: mod.lab_title || mod.title,
+          lab_description: mod.lab_concept || null,
+          lab_data: null,
+          lab_generation_status: "pending",
+          lab_blueprint: null,
+          lab_error: null,
+          quiz: content.quiz,
+        });
+        console.log(`[Step 2] Module ${i + 1}/${modules.length} "${mod.title}" done`);
+      } catch (e: any) {
+        console.error(`[Step 2] Module ${i + 1} failed: ${e.message}`);
+        // Insert with placeholder content so the course isn't broken
+        moduleRows.push({
+          course_id: course.id,
+          module_order: i + 1,
+          title: mod.title,
+          lesson_content: `## ${mod.title}\n\nContent generation failed. Please regenerate this module.`,
+          youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.title)}`,
+          youtube_title: mod.title,
+          lab_type: "dynamic",
+          lab_title: mod.lab_title || mod.title,
+          lab_description: mod.lab_concept || null,
+          lab_data: null,
+          lab_generation_status: "pending",
+          lab_blueprint: null,
+          lab_error: null,
+          quiz: [{ question: `What is a key concept from "${mod.title}"?`, options: ["A", "B", "C", "D"], correct: 0, explanation: "Review the lesson." }],
+        });
+      }
+    }
 
-    // Mark course as ready — labs generate on-demand
+    const { data: insertedModules } = await supabase.from("course_modules").insert(moduleRows).select("id, title, module_order");
+    console.log(`[Done] Inserted ${insertedModules?.length || 0} modules`);
+
     await supabase.from("courses").update({ status: "ready" }).eq("id", course.id);
-    console.log(`[Phase 1] Course "${outline.title}" ready. Labs will generate on-demand.`);
 
     // Track usage
     if (allFilePaths.length > 0) {

@@ -22,7 +22,7 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
       if (response.status === 429) { lastError = "Rate limit exceeded."; continue; }
       if (response.status === 402) throw new Error("AI credits exhausted.");
       const text = await response.text();
-      if (!response.ok) { lastError = `AI error (${response.status}).`; continue; }
+      if (!response.ok) { console.error(`[AI Error ${response.status}] Body:`, text.slice(0, 500)); lastError = `AI error (${response.status}): ${text.slice(0, 200)}`; continue; }
       let parsed: any;
       try { parsed = JSON.parse(text); } catch { lastError = "Invalid AI response."; continue; }
       if (!parsed.choices?.length) { lastError = "Empty AI response."; continue; }
