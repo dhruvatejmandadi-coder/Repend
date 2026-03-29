@@ -242,7 +242,7 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
 
   const aiData = await callAIWithFallback(apiKey, {
     temperature: 0.4,
-    max_tokens: 4096,
+    max_completion_tokens: 4096,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userMsg },
