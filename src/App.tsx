@@ -26,6 +26,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import CourseCreator from "./pages/CourseCreator";
 import PublicCourses from "./pages/PublicCourses";
 import CourseEditor from "./pages/CourseEditor";
+import BusinessLabDemo from "./pages/BusinessLabDemo";
 
 const queryClient = new QueryClient();
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/waitlist" element={<Waitlist />} />
+            <Route path="/lab/demo-business" element={<BusinessLabDemo />} />
 
             {/* Dashboard pages — persistent sidebar */}
             <Route element={<DashboardLayout />}>
