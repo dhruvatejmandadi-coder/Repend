@@ -166,6 +166,11 @@ export default function CourseView() {
     completeSection(mod.id, "lab", modules.length);
   }, [mod, completeSection, modules.length]);
 
+  const handleLabReplay = useCallback(() => {
+    if (!mod) return;
+    uncompleteSection(mod.id, "lab");
+  }, [mod, uncompleteSection]);
+
   const handleQuizSubmit = async (answers: Record<number, number>, score: number, total: number) => {
     if (!mod || !user) return;
     const pct = total > 0 ? score / total : 0;
