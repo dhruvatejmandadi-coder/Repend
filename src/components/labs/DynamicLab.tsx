@@ -87,6 +87,7 @@ type Props = {
   data: LabBlueprint;
   onComplete?: () => void;
   isCompleted?: boolean;
+  onReplay?: () => void;
 };
 
 function getParamLevel(value: number, min: number, max: number) {
