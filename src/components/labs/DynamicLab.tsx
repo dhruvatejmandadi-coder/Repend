@@ -517,11 +517,14 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
             const pct = ((value - v.min) / (v.max - v.min)) * 100;
             const { color } = getParamLevel(value, v.min, v.max);
             return (
-              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium truncate">{v.icon} {formatVarName(v.name)}</span>
-                  <span className={`text-xs font-bold tabular-nums ${color}`}>{value}</span>
+              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-medium leading-tight">{v.icon} {formatVarName(v.name)}</span>
+                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${color}`}>{value} {v.unit}</span>
                 </div>
+                {v.description && (
+                  <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{v.description}</p>
+                )}
                 <div className="h-1 bg-secondary rounded-full overflow-hidden">
                   <div className={`h-full rounded-full transition-all duration-500 ${pct >= 75 ? "bg-green-500" : pct >= 35 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
                 </div>
