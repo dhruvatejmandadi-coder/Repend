@@ -252,7 +252,7 @@ serve(async (req) => {
 
     const { data: mod, error: modError } = await supabase
       .from("course_modules")
-      .select("id, title, lab_description, lab_generation_status, course_id")
+      .select("id, title, lab_description, lab_generation_status, course_id, lesson_content")
       .eq("id", moduleId)
       .single();
 
@@ -280,6 +280,13 @@ serve(async (req) => {
     const topic = course.topic;
     const moduleTitle = mod.title;
     const labConcept = mod.lab_description || mod.title;
+    const lessonContent = mod.lesson_content || "";
+
+    // Extract key concepts from lesson for alignment
+    const lessonSummary = lessonContent
+      .replace(/\n---\n/g, "\n")
+      .replace(/#{1,3}\s/g, "")
+      .slice(0, 3000);
 
     const systemPrompt = `You are a SIMULATION SYSTEM DESIGNER for Repend. You convert ANY topic into an INTERACTIVE SYSTEM the student controls.
 
@@ -335,7 +342,7 @@ Classify the topic into a simulation type:
 10. insight — Key takeaway connecting to real-world applications.
 
 === LESSON ALIGNMENT (CRITICAL) ===
-The lab MUST reinforce concepts from the lesson. Use the same terminology, examples, and variables that students learned about. Do NOT introduce new concepts that weren't covered in the lesson.
+The lab MUST ONLY use concepts, terminology, and variables that were explicitly taught in the lesson content provided below. Do NOT introduce new concepts, jargon, or systems not covered in the lesson. Every variable and decision in the lab must directly map to something the student already learned.
 
 === VARIABLE DESIGN ===
 - Create 4-6 DOMAIN-SPECIFIC variables (NEVER generic like "quality" or "efficiency")
@@ -370,7 +377,10 @@ Every lab MUST have a clear, measurable objective.
 Topic: ${topic}
 Concept: ${labConcept}
 
-REQUIREMENTS:
+=== LESSON CONTENT (use ONLY these concepts) ===
+${lessonSummary}
+
+REQUIREMENTS (lab must align with lesson above):
 1. The student must have at least 2 control_panel blocks with interactive sliders
 2. At least 1 output_display block showing live-computed derived values
 3. 4-6 domain-specific variables for ${topic} (NOT generic names)

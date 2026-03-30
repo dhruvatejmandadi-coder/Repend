@@ -87,6 +87,7 @@ type Props = {
   data: LabBlueprint;
   onComplete?: () => void;
   isCompleted?: boolean;
+  onReplay?: () => void;
 };
 
 function getParamLevel(value: number, min: number, max: number) {
@@ -110,7 +111,7 @@ const BLOCK_LABELS: Record<string, { label: string; emoji: string; color: string
   output_display: { label: "Live Output", emoji: "📡", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
 };
 
-export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
+export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: Props) {
   const variables = useMemo(() => data?.variables ?? [], [data]);
   const blocks = useMemo(() => data?.blocks ?? [], [data]);
   const introData = data?.intro || data?.repend_intro;
@@ -229,10 +230,13 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
   }, []);
 
   const reset = () => {
-    if (sim.isSimulation) {
-      sim.reset();
-    }
-    const initial = Object.fromEntries(variables.map(v => [v.name, v.default ?? 50]));
+    if (sim.isSimulation) sim.reset();
+    // Apply ±20% jitter to default values for unique replay
+    const initial = Object.fromEntries(variables.map(v => {
+      const jitter = 1 + (Math.random() * 0.4 - 0.2); // ±20%
+      const jittered = Math.round(Math.max(v.min, Math.min(v.max, (v.default ?? 50) * jitter)));
+      return [v.name, jittered];
+    }));
     setValues(initial);
     setChoiceAnswers({});
     setTaskAnswers({});
@@ -244,6 +248,7 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
     setGeneratedImages({});
     setImageLoading({});
     setEventLog([]);
+    onReplay?.();
   };
 
   const generateImage = useCallback(async (blockIdx: number, prompt: string) => {
@@ -517,11 +522,14 @@ export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
             const pct = ((value - v.min) / (v.max - v.min)) * 100;
             const { color } = getParamLevel(value, v.min, v.max);
             return (
-              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium truncate">{v.icon} {formatVarName(v.name)}</span>
-                  <span className={`text-xs font-bold tabular-nums ${color}`}>{value}</span>
+              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1">
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-xs font-medium leading-tight">{v.icon} {formatVarName(v.name)}</span>
+                  <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${color}`}>{value} {v.unit}</span>
                 </div>
+                {v.description && (
+                  <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">{v.description}</p>
+                )}
                 <div className="h-1 bg-secondary rounded-full overflow-hidden">
                   <div className={`h-full rounded-full transition-all duration-500 ${pct >= 75 ? "bg-green-500" : pct >= 35 ? "bg-yellow-500" : "bg-red-500"}`} style={{ width: `${pct}%` }} />
                 </div>

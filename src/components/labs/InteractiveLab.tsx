@@ -13,6 +13,7 @@ type Props = {
   onComplete?: () => void;
   isCompleted?: boolean;
   onRetryGeneration?: () => void;
+  onReplay?: () => void;
 };
 
 function LabEmptyState({ labType }: { labType?: string | null }) {
@@ -62,7 +63,7 @@ function LabFailedState({ error, onRetry }: { error?: string | null; onRetry?: (
   );
 }
 
-export default function InteractiveLab({ labType, labData, labTitle, labDescription, labGenerationStatus, labError, onComplete, isCompleted, onRetryGeneration }: Props) {
+export default function InteractiveLab({ labType, labData, labTitle, labDescription, labGenerationStatus, labError, onComplete, isCompleted, onRetryGeneration, onReplay }: Props) {
   // Handle generation status states
   if (labGenerationStatus === "pending" || labGenerationStatus === "generating") {
     return <LabPendingState />;
@@ -91,7 +92,7 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
   if (hasBlocks || hasLegacyContent) {
     // If legacy data without blocks, convert to blocks format
     const normalizedData = hasBlocks ? labData : convertLegacyToBlocks(labData);
-    return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} />;
+    return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
   return <LabEmptyState labType={labType} />;
