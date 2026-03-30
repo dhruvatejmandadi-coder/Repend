@@ -230,10 +230,13 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
   }, []);
 
   const reset = () => {
-    if (sim.isSimulation) {
-      sim.reset();
-    }
-    const initial = Object.fromEntries(variables.map(v => [v.name, v.default ?? 50]));
+    if (sim.isSimulation) sim.reset();
+    // Apply ±20% jitter to default values for unique replay
+    const initial = Object.fromEntries(variables.map(v => {
+      const jitter = 1 + (Math.random() * 0.4 - 0.2); // ±20%
+      const jittered = Math.round(Math.max(v.min, Math.min(v.max, (v.default ?? 50) * jitter)));
+      return [v.name, jittered];
+    }));
     setValues(initial);
     setChoiceAnswers({});
     setTaskAnswers({});
@@ -245,6 +248,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
     setGeneratedImages({});
     setImageLoading({});
     setEventLog([]);
+    onReplay?.();
   };
 
   const generateImage = useCallback(async (blockIdx: number, prompt: string) => {
