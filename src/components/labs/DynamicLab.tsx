@@ -111,7 +111,7 @@ const BLOCK_LABELS: Record<string, { label: string; emoji: string; color: string
   output_display: { label: "Live Output", emoji: "📡", color: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20" },
 };
 
-export default function DynamicLab({ data, onComplete, isCompleted }: Props) {
+export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: Props) {
   const variables = useMemo(() => data?.variables ?? [], [data]);
   const blocks = useMemo(() => data?.blocks ?? [], [data]);
   const introData = data?.intro || data?.repend_intro;
