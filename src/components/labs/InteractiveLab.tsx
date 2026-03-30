@@ -92,7 +92,7 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
   if (hasBlocks || hasLegacyContent) {
     // If legacy data without blocks, convert to blocks format
     const normalizedData = hasBlocks ? labData : convertLegacyToBlocks(labData);
-    return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} />;
+    return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
   return <LabEmptyState labType={labType} />;
