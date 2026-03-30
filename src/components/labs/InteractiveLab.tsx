@@ -63,7 +63,7 @@ function LabFailedState({ error, onRetry }: { error?: string | null; onRetry?: (
   );
 }
 
-export default function InteractiveLab({ labType, labData, labTitle, labDescription, labGenerationStatus, labError, onComplete, isCompleted, onRetryGeneration }: Props) {
+export default function InteractiveLab({ labType, labData, labTitle, labDescription, labGenerationStatus, labError, onComplete, isCompleted, onRetryGeneration, onReplay }: Props) {
   // Handle generation status states
   if (labGenerationStatus === "pending" || labGenerationStatus === "generating") {
     return <LabPendingState />;
