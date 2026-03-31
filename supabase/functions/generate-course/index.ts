@@ -242,7 +242,7 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
     : `Module ${moduleIndex + 1}/${totalModules} of course "${topic}": "${moduleTitle}"`;
 
   const aiData = await callAIWithFallback(apiKey, {
-    max_completion_tokens: 4096,
+    max_completion_tokens: 3000,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userMsg },
