@@ -431,7 +431,6 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
       label: `module-${moduleIndex + 1}-compact-retry`,
       body: {
         max_completion_tokens: 4200,
-        reasoning: { effort: "none" },
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `${compactContextUserMsg}\n\nKeep bullets tight and concise.` },
