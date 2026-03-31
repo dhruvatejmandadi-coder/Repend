@@ -512,10 +512,10 @@ serve(async (req) => {
       })
       .eq("id", course.id);
 
-    const moduleRows: any[] = [];
-
     for (let i = 0; i < modules.length; i++) {
       const mod = modules[i];
+      let moduleRow: any;
+
       try {
         const content = await generateModuleContent(
           LOVABLE_API_KEY,
@@ -528,7 +528,7 @@ serve(async (req) => {
           preferences
         );
 
-        moduleRows.push({
+        moduleRow = {
           course_id: course.id,
           module_order: i + 1,
           title: mod.title,
@@ -543,12 +543,12 @@ serve(async (req) => {
           lab_blueprint: null,
           lab_error: null,
           quiz: content.quiz,
-        });
+        };
 
         console.log(`[Step 2] Module ${i + 1}/${modules.length} "${mod.title}" done`);
       } catch (e: any) {
         console.error(`[Step 2] Module ${i + 1} failed: ${e.message}`);
-        moduleRows.push({
+        moduleRow = {
           course_id: course.id,
           module_order: i + 1,
           title: mod.title,
@@ -563,16 +563,14 @@ serve(async (req) => {
           lab_blueprint: null,
           lab_error: null,
           quiz: [{ question: `What is a key concept from "${mod.title}"?`, options: ["A", "B", "C", "D"], correct: 0, explanation: "Review the lesson." }],
-        });
+        };
       }
+
+      // Insert each module immediately so it's saved even if the function times out
+      await supabase.from("course_modules").insert(moduleRow);
     }
 
-    const { data: insertedModules } = await supabase
-      .from("course_modules")
-      .insert(moduleRows)
-      .select("id, title, module_order");
-
-    console.log(`[Done] Inserted ${insertedModules?.length || 0} modules`);
+    console.log(`[Done] Inserted ${modules.length} modules`);
 
     await supabase.from("courses").update({ status: "ready" }).eq("id", course.id);
 
