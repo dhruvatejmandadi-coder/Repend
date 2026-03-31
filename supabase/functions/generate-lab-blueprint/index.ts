@@ -291,10 +291,9 @@ serve(async (req) => {
       .replace(/#{1,3}\s/g, "")
       .slice(0, 3000);
 
-    const systemPrompt = `You are a SIMULATION SYSTEM DESIGNER for Repend. You convert ANY topic into an INTERACTIVE SYSTEM the student controls.
+    const systemPrompt = `You are a SIMULATION SYSTEM DESIGNER. Return ONLY valid structured data. Be concise. No explanations outside the tool call.
 
-=== CORE PRINCIPLE ===
-You are NOT making quizzes or static content. You are building a CONTROLLABLE SYSTEM where:
+You convert topics into INTERACTIVE SYSTEMS with sliders, live outputs, and decisions.
 - Students adjust variables via sliders
 - The system reacts in REAL TIME (rules fire, derived outputs update)
 - Different inputs lead to different outcomes
