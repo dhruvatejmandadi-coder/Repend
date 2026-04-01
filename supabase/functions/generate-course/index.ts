@@ -141,7 +141,8 @@ function isRetriableStructuredOutputError(error: unknown): boolean {
 
 async function callStructuredAIWithFallback(
   apiKey: string,
-  attempts: Array<{ label: string; body: any }>
+  attempts: Array<{ label: string; body: any }>,
+  preferredModel: string = PRIMARY_MODEL
 ): Promise<any> {
   let lastError: Error | null = null;
 
@@ -149,7 +150,7 @@ async function callStructuredAIWithFallback(
     const attempt = attempts[i];
 
     try {
-      const aiData = await callAI(apiKey, { ...attempt.body, model: PRIMARY_MODEL });
+      const aiData = await callAI(apiKey, { ...attempt.body, model: preferredModel });
       return extractToolArgs(aiData);
     } catch (error) {
       if (error instanceof Error && error.message.includes("credits")) throw error;
