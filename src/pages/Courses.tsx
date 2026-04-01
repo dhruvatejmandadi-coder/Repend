@@ -168,19 +168,22 @@ export default function Courses() {
         topic: topic.trim() || selectedFiles[0]?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document",
         preferences: prefs,
       };
-      // Support both single and multiple file paths
       if (filePaths.length === 1) {
         body.filePath = filePaths[0];
       } else if (filePaths.length > 1) {
         body.filePaths = filePaths;
       }
 
+      const session = (await supabase.auth.getSession()).data.session;
+      const authHeaders = {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session?.access_token}`
+      };
+
+      // Phase 1: Generate outline + placeholder modules (fast, ~20s)
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-course`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
-        },
+        headers: authHeaders,
         body: JSON.stringify(body)
       });
 
@@ -189,11 +192,41 @@ export default function Courses() {
         throw new Error(err.error || "Failed to generate course");
       }
 
-      const { courseId } = await resp.json();
+      const { courseId, modules } = await resp.json();
       setTopic("");
       setSelectedFiles([]);
-      toast({ title: "Course created! 🎉", description: "Your personalized course is ready." });
+      toast({ title: "Course created! 🎉", description: "Generating module content..." });
       navigate(`/courses/${courseId}`);
+
+      // Phase 2: Fire off module content generation in background (parallel, 2 at a time)
+      if (modules && modules.length > 0) {
+        const generateModule = async (mod: { index: number; title: string }) => {
+          try {
+            await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-course`, {
+              method: "POST",
+              headers: authHeaders,
+              body: JSON.stringify({
+                phase: 2,
+                courseId,
+                moduleIndex: mod.index,
+                moduleTitle: mod.title,
+                topic: body.topic,
+                preferences: prefs,
+                ...(filePaths.length === 1 ? { filePath: filePaths[0] } : {}),
+                ...(filePaths.length > 1 ? { filePaths } : {}),
+              })
+            });
+          } catch (e) {
+            console.error(`Module ${mod.index} generation failed:`, e);
+          }
+        };
+
+        // Generate 2 modules at a time
+        for (let i = 0; i < modules.length; i += 2) {
+          const batch = modules.slice(i, i + 2);
+          await Promise.all(batch.map(generateModule));
+        }
+      }
     } catch (error) {
       toast({
         title: "Error",
