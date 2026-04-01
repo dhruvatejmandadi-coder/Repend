@@ -471,11 +471,71 @@ serve(async (req) => {
 
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { topic, filePath, filePaths, preferences } = await req.json();
-    if (!topic?.trim()) throw new Error("Topic is required");
+    const { topic, filePath, filePaths, preferences, phase, courseId: existingCourseId, moduleIndex, moduleTitle } = await req.json();
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+
+    // ─── PHASE 2: Generate a single module ───
+    if (phase === 2 && existingCourseId && typeof moduleIndex === "number" && moduleTitle) {
+      const allFilePaths: string[] = [];
+      if (filePaths && Array.isArray(filePaths)) allFilePaths.push(...filePaths);
+      else if (filePath) allFilePaths.push(filePath);
+
+      let fileTextContext = "";
+      if (allFilePaths.length > 0) {
+        const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        for (const fp of allFilePaths) {
+          const content = await extractFileContent(fp, supabaseAdmin);
+          if (content.text) fileTextContext += content.text.slice(0, 10000) + "\n\n";
+        }
+      }
+
+      const hasFile = fileTextContext.length > 0;
+      const totalModules = 4;
+
+      try {
+        const content = await generateModuleContent(
+          LOVABLE_API_KEY,
+          topic || moduleTitle,
+          moduleTitle,
+          moduleIndex,
+          totalModules,
+          hasFile,
+          fileTextContext,
+          preferences
+        );
+
+        await supabase.from("course_modules").update({
+          lesson_content: content.lesson_content,
+          quiz: content.quiz,
+        }).eq("course_id", existingCourseId).eq("module_order", moduleIndex + 1);
+
+        console.log(`[Phase 2] Module ${moduleIndex + 1} "${moduleTitle}" done`);
+      } catch (e: any) {
+        console.error(`[Phase 2] Module ${moduleIndex + 1} failed: ${e.message}`);
+        // Leave the placeholder content
+      }
+
+      // Check if all modules are done
+      const { data: allModules } = await supabase
+        .from("course_modules")
+        .select("lesson_content")
+        .eq("course_id", existingCourseId);
+
+      const allDone = allModules?.every((m: any) => !m.lesson_content.startsWith("⏳"));
+      if (allDone) {
+        await supabase.from("courses").update({ status: "ready" }).eq("id", existingCourseId);
+        console.log(`[Phase 2] All modules done — course ready`);
+      }
+
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // ─── PHASE 1: Generate outline + placeholder modules, return immediately ───
+    if (!topic?.trim()) throw new Error("Topic is required");
 
     const allFilePaths: string[] = [];
     if (filePaths && Array.isArray(filePaths)) allFilePaths.push(...filePaths);
@@ -505,7 +565,7 @@ serve(async (req) => {
       throw new Error("Outline generation returned no modules.");
     }
 
-    console.log(`[Step 1] Outline: "${outline.title}" with ${modules.length} modules`);
+    console.log(`[Phase 1] Outline: "${outline.title}" with ${modules.length} modules`);
 
     await supabase
       .from("courses")
@@ -516,75 +576,27 @@ serve(async (req) => {
       })
       .eq("id", course.id);
 
-    // Generate modules in parallel pairs for speed
-    const BATCH_SIZE = 2;
-    for (let batchStart = 0; batchStart < modules.length; batchStart += BATCH_SIZE) {
-      const batch = modules.slice(batchStart, batchStart + BATCH_SIZE);
-      const batchPromises = batch.map(async (mod: any, batchIdx: number) => {
-        const i = batchStart + batchIdx;
-        let moduleRow: any;
+    // Insert placeholder modules immediately
+    const moduleRows = modules.map((mod: any, i: number) => ({
+      course_id: course.id,
+      module_order: i + 1,
+      title: mod.title,
+      lesson_content: `⏳ Generating "${mod.title}"...`,
+      youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
+      youtube_title: mod.youtube_title || mod.title,
+      lab_type: "dynamic",
+      lab_title: mod.lab_title || mod.title,
+      lab_description: mod.lab_concept || null,
+      lab_data: null,
+      lab_generation_status: "pending",
+      lab_blueprint: null,
+      lab_error: null,
+      quiz: [],
+    }));
 
-        try {
-          const content = await generateModuleContent(
-            LOVABLE_API_KEY,
-            topic,
-            mod.title,
-            i,
-            modules.length,
-            hasFile,
-            fileTextContext,
-            preferences
-          );
+    await supabase.from("course_modules").insert(moduleRows);
 
-          moduleRow = {
-            course_id: course.id,
-            module_order: i + 1,
-            title: mod.title,
-            lesson_content: content.lesson_content,
-            youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.youtube_query || mod.title)}`,
-            youtube_title: mod.youtube_title || mod.title,
-            lab_type: "dynamic",
-            lab_title: mod.lab_title || mod.title,
-            lab_description: mod.lab_concept || null,
-            lab_data: null,
-            lab_generation_status: "pending",
-            lab_blueprint: null,
-            lab_error: null,
-            quiz: content.quiz,
-          };
-
-          console.log(`[Step 2] Module ${i + 1}/${modules.length} "${mod.title}" done`);
-        } catch (e: any) {
-          console.error(`[Step 2] Module ${i + 1} failed: ${e.message}`);
-          moduleRow = {
-            course_id: course.id,
-            module_order: i + 1,
-            title: mod.title,
-            lesson_content: `## ${mod.title}\n\nContent generation failed. Please regenerate this module.`,
-            youtube_url: `https://www.youtube.com/results?search_query=${encodeURIComponent(mod.title)}`,
-            youtube_title: mod.title,
-            lab_type: "dynamic",
-            lab_title: mod.lab_title || mod.title,
-            lab_description: mod.lab_concept || null,
-            lab_data: null,
-            lab_generation_status: "pending",
-            lab_blueprint: null,
-            lab_error: null,
-            quiz: [{ question: `What is a key concept from "${mod.title}"?`, options: ["A", "B", "C", "D"], correct: 0, explanation: "Review the lesson." }],
-          };
-        }
-
-        // Insert each module immediately
-        await supabase.from("course_modules").insert(moduleRow);
-      });
-
-      await Promise.all(batchPromises);
-    }
-
-    console.log(`[Done] Inserted ${modules.length} modules`);
-
-    await supabase.from("courses").update({ status: "ready" }).eq("id", course.id);
-
+    // Track file usage
     if (allFilePaths.length > 0) {
       const currentMonth = new Date().toISOString().slice(0, 7);
       const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
@@ -610,7 +622,11 @@ serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ courseId: course.id }), {
+    // Return immediately with the outline data so the client can kick off phase 2
+    return new Response(JSON.stringify({
+      courseId: course.id,
+      modules: modules.map((m: any, i: number) => ({ index: i, title: m.title })),
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
