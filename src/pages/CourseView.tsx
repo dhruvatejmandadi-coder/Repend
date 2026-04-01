@@ -365,41 +365,54 @@ export default function CourseView() {
                 )}
               </div>
 
-              {/* Lesson */}
-              {activeContent === "lesson" && (
-                <LessonSlides
-                  content={mod.lesson_content}
-                  youtubeUrl={mod.youtube_url}
-                  youtubeTitle={mod.youtube_title}
-                  onComplete={handleLessonComplete}
-                  isCompleted={getSectionDone(mod.id, "lesson")}
-                  onSlideChange={(idx) => setCurrentSlideIndex(idx)}
-                />
-              )}
+              {/* Module still generating */}
+              {mod.lesson_content.startsWith("⏳") ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+                  <h3 className="font-display text-lg font-semibold mb-2">Generating Module Content</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Our AI is creating your lesson, quiz, and lab for "{mod.title}". This usually takes about 30 seconds.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* Lesson */}
+                  {activeContent === "lesson" && (
+                    <LessonSlides
+                      content={mod.lesson_content}
+                      youtubeUrl={mod.youtube_url}
+                      youtubeTitle={mod.youtube_title}
+                      onComplete={handleLessonComplete}
+                      isCompleted={getSectionDone(mod.id, "lesson")}
+                      onSlideChange={(idx) => setCurrentSlideIndex(idx)}
+                    />
+                  )}
 
-              {/* Lab */}
-              {activeContent === "lab" && (
-                <InteractiveLab
-                  labType={mod.lab_type}
-                  labData={mod.lab_data}
-                  labTitle={mod.lab_title}
-                  labDescription={mod.lab_description}
-                  labGenerationStatus={mod.lab_generation_status}
-                  labError={mod.lab_error}
-                  onComplete={handleLabComplete}
-                  isCompleted={getSectionDone(mod.id, "lab")}
-                  onRetryGeneration={() => triggerLabGeneration(mod.id)}
-                  onReplay={handleLabReplay}
-                />
-              )}
+                  {/* Lab */}
+                  {activeContent === "lab" && (
+                    <InteractiveLab
+                      labType={mod.lab_type}
+                      labData={mod.lab_data}
+                      labTitle={mod.lab_title}
+                      labDescription={mod.lab_description}
+                      labGenerationStatus={mod.lab_generation_status}
+                      labError={mod.lab_error}
+                      onComplete={handleLabComplete}
+                      isCompleted={getSectionDone(mod.id, "lab")}
+                      onRetryGeneration={() => triggerLabGeneration(mod.id)}
+                      onReplay={handleLabReplay}
+                    />
+                  )}
 
-              {/* Quiz */}
-              {activeContent === "quiz" && (
-                <QuizSlides
-                  questions={mod.quiz as any[]}
-                  onSubmit={handleQuizSubmit}
-                  isCompleted={getSectionDone(mod.id, "quiz")}
-                />
+                  {/* Quiz */}
+                  {activeContent === "quiz" && (
+                    <QuizSlides
+                      questions={mod.quiz as any[]}
+                      onSubmit={handleQuizSubmit}
+                      isCompleted={getSectionDone(mod.id, "quiz")}
+                    />
+                  )}
+                </>
               )}
             </div>
 
