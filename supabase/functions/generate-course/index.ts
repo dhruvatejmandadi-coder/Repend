@@ -441,7 +441,7 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
         tool_choice: { type: "function", function: { name: "create_module_content" } },
       },
     },
-  ]);
+  ], FAST_MODEL);
 
   return {
     lesson_content: repairLessonContent(result.lesson_content || ""),
