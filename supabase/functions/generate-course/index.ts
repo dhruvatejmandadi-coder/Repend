@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const PRIMARY_MODEL = "openai/gpt-5";
+const FAST_MODEL = "google/gemini-2.5-flash";
 const FALLBACK_MODEL = "google/gemini-2.5-pro";
 
 const outlineToolSchema = {
