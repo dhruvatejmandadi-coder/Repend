@@ -418,7 +418,7 @@ EVERY choice feedback must describe consequences, NOT say "correct" or "incorrec
 Do NOT return empty blocks.`;
 
         const aiData = await callAI(LOVABLE_API_KEY, {
-          model: "openai/gpt-5",
+          model: "google/gemini-2.5-pro",
           max_completion_tokens: 6000,
           messages: [
             { role: "system", content: systemPrompt },

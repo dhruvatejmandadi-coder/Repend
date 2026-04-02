@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PRIMARY_MODEL = "openai/gpt-5";
-const FAST_MODEL = "openai/gpt-5-mini";
-const FALLBACK_MODEL = "google/gemini-2.5-flash";
+const PRIMARY_MODEL = "google/gemini-2.5-pro";
+const FAST_MODEL = "google/gemini-2.5-flash";
+const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
 
 const outlineToolSchema = {
   type: "function" as const,
@@ -354,7 +354,7 @@ ${hasFile ? "\nBase the outline on the uploaded source material." : ""}`;
     {
       label: "outline-primary",
       body: {
-        max_completion_tokens: 8192,
+        max_tokens: 8192,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -369,7 +369,7 @@ ${hasFile ? "\nBase the outline on the uploaded source material." : ""}`;
     {
       label: "outline-compact-retry",
       body: {
-        max_completion_tokens: 4096,
+        max_tokens: 4096,
         messages: [
           { role: "system", content: systemPrompt },
           {
@@ -422,7 +422,7 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
     {
       label: `module-${moduleIndex + 1}-primary`,
       body: {
-        max_completion_tokens: 6000,
+        max_tokens: 6000,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: fullContextUserMsg },
@@ -434,7 +434,7 @@ ${hasFile ? "\nBase content on the source material provided." : ""}`;
     {
       label: `module-${moduleIndex + 1}-compact-retry`,
       body: {
-        max_completion_tokens: 4200,
+        max_tokens: 4200,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: `${compactContextUserMsg}\n\nKeep bullets tight and concise.` },
