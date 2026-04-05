@@ -408,7 +408,7 @@ serve(async (req) => {
 
 === GRAPH TYPES ===
 - linear: y = mx + b (sliders: m, b)
-- quadratic: y = a(x-h)²+k (sliders: a, h, k)
+- quadratic: y = A(x-H)²+K (sliders: A (Strech), H (Horizontal shift), K (Vertical shift))
 - exponential: y = a * b^x (sliders: a, b)
 - trig: y = A*sin(B*(x-C))+D (sliders: A, B, C, D)
 
