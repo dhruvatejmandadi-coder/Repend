@@ -373,8 +373,8 @@ serve(async (req) => {
 
     await supabase.from("course_modules").update({ lab_generation_status: "generating" }).eq("id", moduleId);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
     const topic = course.topic;
     const moduleTitle = mod.title;
