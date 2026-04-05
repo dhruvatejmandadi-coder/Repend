@@ -520,13 +520,37 @@ serve(async (req) => {
       // Check if all modules are done
       const { data: allModules } = await supabase
         .from("course_modules")
-        .select("lesson_content")
+        .select("id, lesson_content, lab_generation_status")
         .eq("course_id", existingCourseId);
 
-      const allDone = allModules?.every((m: any) => !m.lesson_content.startsWith("⏳"));
-      if (allDone) {
+      const allLessonsDone = allModules?.every((m: any) => !m.lesson_content.startsWith("⏳"));
+      if (allLessonsDone) {
+        console.log(`[Phase 2] All lessons done — triggering lab generation for all modules`);
+
+        // Fire lab generation for each pending module (don't await — let them run in background)
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const pendingModules = (allModules || []).filter(
+          (m: any) => m.lab_generation_status === "pending" || m.lab_generation_status === "generating"
+        );
+
+        // Trigger all lab generations in parallel (fire-and-forget from this request)
+        const labPromises = pendingModules.map((m: any) =>
+          fetch(`${supabaseUrl}/functions/v1/generate-lab-blueprint`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${serviceKey}`,
+            },
+            body: JSON.stringify({ moduleId: m.id }),
+          }).catch((e: any) => console.error(`[Phase 2] Lab trigger failed for ${m.id}:`, e.message))
+        );
+
+        // Wait for all lab generations to complete before marking course ready
+        await Promise.all(labPromises);
+
         await supabase.from("courses").update({ status: "ready" }).eq("id", existingCourseId);
-        console.log(`[Phase 2] All modules done — course ready`);
+        console.log(`[Phase 2] All labs triggered and course marked ready`);
       }
 
       return new Response(JSON.stringify({ success: true }), {
