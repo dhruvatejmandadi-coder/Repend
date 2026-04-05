@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PRIMARY_MODEL = "google/gemini-2.5-pro";
-const FAST_MODEL = "google/gemini-2.5-flash";
-const FALLBACK_MODEL = "google/gemini-2.5-flash-lite";
+const PRIMARY_MODEL = "openai/gpt-5";
+const FAST_MODEL = "openai/gpt-5-mini";
+const FALLBACK_MODEL = "google/gemini-2.5-flash";
 
 const outlineToolSchema = {
   type: "function" as const,
@@ -596,30 +596,32 @@ serve(async (req) => {
 
     await supabase.from("course_modules").insert(moduleRows);
 
-    // Track file usage
-    if (allFilePaths.length > 0) {
-      const currentMonth = new Date().toISOString().slice(0, 7);
-      const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const { data: existing } = await supabaseAdmin
-        .from("usage_tracking")
-        .select("id, file_courses_generated")
-        .eq("user_id", user.id)
-        .eq("month", currentMonth)
-        .single();
+    // Track usage for ALL courses at creation time (so deleted courses still count)
+    const currentMonth = new Date().toISOString().slice(0, 7);
+    const supabaseAdmin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+    const { data: existing } = await supabaseAdmin
+      .from("usage_tracking")
+      .select("id, courses_generated, file_courses_generated")
+      .eq("user_id", user.id)
+      .eq("month", currentMonth)
+      .single();
 
-      if (existing) {
-        await supabaseAdmin
-          .from("usage_tracking")
-          .update({ file_courses_generated: (existing.file_courses_generated || 0) + 1 })
-          .eq("id", existing.id);
-      } else {
-        await supabaseAdmin.from("usage_tracking").insert({
-          user_id: user.id,
-          month: currentMonth,
-          file_courses_generated: 1,
-          courses_generated: 1,
-        });
-      }
+    const isFileBased = allFilePaths.length > 0;
+
+    if (existing) {
+      const updates: any = { courses_generated: (existing.courses_generated || 0) + 1 };
+      if (isFileBased) updates.file_courses_generated = (existing.file_courses_generated || 0) + 1;
+      await supabaseAdmin
+        .from("usage_tracking")
+        .update(updates)
+        .eq("id", existing.id);
+    } else {
+      await supabaseAdmin.from("usage_tracking").insert({
+        user_id: user.id,
+        month: currentMonth,
+        courses_generated: 1,
+        file_courses_generated: isFileBased ? 1 : 0,
+      });
     }
 
     // Return immediately with the outline data so the client can kick off phase 2

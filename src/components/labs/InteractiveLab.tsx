@@ -2,6 +2,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, AlertTriangle } from "lucide-react";
 import DynamicLab from "./DynamicLab";
+import FlowchartLab from "./FlowchartLab";
+import CodeDebuggerLab from "./CodeDebuggerLab";
+import GraphLab from "./GraphLab";
 
 type Props = {
   labType?: string | null;
@@ -82,15 +85,23 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
     return <LabEmptyState labType={labType} />;
   }
 
+  // Route to specialized lab renderers based on lab_type
+  if (labData.lab_type === "flowchart") {
+    return <FlowchartLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "code_debugger") {
+    return <CodeDebuggerLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "graph") {
+    return <GraphLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+
   // Everything goes through DynamicLab — it handles all block types
-  // Legacy labs with parameters/decisions/tasks will also work since DynamicLab
-  // checks for blocks array AND falls back to old-style rendering
   const hasBlocks = Array.isArray(labData.blocks) && labData.blocks.length > 0;
   const hasLegacyContent = labData.parameters?.length > 0 || labData.decisions?.length > 0 || labData.tasks?.length > 0 
     || labData.categories?.length > 0 || labData.dimensions?.length > 0 || labData.decision_challenge;
 
   if (hasBlocks || hasLegacyContent) {
-    // If legacy data without blocks, convert to blocks format
     const normalizedData = hasBlocks ? labData : convertLegacyToBlocks(labData);
     return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
@@ -103,7 +114,6 @@ function convertLegacyToBlocks(data: any): any {
   const blocks: any[] = [];
   const variables: any[] = [];
 
-  // Convert parameters to variables
   if (Array.isArray(data.parameters)) {
     for (const p of data.parameters) {
       variables.push({
@@ -118,7 +128,6 @@ function convertLegacyToBlocks(data: any): any {
     }
   }
 
-  // Convert dimensions to variables (ethical dilemma)
   if (Array.isArray(data.dimensions)) {
     for (const d of data.dimensions) {
       variables.push({
@@ -133,7 +142,6 @@ function convertLegacyToBlocks(data: any): any {
     }
   }
 
-  // Convert decisions to choice_set blocks
   if (Array.isArray(data.decisions)) {
     for (const d of data.decisions) {
       blocks.push({
@@ -150,7 +158,6 @@ function convertLegacyToBlocks(data: any): any {
     }
   }
 
-  // Convert decision_challenge (decision lab format)
   if (data.decision_challenge) {
     blocks.push({
       type: "choice_set",
@@ -165,9 +172,7 @@ function convertLegacyToBlocks(data: any): any {
     });
   }
 
-  // Convert categories/items (classification)
   if (Array.isArray(data.categories) && Array.isArray(data.items)) {
-    // Add as tasks
     blocks.push({
       type: "step_task",
       tasks: data.items.map((item: any, i: number) => ({
@@ -181,7 +186,6 @@ function convertLegacyToBlocks(data: any): any {
     });
   }
 
-  // Convert standalone tasks
   if (Array.isArray(data.tasks) && !data.categories) {
     blocks.push({
       type: "step_task",
@@ -197,7 +201,6 @@ function convertLegacyToBlocks(data: any): any {
     });
   }
 
-  // Add key insight
   if (data.key_insight) {
     blocks.push({ type: "insight", content: data.key_insight });
   }
