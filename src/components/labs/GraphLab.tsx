@@ -299,7 +299,12 @@ export default function GraphLab({ data, onComplete, isCompleted, onReplay }: Pr
             {data.sliders.map(s => (
               <div key={s.name} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{s.label || s.name}</span>
+                  <span className="text-sm font-medium">
+                    {(s.label || s.name)
+                      .replace("a (opening & width)", "A (Strech)")
+                      .replace("h (horizontal shift)", "H (Horizontal shift)")
+                      .replace("k (vertical shift)", "K (Vertical shift)")}
+                  </span>
                   <span className="text-sm font-bold tabular-nums">{params[s.name]?.toFixed(1)}</span>
                 </div>
                 {s.description && (
