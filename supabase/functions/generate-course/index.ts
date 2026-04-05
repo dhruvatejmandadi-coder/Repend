@@ -473,8 +473,8 @@ serve(async (req) => {
 
     const { topic, filePath, filePaths, preferences, phase, courseId: existingCourseId, moduleIndex, moduleTitle } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
     // ─── PHASE 2: Generate a single module ───
     if (phase === 2 && existingCourseId && typeof moduleIndex === "number" && moduleTitle) {
