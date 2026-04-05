@@ -214,6 +214,15 @@ export default function GraphLab({ data, onComplete, isCompleted, onReplay }: Pr
     onReplay?.();
   };
 
+  // Build display equation with current values
+  const displayEq = useMemo(() => {
+    let eq = data.display_equation || data.equation;
+    for (const [key, val] of Object.entries(params)) {
+      eq = eq.replace(new RegExp(`\\b${key}\\b`, "g"), val.toFixed(1));
+    }
+    return eq;
+  }, [data.display_equation, data.equation, params]);
+
   if (isCompleted && !completionFired) {
     return (
       <Card className="border-green-500/20 bg-green-500/[0.04]">
@@ -225,15 +234,6 @@ export default function GraphLab({ data, onComplete, isCompleted, onReplay }: Pr
       </Card>
     );
   }
-
-  // Build display equation with current values
-  const displayEq = useMemo(() => {
-    let eq = data.display_equation || data.equation;
-    for (const [key, val] of Object.entries(params)) {
-      eq = eq.replace(new RegExp(`\\b${key}\\b`, "g"), val.toFixed(1));
-    }
-    return eq;
-  }, [data.display_equation, data.equation, params]);
 
   return (
     <div className="space-y-4">
@@ -299,7 +299,12 @@ export default function GraphLab({ data, onComplete, isCompleted, onReplay }: Pr
             {data.sliders.map(s => (
               <div key={s.name} className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{s.label || s.name}</span>
+                  <span className="text-sm font-medium">
+                    {(s.label || s.name)
+                      .replace("a (opening & width)", "A (Strech)")
+                      .replace("h (horizontal shift)", "H (Horizontal shift)")
+                      .replace("k (vertical shift)", "K (Vertical shift)")}
+                  </span>
                   <span className="text-sm font-bold tabular-nums">{params[s.name]?.toFixed(1)}</span>
                 </div>
                 {s.description && (
