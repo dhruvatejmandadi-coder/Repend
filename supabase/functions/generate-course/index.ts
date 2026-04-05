@@ -354,7 +354,7 @@ ${hasFile ? "\nBase the outline on the uploaded source material." : ""}`;
     {
       label: "outline-primary",
       body: {
-        max_tokens: 8192,
+        max_completion_tokens: 8192,
         messages: [
           { role: "system", content: systemPrompt },
           {
