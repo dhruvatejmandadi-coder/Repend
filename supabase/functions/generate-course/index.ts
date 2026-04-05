@@ -6,9 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PRIMARY_MODEL = "openai/gpt-5";
-const FAST_MODEL = "openai/gpt-5-mini";
-const FALLBACK_MODEL = "google/gemini-2.5-flash";
+const PRIMARY_MODEL = "gpt-4o";
+const FAST_MODEL = "gpt-4o-mini";
+const FALLBACK_MODEL = "gpt-4o-mini";
 
 const outlineToolSchema = {
   type: "function" as const,
@@ -76,7 +76,7 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
     }
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
@@ -473,8 +473,8 @@ serve(async (req) => {
 
     const { topic, filePath, filePaths, preferences, phase, courseId: existingCourseId, moduleIndex, moduleTitle } = await req.json();
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
     // ─── PHASE 2: Generate a single module ───
     if (phase === 2 && existingCourseId && typeof moduleIndex === "number" && moduleTitle) {
@@ -496,7 +496,7 @@ serve(async (req) => {
 
       try {
         const content = await generateModuleContent(
-          LOVABLE_API_KEY,
+          OPENAI_API_KEY,
           topic || moduleTitle,
           moduleTitle,
           moduleIndex,
@@ -582,7 +582,7 @@ serve(async (req) => {
       .select()
       .single();
 
-    const outline = await generateOutline(LOVABLE_API_KEY, topic, hasFile, preferences);
+    const outline = await generateOutline(OPENAI_API_KEY, topic, hasFile, preferences);
     const modules = Array.isArray(outline.modules) ? outline.modules.slice(0, 4) : [];
 
     if (modules.length === 0) {
