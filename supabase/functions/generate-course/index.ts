@@ -76,7 +76,7 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
     }
 
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,
