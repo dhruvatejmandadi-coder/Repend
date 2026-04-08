@@ -619,7 +619,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                               <span className="flex items-center justify-center w-6 h-6 rounded-full border border-border text-xs font-medium shrink-0">
                                 {String.fromCharCode(65 + i)}
                               </span>
-                              <span>{c.text}</span>
+                              <span>{interpolateVars(c.text, values)}</span>
                             </div>
                           </button>
                           {isChosen && c.feedback && (
