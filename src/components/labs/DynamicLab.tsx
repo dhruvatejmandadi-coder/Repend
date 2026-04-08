@@ -859,7 +859,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                                 </p>
                               )}
                               {task.explanation && (
-                                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{task.explanation}</p>
+                                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{interpolateVars(task.explanation, values)}</p>
                               )}
                             </div>
                           )}
