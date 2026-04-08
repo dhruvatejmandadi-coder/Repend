@@ -22,7 +22,23 @@ function formatVarName(name: string): string {
   return name
     .replace(/_/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, c => c.toUpperCase());
+    .trim()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/** Ensure icon is a single emoji, not a text string like "price_tag" */
+function sanitizeIcon(icon: string | undefined): string {
+  if (!icon) return "📊";
+  const trimmed = icon.trim();
+  // If it's a short emoji-like string (1-2 chars or emoji sequences), keep it
+  if (trimmed.length <= 2) return trimmed;
+  // Check if it starts with an actual emoji (Unicode emoji range)
+  const emojiMatch = trimmed.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+  if (emojiMatch) return emojiMatch[0];
+  // It's a text string like "price_tag" — return a default emoji
+  return "📊";
 }
 
 type Variable = {
@@ -314,7 +330,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
               <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => (
                   <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
-                    <span className="text-base">{v.icon}</span>
+                    <span className="text-base">{sanitizeIcon(v.icon)}</span>
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{formatVarName(v.name)}</p>
                       <p className="text-[10px] text-muted-foreground">{v.min}–{v.max} {v.unit}</p>
@@ -390,7 +406,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                   return (
                     <div key={v.name} className="rounded-lg border border-border bg-card p-3 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm">{v.icon} {formatVarName(v.name)}</span>
+                        <span className="text-sm">{sanitizeIcon(v.icon)} {formatVarName(v.name)}</span>
                         <div className="flex items-center gap-1">
                           <Icon className={`w-3.5 h-3.5 ${color}`} />
                           <span className="text-sm font-semibold">{value} {v.unit}</span>
@@ -505,7 +521,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
             return (
               <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-medium leading-tight">{v.icon} {formatVarName(v.name)}</span>
+                  <span className="text-xs font-medium leading-tight">{sanitizeIcon(v.icon)} {formatVarName(v.name)}</span>
                   <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${color}`}>{value} {v.unit}</span>
                 </div>
                 {v.description && (
@@ -661,7 +677,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                       return (
                         <div key={v.name} className="p-4 rounded-xl border border-border bg-card space-y-3">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold">{v.icon} {formatVarName(v.name)}</span>
+                            <span className="text-sm font-semibold">{sanitizeIcon(v.icon)} {formatVarName(v.name)}</span>
                             <span className="text-sm font-bold tabular-nums">{value} {v.unit}</span>
                           </div>
                           {v.description && (
