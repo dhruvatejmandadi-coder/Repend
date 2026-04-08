@@ -855,7 +855,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                                 </p>
                               ) : (
                                 <p className="text-red-600 dark:text-red-400">
-                                  Incorrect — the answer is: <span className="font-medium">{task.correct_answer}</span>
+                                  Incorrect — the answer is: <span className="font-medium">{interpolateVars(String(task.correct_answer), values)}</span>
                                 </p>
                               )}
                               {task.explanation && (
