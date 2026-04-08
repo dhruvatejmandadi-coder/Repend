@@ -263,15 +263,6 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
     setEventLog([]);
     onReplay?.();
   };
-/** Interpolate ${variable_name} and {variable_name} references with current values */
-function interpolateVars(text: string, vals: Record<string, number>): string {
-  if (!text) return text;
-  return text
-    .replace(/\$\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : key)
-    .replace(/\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : `{${key}}`);
-}
-
-
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
