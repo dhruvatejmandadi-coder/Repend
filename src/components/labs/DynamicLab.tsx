@@ -41,6 +41,15 @@ function sanitizeIcon(icon: string | undefined): string {
   return "📊";
 }
 
+/** Interpolate ${variable_name} and {variable_name} references with current values */
+function interpolateVars(text: string, vals: Record<string, number>): string {
+  if (!text) return text;
+  return text
+    .replace(/\$\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : key)
+    .replace(/\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : `{${key}}`);
+}
+
+
 type Variable = {
   name: string;
   icon: string;
@@ -263,8 +272,6 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
     setEventLog([]);
     onReplay?.();
   };
-
-  
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -587,7 +594,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
               return (
                 <div className="space-y-5">
                   <div>
-                    <p className="text-base font-semibold">{choiceBlock.emoji || "🔬"} {choiceBlock.question}</p>
+                    <p className="text-base font-semibold">{choiceBlock.emoji || "🔬"} {interpolateVars(choiceBlock.question, values)}</p>
                   </div>
                   <div className="space-y-2.5">
                     {choiceBlock.choices.map((c: Choice, i: number) => {
@@ -612,12 +619,12 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                               <span className="flex items-center justify-center w-6 h-6 rounded-full border border-border text-xs font-medium shrink-0">
                                 {String.fromCharCode(65 + i)}
                               </span>
-                              <span>{c.text}</span>
+                              <span>{interpolateVars(c.text, values)}</span>
                             </div>
                           </button>
                           {isChosen && c.feedback && (
                             <div className="ml-9 text-xs px-4 py-2.5 bg-muted/50 rounded-lg text-muted-foreground animate-fade-in border border-border/30">
-                              {c.feedback}
+                              {interpolateVars(c.feedback, values)}
                             </div>
                           )}
                         </div>
@@ -637,7 +644,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
               const pct = ((value - v.min) / (v.max - v.min)) * 100;
               return (
                 <div className="space-y-5">
-                  {sliderBlock.prompt && <p className="text-sm font-medium">{sliderBlock.prompt}</p>}
+                  {sliderBlock.prompt && <p className="text-sm font-medium">{interpolateVars(sliderBlock.prompt, values)}</p>}
                   <div className="p-5 rounded-xl border border-border bg-card space-y-4">
                     <div className="text-center">
                       <span className="text-3xl font-bold tabular-nums">{value}</span>
@@ -779,7 +786,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                       <div key={task.id} className="space-y-4 p-5 rounded-xl border border-border bg-card">
                         <div className="flex items-start gap-3">
                           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">{idx + 1}</span>
-                          <p className="text-sm font-medium leading-relaxed">{task.prompt}</p>
+                          <p className="text-sm font-medium leading-relaxed">{interpolateVars(task.prompt, values)}</p>
                         </div>
 
                         {!submitted && task.hint && (
@@ -792,7 +799,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                               {showHint[task.id] ? "Hide hint" : "Show hint"}
                             </button>
                             {showHint[task.id] && (
-                              <p className="text-xs text-muted-foreground mt-1.5 pl-4 border-l-2 border-primary/20 animate-fade-in">{task.hint}</p>
+                              <p className="text-xs text-muted-foreground mt-1.5 pl-4 border-l-2 border-primary/20 animate-fade-in">{interpolateVars(task.hint, values)}</p>
                             )}
                           </div>
                         )}
@@ -848,11 +855,11 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                                 </p>
                               ) : (
                                 <p className="text-red-600 dark:text-red-400">
-                                  Incorrect — the answer is: <span className="font-medium">{task.correct_answer}</span>
+                                  Incorrect — the answer is: <span className="font-medium">{interpolateVars(String(task.correct_answer), values)}</span>
                                 </p>
                               )}
                               {task.explanation && (
-                                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{task.explanation}</p>
+                                <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{interpolateVars(task.explanation, values)}</p>
                               )}
                             </div>
                           )}
