@@ -931,9 +931,6 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                 return <DiagramBlock data={diagramData} />;
               }
 
-              const existingUrl = diagBlock.image_url || generatedImages[currentStep];
-              const isLoading = imageLoading[currentStep];
-
               return (
                 <div className="space-y-4">
                   {diagBlock.diagram_type && (
@@ -941,40 +938,17 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                       📐 {diagBlock.diagram_type.replace(/_/g, " ")}
                     </Badge>
                   )}
-
-                  {existingUrl ? (
+                  {diagBlock.image_url ? (
                     <div className="rounded-xl overflow-hidden border border-border bg-card">
-                      <img
-                        src={existingUrl}
-                        alt={diagBlock.image_caption || "Lab visual"}
-                        className="w-full max-h-[400px] object-contain bg-background"
-                      />
-                    </div>
-                  ) : isLoading ? (
-                    <div className="h-64 rounded-xl border border-border bg-muted/20 flex flex-col items-center justify-center gap-3">
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                      <p className="text-sm text-muted-foreground">Generating visual...</p>
+                      <img src={diagBlock.image_url} alt={diagBlock.image_caption || "Lab visual"} className="w-full max-h-[400px] object-contain bg-background" />
                     </div>
                   ) : (
-                    <div className="h-64 rounded-xl border border-dashed border-border bg-muted/10 flex flex-col items-center justify-center gap-3">
-                      <ImageIcon className="w-10 h-10 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground text-center max-w-xs">
-                        {diagBlock.image_prompt || "Diagram for this step"}
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => generateImage(currentStep, diagBlock.image_prompt || diagBlock.image_caption || data.title || "educational diagram")}
-                        className="gap-1.5"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5" /> Generate Visual
-                      </Button>
+                    <div className="h-48 rounded-xl border border-dashed border-border bg-muted/10 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground text-center max-w-xs">{diagBlock.image_caption || "Diagram"}</p>
                     </div>
                   )}
-
-                  {diagBlock.image_caption && (
-                    <p className="text-xs text-muted-foreground text-center italic">{diagBlock.image_caption}</p>
-                  )}
+                  {diagBlock.image_caption && <p className="text-xs text-muted-foreground text-center italic">{diagBlock.image_caption}</p>}
                 </div>
               );
             })()}
