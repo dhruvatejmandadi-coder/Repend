@@ -22,7 +22,23 @@ function formatVarName(name: string): string {
   return name
     .replace(/_/g, " ")
     .replace(/([a-z])([A-Z])/g, "$1 $2")
-    .replace(/\b\w/g, c => c.toUpperCase());
+    .trim()
+    .split(/\s+/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ");
+}
+
+/** Ensure icon is a single emoji, not a text string like "price_tag" */
+function sanitizeIcon(icon: string | undefined): string {
+  if (!icon) return "📊";
+  const trimmed = icon.trim();
+  // If it's a short emoji-like string (1-2 chars or emoji sequences), keep it
+  if (trimmed.length <= 2) return trimmed;
+  // Check if it starts with an actual emoji (Unicode emoji range)
+  const emojiMatch = trimmed.match(/^(\p{Emoji_Presentation}|\p{Extended_Pictographic})/u);
+  if (emojiMatch) return emojiMatch[0];
+  // It's a text string like "price_tag" — return a default emoji
+  return "📊";
 }
 
 type Variable = {
