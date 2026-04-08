@@ -895,47 +895,22 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
               </div>
             )}
 
-            {/* IMAGE */}
+            {/* IMAGE — static only */}
             {block.type === "image" && (() => {
               const imgBlock = block as any;
-              const existingUrl = imgBlock.image_url || generatedImages[currentStep];
-              const isLoading = imageLoading[currentStep];
-
               return (
                 <div className="space-y-4">
-                  {existingUrl ? (
+                  {imgBlock.image_url ? (
                     <div className="rounded-xl overflow-hidden border border-border bg-card">
-                      <img
-                        src={existingUrl}
-                        alt={imgBlock.image_caption || "Lab visual"}
-                        className="w-full max-h-[400px] object-contain bg-background"
-                      />
-                    </div>
-                  ) : isLoading ? (
-                    <div className="h-64 rounded-xl border border-border bg-muted/20 flex flex-col items-center justify-center gap-3">
-                      <Loader2 className="w-8 h-8 text-primary animate-spin" />
-                      <p className="text-sm text-muted-foreground">Generating visual...</p>
+                      <img src={imgBlock.image_url} alt={imgBlock.image_caption || "Lab visual"} className="w-full max-h-[400px] object-contain bg-background" />
                     </div>
                   ) : (
-                    <div className="h-64 rounded-xl border border-dashed border-border bg-muted/10 flex flex-col items-center justify-center gap-3">
-                      <ImageIcon className="w-10 h-10 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground text-center max-w-xs">
-                        {imgBlock.image_prompt || "Visual for this step"}
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => generateImage(currentStep, imgBlock.image_prompt || imgBlock.image_caption || data.title || "educational diagram")}
-                        className="gap-1.5"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5" /> Generate Visual
-                      </Button>
+                    <div className="h-48 rounded-xl border border-dashed border-border bg-muted/10 flex flex-col items-center justify-center gap-2">
+                      <ImageIcon className="w-8 h-8 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground text-center max-w-xs">{imgBlock.image_caption || "Visual for this step"}</p>
                     </div>
                   )}
-
-                  {imgBlock.image_caption && (
-                    <p className="text-xs text-muted-foreground text-center italic">{imgBlock.image_caption}</p>
-                  )}
+                  {imgBlock.image_caption && <p className="text-xs text-muted-foreground text-center italic">{imgBlock.image_caption}</p>}
                 </div>
               );
             })()}
