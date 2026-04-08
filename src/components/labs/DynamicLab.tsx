@@ -330,7 +330,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
               <div className="grid grid-cols-2 gap-2">
                 {variables.map(v => (
                   <div key={v.name} className="flex items-center gap-2 rounded-lg border border-border/50 bg-card px-3 py-2">
-                    <span className="text-base">{v.icon}</span>
+                    <span className="text-base">{sanitizeIcon(v.icon)}</span>
                     <div className="min-w-0">
                       <p className="text-xs font-medium truncate">{formatVarName(v.name)}</p>
                       <p className="text-[10px] text-muted-foreground">{v.min}–{v.max} {v.unit}</p>
