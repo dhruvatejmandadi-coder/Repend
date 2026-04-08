@@ -624,7 +624,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                           </button>
                           {isChosen && c.feedback && (
                             <div className="ml-9 text-xs px-4 py-2.5 bg-muted/50 rounded-lg text-muted-foreground animate-fade-in border border-border/30">
-                              {c.feedback}
+                              {interpolateVars(c.feedback, values)}
                             </div>
                           )}
                         </div>
