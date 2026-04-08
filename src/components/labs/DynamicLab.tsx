@@ -521,7 +521,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
             return (
               <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1">
                 <div className="flex items-center justify-between gap-1">
-                  <span className="text-xs font-medium leading-tight">{v.icon} {formatVarName(v.name)}</span>
+                  <span className="text-xs font-medium leading-tight">{sanitizeIcon(v.icon)} {formatVarName(v.name)}</span>
                   <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${color}`}>{value} {v.unit}</span>
                 </div>
                 {v.description && (
