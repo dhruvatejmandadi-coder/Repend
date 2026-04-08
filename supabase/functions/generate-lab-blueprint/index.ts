@@ -553,7 +553,7 @@ REQUIREMENTS:
       }
       try {
         const aiData = await callAI(OPENAI_API_KEY, {
-          model: "gpt-4o",
+          model: "gpt-4o-mini",
           max_completion_tokens: 6000,
           messages: [
             { role: "system", content: systemPrompt },
