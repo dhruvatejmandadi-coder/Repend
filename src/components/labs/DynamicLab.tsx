@@ -786,7 +786,7 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
                       <div key={task.id} className="space-y-4 p-5 rounded-xl border border-border bg-card">
                         <div className="flex items-start gap-3">
                           <span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-xs font-bold shrink-0 mt-0.5">{idx + 1}</span>
-                          <p className="text-sm font-medium leading-relaxed">{task.prompt}</p>
+                          <p className="text-sm font-medium leading-relaxed">{interpolateVars(task.prompt, values)}</p>
                         </div>
 
                         {!submitted && task.hint && (
