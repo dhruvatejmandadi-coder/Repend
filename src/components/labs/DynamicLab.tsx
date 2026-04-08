@@ -41,6 +41,15 @@ function sanitizeIcon(icon: string | undefined): string {
   return "📊";
 }
 
+/** Interpolate ${variable_name} and {variable_name} references with current values */
+function interpolateVars(text: string, vals: Record<string, number>): string {
+  if (!text) return text;
+  return text
+    .replace(/\$\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : key)
+    .replace(/\{(\w+)\}/g, (_, key) => vals[key] !== undefined ? String(vals[key]) : `{${key}}`);
+}
+
+
 type Variable = {
   name: string;
   icon: string;
