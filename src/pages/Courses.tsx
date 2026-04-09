@@ -157,6 +157,8 @@ export default function Courses() {
 
   const handlePersonalizationSubmit = async (prefs: CoursePreferences) => {
     setShowPersonalization(false);
+    const currentTopic = topic.trim() || selectedFiles[0]?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document";
+    setGeneratingTopic(currentTopic);
     setIsGenerating(true);
 
     try {
@@ -167,7 +169,7 @@ export default function Courses() {
       }
 
       const body: Record<string, any> = {
-        topic: topic.trim() || selectedFiles[0]?.name?.replace(/\.[^/.]+$/, "") || "Uploaded Document",
+        topic: currentTopic,
         preferences: prefs,
       };
       if (filePaths.length === 1) {
@@ -182,7 +184,7 @@ export default function Courses() {
         Authorization: `Bearer ${session?.access_token}`
       };
 
-      // Phase 1: Generate outline + placeholder modules (fast, ~20s)
+      // Phase 1: Generate outline + placeholder modules
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-course`, {
         method: "POST",
         headers: authHeaders,
@@ -197,8 +199,7 @@ export default function Courses() {
       const { courseId, modules } = await resp.json();
       setTopic("");
       setSelectedFiles([]);
-      toast({ title: "Course created! 🎉", description: "Generating module content..." });
-      navigate(`/courses/${courseId}`);
+      setGeneratingCourseId(courseId); // Start progress tracking
 
       // Phase 2: Fire off module content generation in background (parallel, 2 at a time)
       if (modules && modules.length > 0) {
@@ -223,7 +224,6 @@ export default function Courses() {
           }
         };
 
-        // Generate 2 modules at a time
         for (let i = 0; i < modules.length; i += 2) {
           const batch = modules.slice(i, i + 2);
           await Promise.all(batch.map(generateModule));
@@ -235,9 +235,17 @@ export default function Courses() {
         description: error instanceof Error ? error.message : "Failed to generate course",
         variant: "destructive"
       });
-    } finally {
       setIsGenerating(false);
+      setGeneratingCourseId(null);
     }
+  };
+
+  const handleGenerationComplete = (courseId: string) => {
+    setIsGenerating(false);
+    setGeneratingCourseId(null);
+    toast({ title: "Course ready! 🎉", description: "All lessons, labs, and quizzes are generated." });
+    fetchCourses();
+    navigate(`/courses/${courseId}`);
   };
 
   const handleDelete = async (id: string) => {
