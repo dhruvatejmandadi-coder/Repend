@@ -70,7 +70,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
       text = `Creating quiz questions...`;
     } else if (labsReady < total) {
       phase = "labs";
-      const generating = modules.find(m => m.labStatus !== "ready");
+      const generating = modules.find(m => m.labStatus !== "ready" && m.labStatus !== "done" && m.labStatus !== "failed");
       text = labsGenerating > 0
         ? `Building lab: ${generating?.title || "Module"}...`
         : `Waiting for lab generation...`;
