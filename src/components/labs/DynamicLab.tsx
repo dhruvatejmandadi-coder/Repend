@@ -137,7 +137,7 @@ const BLOCK_LABELS: Record<string, { label: string; emoji: string; color: string
 
 export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: Props) {
   const variables = useMemo(() => data?.variables ?? [], [data]);
-  const blocks = useMemo(() => data?.blocks ?? [], [data]);
+  const blocks = useMemo(() => (data?.blocks ?? []).filter((b: any) => b.type !== "step_task"), [data]);
   const introData = data?.intro || data?.repend_intro;
 
   // ── Simulation Engine (XState + mathjs) ──
