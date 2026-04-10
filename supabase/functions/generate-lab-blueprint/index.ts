@@ -295,41 +295,105 @@ const graphToolSchema = {
   },
 };
 
-// ─── LAB TYPE SELECTION LOGIC ───
+// ─── ADAPTIVE LAB TYPE SELECTION ───
+// Weighted scoring: picks the best-matching lab type per module, not a global default.
+
+type LabCandidate = { type: string; score: number };
 
 function classifyLabType(topic: string, moduleTitle: string, lessonContent: string): string {
   const combined = `${topic} ${moduleTitle} ${lessonContent}`.toLowerCase();
 
-  // Graph lab: math functions, graphing, equations, transformations
-  const graphKeywords = [
-    "graph", "plot", "equation", "function", "parabola", "quadratic", "linear",
-    "slope", "intercept", "vertex", "transformation", "exponential", "logarithm",
-    "trigonometr", "sine", "cosine", "tangent", "amplitude", "period",
-    "y = ", "f(x)", "asymptote", "polynomial"
-  ];
-  if (graphKeywords.some(k => combined.includes(k))) return "graph";
+  // Each keyword has a weight. Higher = stronger signal.
+  const labProfiles: Record<string, { keywords: [string, number][] }> = {
+    graph: {
+      keywords: [
+        // Strong signals
+        ["graph", 3], ["plot", 3], ["equation", 2], ["parabola", 4], ["quadratic", 4],
+        ["polynomial", 3], ["slope", 3], ["intercept", 3], ["vertex", 3],
+        ["exponential", 3], ["logarithm", 3], ["asymptote", 3],
+        // Trig / polar — strong graph signals
+        ["trigonometr", 5], ["sine", 5], ["cosine", 5], ["tangent", 4],
+        ["amplitude", 5], ["period", 4], ["phase shift", 5], ["frequency", 3],
+        ["polar", 5], ["polar coordinate", 6], ["unit circle", 5],
+        ["radian", 4], ["parametric", 4], ["sinusoidal", 5],
+        // General math graphing
+        ["y = ", 3], ["f(x)", 3], ["transformation", 2],
+        ["linear equation", 3], ["linear function", 3],
+        ["domain and range", 2], ["curve", 2],
+      ],
+    },
+    code_debugger: {
+      keywords: [
+        ["debug", 5], ["syntax error", 5], ["code", 3], ["coding", 3],
+        ["program", 3], ["python", 4], ["javascript", 4], ["java ", 3],
+        ["c++", 3], ["html", 3], ["css", 3], ["sql", 3],
+        ["algorithm", 2], ["data structure", 3], ["compile", 3],
+        ["runtime", 3], ["loop", 2], ["array", 2], ["recursion", 3],
+        ["object-oriented", 3], ["oop", 3], ["api", 2],
+      ],
+    },
+    flowchart: {
+      keywords: [
+        ["process", 2], ["workflow", 4], ["procedure", 3], ["step-by-step", 3],
+        ["pipeline", 4], ["lifecycle", 4], ["methodology", 3],
+        ["framework", 2], ["protocol", 3], ["sequence of steps", 4],
+        ["phases", 3], ["stages", 3], ["design process", 4],
+        ["scientific method", 4], ["sdlc", 5], ["agile", 3],
+        ["waterfall", 4], ["project management", 3],
+        ["decision tree", 4], ["flow chart", 5], ["flowchart", 5],
+        ["cell division", 3], ["mitosis", 3], ["meiosis", 3],
+        ["digestive system", 3], ["respiration", 2],
+      ],
+    },
+    simulation: {
+      keywords: [
+        // Science
+        ["physics", 2], ["projectile", 4], ["friction", 3], ["force", 2],
+        ["acceleration", 3], ["momentum", 3], ["energy", 2], ["gravity", 3],
+        ["thermodynamic", 3], ["heat transfer", 3], ["pressure", 2],
+        ["chemical reaction", 3], ["equilibrium", 2], ["concentration", 2],
+        // Biology
+        ["population", 3], ["ecosystem", 4], ["predator", 4], ["prey", 4],
+        ["evolution", 2], ["natural selection", 3], ["food chain", 3],
+        // Economics / Business
+        ["supply and demand", 4], ["inflation", 4], ["interest rate", 4],
+        ["market", 2], ["profit", 3], ["revenue", 3], ["investment", 3],
+        ["budget", 3], ["pricing", 3], ["elasticity", 3],
+        ["gdp", 3], ["monetary policy", 4], ["fiscal", 3],
+        // General simulation
+        ["optimize", 2], ["tradeoff", 3], ["trade-off", 3],
+        ["simulation", 5], ["model", 2], ["system", 1],
+      ],
+    },
+  };
 
-  // Code debugger: programming, coding, debugging, algorithms
-  const codeKeywords = [
-    "code", "coding", "program", "debug", "syntax", "algorithm", "function",
-    "variable", "loop", "array", "python", "javascript", "java ", "c++",
-    "html", "css", "sql", "data structure", "compile", "runtime"
-  ];
-  // Only match if strongly coding-related (not just "function" which is also math)
-  const codeScore = codeKeywords.filter(k => combined.includes(k)).length;
-  if (codeScore >= 2) return "code_debugger";
+  const candidates: LabCandidate[] = [];
 
-  // Flowchart: processes, workflows, steps, procedures
-  const flowchartKeywords = [
-    "process", "workflow", "procedure", "step-by-step", "pipeline",
-    "lifecycle", "methodology", "framework", "protocol", "algorithm",
-    "sequence", "phases", "stages", "design process", "scientific method",
-    "project management", "sdlc", "agile", "waterfall"
-  ];
-  const flowScore = flowchartKeywords.filter(k => combined.includes(k)).length;
-  if (flowScore >= 2) return "flowchart";
+  for (const [labType, profile] of Object.entries(labProfiles)) {
+    let score = 0;
+    let matchCount = 0;
+    for (const [keyword, weight] of profile.keywords) {
+      if (combined.includes(keyword)) {
+        score += weight;
+        matchCount++;
+      }
+    }
+    // Require at least 2 keyword matches to be a candidate (except strong single matches)
+    if (matchCount >= 2 || score >= 4) {
+      candidates.push({ type: labType, score });
+    }
+  }
 
-  // Default: simulation (works for business, science, economics, general)
+  // Sort by score descending
+  candidates.sort((a, b) => b.score - a.score);
+
+  if (candidates.length > 0 && candidates[0].score >= 4) {
+    console.log(`[Lab Selection] Candidates: ${candidates.map(c => `${c.type}(${c.score})`).join(", ")} → picked: ${candidates[0].type}`);
+    return candidates[0].type;
+  }
+
+  // Fallback: simulation is the most flexible
+  console.log(`[Lab Selection] No strong match, defaulting to simulation`);
   return "simulation";
 }
 

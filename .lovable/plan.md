@@ -1,64 +1,44 @@
 
+# Repend Lab System — Architecture Plan
 
-# Fix Lab Blueprint Generation — Root Cause & Plan
+## Lab Type Selection (Adaptive per Module)
 
-## Problem Diagnosis
+The system uses **weighted keyword scoring** to select the best lab type for each module independently. No single lab type is forced across a course.
 
-The 3-stage architecture is correctly wired. Phase 2 already uses `google/gemini-2.5-pro`. But the blueprint tool call schema is **too vague**:
+### Selection Flow
+1. Combine topic + module title + lesson content
+2. Score against each lab type's keyword profile (weighted 1-6)
+3. Pick the highest-scoring type (minimum score threshold: 4)
+4. Fallback to simulation if no strong match
 
-```typescript
-// Current — line 347-349
-parameters: {
-  properties: {
-    blueprint: { type: "object", description: "The complete lab blueprint" },
-  }
-}
-```
+### Supported Lab Types
+| Type | Best For | Renderer |
+|------|----------|----------|
+| `graph` | Math, trig, polar, equations, functions | GraphLab.tsx |
+| `code_debugger` | Programming, algorithms, debugging | CodeDebuggerLab.tsx |
+| `flowchart` | Processes, workflows, lifecycles | FlowchartLab.tsx |
+| `simulation` | Science, economics, business, general | DynamicLab.tsx |
 
-The model receives `{ type: "object" }` with zero property definitions. It has no structured guidance on what fields to return, so it either:
-- Returns a shallow/empty object
-- Returns fields that don't match what `extractToolArgs` expects
-- Gets truncated because there's no `max_tokens` set
+### Key Rule
+"Lab selection must be adaptive per topic, prioritizing the most relevant interactive representation (e.g., trig graphs for polar concepts), with graceful fallback if generation fails."
 
-The system prompt describes the schema in natural language, but **tool calling works best when the schema itself defines the structure**.
+## Generation Pipeline
 
-## Plan (3 changes, all in one file)
+### Progress Tracking
+- Real-time polling (3s) shows progress bar + status text
+- Users gated on generating screen until 100% complete
+- All components (lessons, quizzes, labs) must be generated before access
 
-### 1. Define full blueprint schema in tool parameters
+### Lab Blueprint Generation
+- Phase 2 generates labs via `generate-lab-blueprint` edge function
+- Each lab type has its own tool schema for structured output
+- 3-attempt retry with validation per lab type
+- Failed labs marked as `failed` (never silently empty)
 
-Replace the vague `{ type: "object" }` with explicit property definitions for `blocks`, `variables`, `title`, `kind`, `scenario`, etc. This gives the model a concrete contract to fill. The key arrays (`blocks`, `variables`) will have `items` definitions with all supported block types.
-
-### 2. Add retry on empty blocks
-
-After `extractToolArgs`, if `blueprint.blocks` is empty or missing after repair, retry the call once with a shorter, more direct prompt: "You MUST return at least 3 blocks. Return a choice_set, a step_task, and an insight block minimum."
-
-### 3. Set `max_tokens: 8192`
-
-The blueprint response is large structured JSON. Without `max_tokens`, the model may truncate. Add explicit `max_tokens: 8192` to the Phase 2 AI call.
-
-## Files Changed
-
-| File | Change |
-|------|--------|
-| `supabase/functions/generate-course/index.ts` | (1) Expand tool schema for `create_lab_blueprint` with full property definitions, (2) add retry-on-empty-blocks loop, (3) add `max_tokens: 8192` to Phase 2 call |
-
-## Technical Details
-
-The expanded tool schema will define:
-- `title` (string, required)
-- `kind` (string, required)  
-- `scenario` (string, required)
-- `variables` (array of objects with name/icon/unit/min/max/default)
-- `blocks` (array of objects with type + type-specific fields)
-- `completion_rule` (string)
-- `intro` (object with relevance/role/scenario_context/information/objective)
-
-The retry logic:
-```
-attempt 1: full prompt + full schema
-if blocks.length === 0:
-  attempt 2: simplified prompt demanding minimum 3 blocks
-if still empty:
-  mark as failed (no silent empty saves)
-```
-
+## Blueprint Rules (from PDF)
+- Deterministic logic, not generative AI hallucinations
+- Every slider must affect outputs
+- Animated transitions (numbers count, graphs smooth)
+- Randomize experience, NOT concept
+- Validate AI JSON before rendering, fallback if invalid
+- "If a new lab requires new code, the system is built wrong"
