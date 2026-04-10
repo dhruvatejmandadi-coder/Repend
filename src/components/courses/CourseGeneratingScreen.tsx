@@ -154,6 +154,24 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
     };
   }, [isVisible, courseId, computeProgress, onComplete]);
 
+  // Smoothly animate displayed progress with psychology easing
+  useEffect(() => {
+    const target = rawProgress === 100 ? 100 : psychProgress(rawProgress);
+    if (displayProgress === target) return;
+    const step = target > displayProgress ? 1 : -1;
+    const timer = setInterval(() => {
+      setDisplayProgress(prev => {
+        const next = prev + step;
+        if ((step > 0 && next >= target) || (step < 0 && next <= target)) {
+          clearInterval(timer);
+          return target;
+        }
+        return next;
+      });
+    }, 20);
+    return () => clearInterval(timer);
+  }, [rawProgress, displayProgress]);
+
   if (!isVisible) return null;
 
   const phaseIndex = PHASE_ORDER.indexOf(currentPhase);
