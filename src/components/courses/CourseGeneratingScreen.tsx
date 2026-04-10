@@ -20,23 +20,21 @@ interface ModuleStatus {
   labStatus: string;
 }
 
-const PHASE_CONFIG: Record<GenerationPhase, { icon: any; label: string; baseWeight: number }> = {
-  outline: { icon: Sparkles, label: "Analyzing your topic", baseWeight: 10 },
-  lessons: { icon: BookOpen, label: "Generating lessons", baseWeight: 40 },
-  quizzes: { icon: HelpCircle, label: "Creating quizzes", baseWeight: 15 },
-  labs: { icon: FlaskConical, label: "Building interactive labs", baseWeight: 30 },
-  finalizing: { icon: CheckCircle2, label: "Finalizing your course", baseWeight: 5 },
-  complete: { icon: CheckCircle2, label: "Course ready!", baseWeight: 0 },
+const PHASE_CONFIG: Record<GenerationPhase, { icon: any; label: string }> = {
+  outline:    { icon: Sparkles,     label: "Analyzing your topic" },
+  lessons:    { icon: BookOpen,     label: "Generating lessons" },
+  quizzes:    { icon: HelpCircle,   label: "Creating quizzes" },
+  labs:       { icon: FlaskConical, label: "Building interactive labs" },
+  finalizing: { icon: CheckCircle2, label: "Finalizing your course" },
+  complete:   { icon: CheckCircle2, label: "Course ready!" },
 };
 
 const PHASE_ORDER: GenerationPhase[] = ["outline", "lessons", "quizzes", "labs", "finalizing", "complete"];
 
-// Psychology-based easing: progress bar starts fast, slows at end
+// Fast start, slow finish — feels faster psychologically
 function psychProgress(raw: number): number {
-  // Apply ease-out cubic: fast at start, slow near completion
   const t = raw / 100;
-  const eased = 1 - Math.pow(1 - t, 3);
-  return Math.round(eased * 100);
+  return Math.round((1 - Math.pow(1 - t, 3)) * 100);
 }
 
 export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete }: CourseGeneratingScreenProps) {
@@ -45,24 +43,17 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
   const [currentPhase, setCurrentPhase] = useState<GenerationPhase>("outline");
   const [statusText, setStatusText] = useState("Analyzing your topic...");
   const [moduleStatuses, setModuleStatuses] = useState<ModuleStatus[]>([]);
+  const [revealedCount, setRevealedCount] = useState(0);
 
   const computeProgress = useCallback((modules: ModuleStatus[]): { pct: number; phase: GenerationPhase; text: string } => {
-    if (modules.length === 0) {
-      return { pct: 5, phase: "outline", text: "Generating course outline..." };
-    }
+    if (modules.length === 0) return { pct: 5, phase: "outline", text: "Generating course outline..." };
 
     const total = modules.length;
     const lessonsReady = modules.filter(m => m.hasLesson).length;
     const quizzesReady = modules.filter(m => m.hasQuiz).length;
     const labsReady = modules.filter(m => m.labStatus === "ready" || m.labStatus === "done").length;
-    const labsGenerating = modules.filter(m => m.labStatus === "generating").length;
 
-    // Outline done = 10%
-    // Lessons = 40% (proportional)
-    // Quizzes = 15% (proportional)
-    // Labs = 30% (proportional)
-    // Finalizing = 5%
-    let pct = 10; // outline done since we have modules
+    let pct = 10;
     pct += (lessonsReady / total) * 40;
     pct += (quizzesReady / total) * 15;
     pct += (labsReady / total) * 30;
@@ -73,16 +64,14 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
     if (lessonsReady < total) {
       const current = modules.find(m => !m.hasLesson);
       phase = "lessons";
-      text = `Generating lesson: ${current?.title || "Module"}...`;
+      text = `Writing lesson: ${current?.title || "Module"}...`;
     } else if (quizzesReady < total) {
       phase = "quizzes";
-      text = `Creating quiz questions...`;
+      text = "Creating quiz questions...";
     } else if (labsReady < total) {
       phase = "labs";
       const generating = modules.find(m => m.labStatus !== "ready" && m.labStatus !== "done" && m.labStatus !== "failed");
-      text = labsGenerating > 0
-        ? `Building lab: ${generating?.title || "Module"}...`
-        : `Waiting for lab generation...`;
+      text = generating ? `Building lab: ${generating.title}...` : "Waiting for lab generation...";
     } else {
       phase = "finalizing";
       pct = 95;
@@ -92,10 +81,21 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
     return { pct: Math.min(Math.round(pct), 99), phase, text };
   }, []);
 
+  // Progressive reveal: modules appear one by one
+  useEffect(() => {
+    if (revealedCount >= moduleStatuses.length) return;
+    const timer = setTimeout(() => setRevealedCount(c => c + 1), 400);
+    return () => clearTimeout(timer);
+  }, [revealedCount, moduleStatuses.length]);
+
+  // Reset revealed count when modules first appear
+  useEffect(() => {
+    if (moduleStatuses.length > 0 && revealedCount === 0) setRevealedCount(1);
+  }, [moduleStatuses.length]);
+
   // Poll for module statuses
   useEffect(() => {
     if (!isVisible || !courseId) return;
-
     let cancelled = false;
 
     const poll = async () => {
@@ -117,13 +117,11 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
         }));
 
         setModuleStatuses(statuses);
-
         const { pct, phase, text } = computeProgress(statuses);
         setRawProgress(pct);
         setCurrentPhase(phase);
         setStatusText(text);
 
-        // Check if everything is done
         const allDone = statuses.length > 0 &&
           statuses.every(m => m.hasLesson && m.hasQuiz) &&
           statuses.every(m => m.labStatus === "ready" || m.labStatus === "done" || m.labStatus === "failed");
@@ -132,29 +130,20 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           setRawProgress(100);
           setCurrentPhase("complete");
           setStatusText("Course ready!");
-          setTimeout(() => {
-            if (!cancelled && onComplete) onComplete(courseId);
-          }, 1200);
+          setTimeout(() => { if (!cancelled && onComplete) onComplete(courseId); }, 1200);
           return;
         }
       } catch (e) {
         console.error("Poll error:", e);
       }
-
-      if (!cancelled) {
-        setTimeout(poll, 3000);
-      }
+      if (!cancelled) setTimeout(poll, 3000);
     };
 
-    // Start polling after a small delay (outline generation)
     const initial = setTimeout(poll, 2000);
-    return () => {
-      cancelled = true;
-      clearTimeout(initial);
-    };
+    return () => { cancelled = true; clearTimeout(initial); };
   }, [isVisible, courseId, computeProgress, onComplete]);
 
-  // Smoothly animate displayed progress with psychology easing
+  // Smooth animated progress
   useEffect(() => {
     const target = rawProgress === 100 ? 100 : psychProgress(rawProgress);
     if (displayProgress === target) return;
@@ -162,13 +151,10 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
     const timer = setInterval(() => {
       setDisplayProgress(prev => {
         const next = prev + step;
-        if ((step > 0 && next >= target) || (step < 0 && next <= target)) {
-          clearInterval(timer);
-          return target;
-        }
+        if ((step > 0 && next >= target) || (step < 0 && next <= target)) { clearInterval(timer); return target; }
         return next;
       });
-    }, 20);
+    }, 18);
     return () => clearInterval(timer);
   }, [rawProgress, displayProgress]);
 
@@ -201,7 +187,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           </p>
         </div>
 
-        {/* Progress bar - psychological easing */}
+        {/* Progress bar */}
         <div className="space-y-2">
           <Progress value={displayProgress} className="h-3" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
@@ -211,7 +197,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
         </div>
 
         {/* Phase steps */}
-        <div className="space-y-2.5 text-left max-w-xs mx-auto">
+        <div className="space-y-2 text-left max-w-xs mx-auto">
           {PHASE_ORDER.filter(p => p !== "complete").map((phase, i) => {
             const config = PHASE_CONFIG[phase];
             const Icon = config.icon;
@@ -222,27 +208,15 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
               <div
                 key={phase}
                 className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-500 ${
-                  isActive
-                    ? "bg-primary/10 border border-primary/20"
-                    : isDone
-                    ? "opacity-60"
-                    : "opacity-30"
+                  isActive ? "bg-primary/10 border border-primary/20" : isDone ? "opacity-60" : "opacity-30"
                 }`}
               >
                 <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
                   isDone ? "bg-green-500/20" : isActive ? "bg-primary/20" : "bg-muted/50"
                 }`}>
-                  {isDone ? (
-                    <CheckCircle2 className="w-4 h-4 text-green-400" />
-                  ) : isActive ? (
-                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                  ) : (
-                    <Icon className="w-4 h-4 text-muted-foreground" />
-                  )}
+                  {isDone ? <CheckCircle2 className="w-4 h-4 text-green-400" /> : isActive ? <Loader2 className="w-4 h-4 text-primary animate-spin" /> : <Icon className="w-4 h-4 text-muted-foreground" />}
                 </div>
-                <span className={`text-sm font-medium transition-colors duration-300 ${
-                  isActive ? "text-foreground" : isDone ? "text-muted-foreground" : "text-muted-foreground/60"
-                }`}>
+                <span className={`text-sm font-medium transition-colors duration-300 ${isActive ? "text-foreground" : isDone ? "text-muted-foreground" : "text-muted-foreground/60"}`}>
                   {config.label}
                 </span>
               </div>
@@ -250,15 +224,19 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           })}
         </div>
 
-        {/* Module breakdown */}
+        {/* Progressive module reveal */}
         {moduleStatuses.length > 0 && (
-          <div className="text-xs text-muted-foreground/60 space-y-1">
-            {moduleStatuses.map(m => (
-              <div key={m.id} className="flex items-center gap-2">
+          <div className="text-xs text-muted-foreground/60 space-y-1.5">
+            {moduleStatuses.slice(0, revealedCount).map((m, i) => (
+              <div
+                key={m.id}
+                className="flex items-center gap-2 slide-enter"
+                style={{ animationDelay: `${i * 80}ms` }}
+              >
                 {m.hasLesson && m.hasQuiz && (m.labStatus === "ready" || m.labStatus === "done" || m.labStatus === "failed") ? (
-                  <CheckCircle2 className="w-3 h-3 text-green-400" />
+                  <CheckCircle2 className="w-3 h-3 text-green-400 shrink-0" />
                 ) : (
-                  <Loader2 className="w-3 h-3 animate-spin text-primary/50" />
+                  <Loader2 className="w-3 h-3 animate-spin text-primary/50 shrink-0" />
                 )}
                 <span className="truncate">{m.title}</span>
               </div>
@@ -266,10 +244,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           </div>
         )}
 
-        {/* Subtle tip */}
-        <p className="text-xs text-muted-foreground/50">
-          This usually takes 30–60 seconds
-        </p>
+        <p className="text-xs text-muted-foreground/50">This usually takes 30–60 seconds</p>
       </div>
     </div>
   );

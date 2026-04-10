@@ -303,33 +303,47 @@ type LabCandidate = { type: string; score: number };
 function classifyLabType(topic: string, moduleTitle: string, lessonContent: string): string {
   const combined = `${topic} ${moduleTitle} ${lessonContent}`.toLowerCase();
 
-  // Each keyword has a weight. Higher = stronger signal.
   const labProfiles: Record<string, { keywords: [string, number][] }> = {
     graph: {
       keywords: [
-        // Strong signals
+        // Math graphing — strong
         ["graph", 3], ["plot", 3], ["equation", 2], ["parabola", 4], ["quadratic", 4],
         ["polynomial", 3], ["slope", 3], ["intercept", 3], ["vertex", 3],
         ["exponential", 3], ["logarithm", 3], ["asymptote", 3],
-        // Trig / polar — strong graph signals
+        // Trig / polar
         ["trigonometr", 5], ["sine", 5], ["cosine", 5], ["tangent", 4],
         ["amplitude", 5], ["period", 4], ["phase shift", 5], ["frequency", 3],
         ["polar", 5], ["polar coordinate", 6], ["unit circle", 5],
         ["radian", 4], ["parametric", 4], ["sinusoidal", 5],
-        // General math graphing
+        // General
         ["y = ", 3], ["f(x)", 3], ["transformation", 2],
         ["linear equation", 3], ["linear function", 3],
         ["domain and range", 2], ["curve", 2],
+        // Data visualization
+        ["histogram", 4], ["scatter plot", 4], ["box plot", 4],
+        ["distribution", 3], ["regression", 3], ["correlation", 3],
+        ["normal distribution", 4], ["standard deviation", 3],
+        ["statistics", 2], ["probability distribution", 4],
+        // Science graphing
+        ["ohm's law", 4], ["voltage", 3], ["resistance", 3],
+        ["wave", 3], ["wavelength", 3], ["harmonic", 3],
       ],
     },
     code_debugger: {
       keywords: [
         ["debug", 5], ["syntax error", 5], ["code", 3], ["coding", 3],
         ["program", 3], ["python", 4], ["javascript", 4], ["java ", 3],
-        ["c++", 3], ["html", 3], ["css", 3], ["sql", 3],
+        ["c++", 3], ["html", 3], ["css", 3], ["sql", 4],
         ["algorithm", 2], ["data structure", 3], ["compile", 3],
         ["runtime", 3], ["loop", 2], ["array", 2], ["recursion", 3],
         ["object-oriented", 3], ["oop", 3], ["api", 2],
+        // Cyber / tech debugging
+        ["cybersecurity", 4], ["vulnerability", 4], ["exploit", 4],
+        ["injection", 4], ["xss", 5], ["sql injection", 5],
+        ["firewall", 3], ["encryption", 3], ["hash", 3],
+        ["penetration test", 4], ["malware", 3],
+        // Data queries
+        ["query", 3], ["database", 2], ["join", 2], ["select", 2],
       ],
     },
     flowchart: {
@@ -341,13 +355,24 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["scientific method", 4], ["sdlc", 5], ["agile", 3],
         ["waterfall", 4], ["project management", 3],
         ["decision tree", 4], ["flow chart", 5], ["flowchart", 5],
+        // Biology processes
         ["cell division", 3], ["mitosis", 3], ["meiosis", 3],
         ["digestive system", 3], ["respiration", 2],
+        ["photosynthesis", 3], ["krebs cycle", 4], ["dna replication", 4],
+        // Business processes
+        ["supply chain", 4], ["logistics", 3], ["onboarding", 3],
+        ["hiring process", 4], ["marketing funnel", 4],
+        ["customer journey", 4], ["sales pipeline", 4],
+        // Critical thinking / logic
+        ["logical fallac", 4], ["deductive", 3], ["inductive", 3],
+        ["argument structure", 4], ["syllogism", 4],
+        // Engineering
+        ["circuit", 3], ["logic gate", 4], ["boolean", 3],
       ],
     },
     simulation: {
       keywords: [
-        // Science
+        // Physics
         ["physics", 2], ["projectile", 4], ["friction", 3], ["force", 2],
         ["acceleration", 3], ["momentum", 3], ["energy", 2], ["gravity", 3],
         ["thermodynamic", 3], ["heat transfer", 3], ["pressure", 2],
@@ -355,11 +380,29 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         // Biology
         ["population", 3], ["ecosystem", 4], ["predator", 4], ["prey", 4],
         ["evolution", 2], ["natural selection", 3], ["food chain", 3],
+        ["genetics", 3], ["punnett", 4], ["heredity", 3], ["allele", 4],
+        ["phenotype", 3], ["genotype", 3], ["mutation", 3],
         // Economics / Business
         ["supply and demand", 4], ["inflation", 4], ["interest rate", 4],
         ["market", 2], ["profit", 3], ["revenue", 3], ["investment", 3],
         ["budget", 3], ["pricing", 3], ["elasticity", 3],
         ["gdp", 3], ["monetary policy", 4], ["fiscal", 3],
+        // Finance
+        ["portfolio", 3], ["stock", 2], ["bond", 2], ["compound interest", 4],
+        ["amortization", 4], ["depreciation", 3], ["cash flow", 3],
+        ["valuation", 3], ["dcf", 4], ["roi", 3],
+        // Health / nutrition
+        ["nutrition", 3], ["metabolism", 3], ["calorie", 3], ["bmi", 3],
+        ["dosage", 3], ["drug", 2], ["pharmacology", 4],
+        // Negotiation / soft skills
+        ["negotiation", 4], ["conflict resolution", 3], ["persuasion", 3],
+        ["leadership", 2], ["emotional intelligence", 3],
+        // Engineering
+        ["structural", 3], ["stress", 2], ["load", 2], ["bridge", 3],
+        ["material", 2], ["tensile", 3],
+        // Environmental
+        ["climate", 3], ["carbon", 3], ["emission", 3], ["sustainability", 3],
+        ["renewable", 3], ["pollution", 3],
         // General simulation
         ["optimize", 2], ["tradeoff", 3], ["trade-off", 3],
         ["simulation", 5], ["model", 2], ["system", 1],
@@ -378,13 +421,11 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         matchCount++;
       }
     }
-    // Require at least 2 keyword matches to be a candidate (except strong single matches)
     if (matchCount >= 2 || score >= 4) {
       candidates.push({ type: labType, score });
     }
   }
 
-  // Sort by score descending
   candidates.sort((a, b) => b.score - a.score);
 
   if (candidates.length > 0 && candidates[0].score >= 4) {
@@ -392,7 +433,6 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
     return candidates[0].type;
   }
 
-  // Fallback: simulation is the most flexible
   console.log(`[Lab Selection] No strong match, defaulting to simulation`);
   return "simulation";
 }
