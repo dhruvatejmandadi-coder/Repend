@@ -672,6 +672,10 @@ Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include 
       // Default: simulation (universal slider lab)
       toolSchema = simulationToolSchema;
       toolName = "create_simulation_lab";
+
+      // ─── DOMAIN-SPECIFIC EXAMPLE TEMPLATES (from blueprints) ───
+      const domainTemplates = selectDomainTemplate(topic, moduleTitle, lessonContent);
+
       systemPrompt = `You are a SIMULATION SYSTEM DESIGNER creating SLIDER-BASED interactive labs. Students adjust sliders and see live outputs change.
 
 === CRITICAL: EVERY LAB MUST HAVE ===
@@ -694,7 +698,12 @@ Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include 
 - NO step_task blocks
 
 === LESSON ALIGNMENT ===
-ONLY use concepts from the lesson content provided.`;
+ONLY use concepts from the lesson content provided.
+
+=== DOMAIN-SPECIFIC REFERENCE TEMPLATES ===
+Use these as inspiration for the variable names, units, ranges, and outputs. Pick the best match for the topic:
+
+${domainTemplates}`;
 
       userPrompt = `Design an interactive SLIDER SIMULATION for: "${moduleTitle}"
 Topic: ${topic}
@@ -704,7 +713,7 @@ Concept: ${labConcept}
 ${lessonSummary}
 
 REQUIREMENTS:
-1. 3-5 domain-specific slider variables
+1. 3-5 domain-specific slider variables (see templates above for examples)
 2. At least 2 control_panel blocks
 3. At least 1 output_display block with live values
 4. 3-5 rules creating cause→effect relationships
