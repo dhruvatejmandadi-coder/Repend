@@ -33,6 +33,7 @@ import LessonSlides from "@/components/courses/LessonSlides";
 import QuizSlides from "@/components/courses/QuizSlides";
 import AiTutor from "@/components/courses/AiTutor";
 import CourseCompletionScreen from "@/components/courses/CourseCompletionScreen";
+import CourseViewSkeleton from "@/components/courses/CourseViewSkeleton";
 
 type Module = {
   id: string;
@@ -235,11 +236,7 @@ export default function CourseView() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <CourseViewSkeleton />;
   }
 
   return (
