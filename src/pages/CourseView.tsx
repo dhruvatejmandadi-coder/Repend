@@ -86,10 +86,16 @@ export default function CourseView() {
     if (id) fetchCourse();
   }, [id]);
 
-  // Poll for modules still generating content
+  // Poll for modules still generating content + auto-retry failed/pending labs
   useEffect(() => {
     const hasGenerating = modules.some(m => m.lesson_content.startsWith("⏳"));
-    if (!hasGenerating || !id) return;
+    const hasPendingLabs = modules.some(m => 
+      !m.lesson_content.startsWith("⏳") && 
+      (m.lab_generation_status === "pending" || m.lab_generation_status === "generating" || 
+       (m.lab_generation_status === "done" && !m.lab_data))
+    );
+    
+    if (!hasGenerating && !hasPendingLabs || !id) return;
 
     const interval = setInterval(async () => {
       const { data } = await supabase
@@ -101,14 +107,13 @@ export default function CourseView() {
         const parsed = data.map((m: any) => ({ ...m, quiz: Array.isArray(m.quiz) ? m.quiz : [] }));
         setModules(parsed);
 
-        // Check if all done
         const stillGenerating = parsed.some((m: any) => m.lesson_content.startsWith("⏳"));
         if (!stillGenerating) {
-          // Update course status to ready
           await supabase.from("courses").update({ status: "ready" }).eq("id", id);
-          // Trigger lab generation for all modules
+          // Trigger lab generation for all modules that need it
           for (const m of parsed) {
-            if (m.lab_generation_status === "pending" || m.lab_generation_status === "generating") {
+            if (m.lab_generation_status === "pending" || m.lab_generation_status === "generating" ||
+                (m.lab_generation_status === "done" && !m.lab_data)) {
               triggerLabGeneration(m.id);
             }
           }
@@ -134,9 +139,13 @@ export default function CourseView() {
     setModules(parsed);
     setLoading(false);
 
-    // Trigger lab generation for any pending/generating modules (only for ready ones)
+    // Trigger lab generation for any modules that need it (pending, generating, or done-but-empty)
     for (const m of parsed) {
-      if (!m.lesson_content.startsWith("⏳") && (m.lab_generation_status === "pending" || m.lab_generation_status === "generating")) {
+      if (!m.lesson_content.startsWith("⏳") && (
+        m.lab_generation_status === "pending" || 
+        m.lab_generation_status === "generating" ||
+        (m.lab_generation_status === "done" && !m.lab_data)
+      )) {
         triggerLabGeneration(m.id);
       }
     }
