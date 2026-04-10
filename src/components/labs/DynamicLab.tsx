@@ -564,8 +564,9 @@ export default function DynamicLab({ data, onComplete, isCompleted, onReplay }: 
             const value = values[v.name] ?? v.default;
             const pct = ((value - v.min) / (v.max - v.min)) * 100;
             const { color } = getParamLevel(value, v.min, v.max);
+            const isAnimating = animatingVars.has(v.name);
             return (
-              <div key={v.name} className="rounded-lg border border-border bg-card px-3 py-2 space-y-1">
+              <div key={v.name} className={`rounded-lg border bg-card px-3 py-2 space-y-1 transition-all duration-300 ${isAnimating ? "border-primary/50 shadow-[0_0_12px_hsl(var(--primary)/0.15)] scale-[1.02]" : "border-border"}`}>
                 <div className="flex items-center justify-between gap-1">
                   <span className="text-xs font-medium leading-tight">{sanitizeIcon(v.icon)} {formatVarName(v.name)}</span>
                   <span className={`text-xs font-bold tabular-nums whitespace-nowrap ${color}`}>{value} {v.unit}</span>
