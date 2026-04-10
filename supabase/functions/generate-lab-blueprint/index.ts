@@ -277,6 +277,123 @@ const graphToolSchema = {
   },
 };
 
+// ─── DOMAIN-SPECIFIC TEMPLATES (from PDF blueprints) ───
+// Each template provides specific variable names, units, ranges, and outputs
+// so the AI generates labs matching the blueprint specifications.
+
+const DOMAIN_TEMPLATES: Record<string, string> = {
+  // ── EduLabs PDF: STEM ──
+  trigonometry: `TRIGONOMETRY: Sliders: Angle θ (0-360°), Amplitude A (0.1-5), Frequency B (0.1-5), Phase Shift C (-π to π), Vertical Shift D (-5 to 5). Outputs: sin(θ), cos(θ), tan(θ). Show unit circle connection.`,
+  
+  statistics: `STATISTICS: Sliders: Mean μ (-5 to 5), Standard Deviation σ (0.5 to 3), Sample Size n (10 to 1000). Outputs: Histogram shape, Confidence Interval, Z-score, Skewness. Toggle between Normal/Binomial/Uniform distributions.`,
+  
+  economics: `ECONOMICS (Supply & Demand): Sliders: Supply Curve Shift (-50% to +50%), Demand Curve Shift (-50% to +50%), Price Floor/Ceiling, Tax/Subsidy (0-30%). Outputs: Equilibrium Price, Equilibrium Quantity, Consumer Surplus, Producer Surplus, Deadweight Loss, Elasticity.`,
+  
+  physics: `PHYSICS (Projectile Motion): Sliders: Launch Angle (0-90°), Initial Velocity (5-50 m/s), Gravity (0.5-10 m/s²), Air Resistance toggle. Outputs: Time-to-Impact, Maximum Height, Range, Horizontal/Vertical velocity components.`,
+  
+  chemistry: `CHEMISTRY (Reaction Rate): Sliders: Temperature (250-400K), Catalyst Strength (0-100% Ea reduction), Concentration (0.1-2.0 M), Pressure (1-10 atm). Outputs: Reaction Rate, Collision Frequency, Equilibrium Constant Keq, Activation Energy diagram. Show Le Chatelier's principle.`,
+  
+  biology: `BIOLOGY (Population Dynamics): Sliders: Birth Rate (0-0.5), Death Rate (0-0.3), Carrying Capacity (100-10000), Predation Rate (0-0.2). Outputs: Current Population, Growth Rate %, Doubling Time, Stability indicator. Toggle Predator-Prey mode for oscillation.`,
+  
+  medicine: `MEDICINE (Pharmacokinetics): Sliders: Dose Amount (10-500 mg), Dosing Interval (4-24 hrs), Drug Half-life (2-48 hrs), Body Weight (50-150 kg), Liver Function (50-150%), Kidney Function (50-150%). Outputs: Clearance Rate, Bioavailability, Peak Concentration, Accumulation Factor, Toxicity Risk. Show therapeutic window.`,
+  
+  law: `LAW (Criminal Trial): Sliders: Evidence Strength (0-100), Defense Rebuttal (0-100), Witness Credibility (0-100), Jury Bias (-50 to +50). Outputs: Guilty Verdict Probability %, Confidence Interval, Influencing Factors breakdown. Show burden of proof threshold.`,
+  
+  environmental: `ENVIRONMENTAL SCIENCE (Carbon Cycle): Sliders: Fossil Fuel Emissions (0-100%), Deforestation Rate (0-100%), Renewable Energy Adoption (0-100%), Ocean Absorption (0-100%), Reforestation (0-100%). Outputs: CO₂ Concentration (ppm), Temperature Anomaly (°C), Carbon Budget breakdown, Time to Carbon Neutrality (years), Tipping Point status.`,
+  
+  psychology: `PSYCHOLOGY (Cognitive Bias): Sliders: Confirmation Bias (0-100%), Anchoring Bias (0-100%), Availability Heuristic (0-100%), Recency Bias (0-100%). Outputs: Decision Quality Score (/100), Accuracy %, Confidence %, Bias Impact Breakdown. Show debiasing strategies.`,
+  
+  astronomy: `ASTRONOMY (Orbital Mechanics): Sliders: Orbital Eccentricity (0-0.9), Semi-Major Axis (1-10 AU), Central Mass (0.5-2 solar masses), Initial Velocity (5-50 km/s). Outputs: Orbital Period (days), Escape Velocity (km/s), Aphelion Distance (AU), Perihelion Distance (AU). Demonstrate Kepler's Laws.`,
+  
+  genetics: `GENETICS (Mendelian Inheritance): Sliders: Parent 1 Genotype (AA/Aa/aa), Parent 2 Genotype (AA/Aa/aa), Sample Size (10-1000). Outputs: Genotype Ratios, Phenotype Distribution, Chi-Square test result, Hardy-Weinberg equilibrium check. Show Punnett Square.`,
+
+  // ── Cybersecurity PDF: PLTW Units ──
+  phishing: `CYBERSECURITY (Phishing & Password): Sliders: Password Length (4-24 chars), Character Variety (1-4 types), Phishing Awareness (0-100%), MFA Enabled (0 or 100%). Outputs: Password Entropy (bits), Crack Time estimate, Phishing Detection Rate %, Account Security Score. Scenario: analyze suspicious email for red flags.`,
+  
+  server_hardening: `CYBERSECURITY (Server Hardening): Sliders: Patch Level (0-100%), Access Control Strictness (0-100%), Encryption Strength (0-100%), Logging Verbosity (0-100%). Outputs: Vulnerability Score, CIA Triad Compliance (Confidentiality/Integrity/Availability), Attack Surface area, Compliance Rating.`,
+  
+  network_security: `CYBERSECURITY (Packet Analysis & Defense): Sliders: Firewall Strictness (0-100%), IDS Sensitivity (0-100%), Traffic Volume (low/med/high as 0-100), Encryption Level (0-100%). Outputs: Threat Detection Rate %, False Positive Rate %, Network Throughput, Blocked Attacks count. Scenario: detect Man-in-the-Middle attack.`,
+  
+  wireless_security: `CYBERSECURITY (Wireless Authentication): Sliders: Signal Strength (-90 to -20 dBm), Protocol Security (WEP=20/WPA2=70/WPA3=100), Rogue AP Distance (1-100m), Authentication Timeout (1-30s). Outputs: Connection Security Score, Handshake Vulnerability, Rogue AP Detection probability, Network Integrity.`,
+  
+  forensics: `CYBERSECURITY (Digital Forensics): Sliders: Evidence Collection Thoroughness (0-100%), Chain of Custody Integrity (0-100%), Analysis Depth (0-100%), Time Since Breach (1-720 hrs). Outputs: Evidence Admissibility %, Data Recovery Rate %, Case Strength Score, Investigation Completeness.`,
+  
+  cryptography: `CYBERSECURITY (Cryptography & Steganography): Sliders: Key Length (64-4096 bits), Cipher Complexity (0-100%), Frequency Analysis Depth (0-100%), Steganography Detection Level (0-100%). Outputs: Encryption Strength, Decryption Probability %, Hidden Data Detection %, Computational Cost.`,
+
+  // ── Interactive Labs Blueprint PDF: AI & Tech ──
+  prompt_engineering: `AI (Prompt Engineering): Sliders: Temperature (0-2.0), Max Tokens (50-4000), Prompt Specificity (0-100%), Few-Shot Examples (0-5). Outputs: Output Quality Score, Similarity Score, Response Length, Hallucination Risk %. Compare zero-shot vs few-shot vs chain-of-thought.`,
+  
+  neural_network: `AI (Neural Network Visualizer): Sliders: Hidden Layers (1-5), Neurons per Layer (2-16), Learning Rate (0.001-1.0), Training Epochs (10-500). Outputs: Accuracy %, Training Loss, Overfitting Indicator, Decision Boundary complexity.`,
+  
+  financial_modeling: `BUSINESS (Financial Modeling): Sliders: Revenue Growth (0-15%), EBITDA Margin (10-40%), WACC (5-15%), Terminal Growth (1-5%). Outputs: Revenue forecast, Net Income, DCF Valuation, EV/EBITDA multiple. Show 3-statement model impact.`,
+  
+  project_management: `BUSINESS (Project Management): Sliders: Scope (0-100%), Resources (0-100%), Timeline Pressure (0-100%), Risk Tolerance (0-100%). Outputs: Project Completion Probability %, Budget Overrun %, Critical Path length, Team Morale. Show scope creep effects.`,
+  
+  marketing_funnel: `BUSINESS (Marketing Funnel): Sliders: Ad Spend ($0-$10000), Conversion Rate (0-20%), Customer LTV ($0-$500), Churn Rate (0-30%). Outputs: LTV/CAC Ratio, Monthly Revenue, Payback Period, Viral Coefficient. Show funnel stages.`,
+  
+  negotiation: `SOFT SKILLS (Negotiation): Sliders: Opening Offer Aggressiveness (0-100%), Concession Rate (0-100%), Emotional Intelligence (0-100%), BATNA Strength (0-100%). Outputs: Deal Probability %, Surplus Captured %, Relationship Score, ZOPA range. Show anchoring effects.`,
+  
+  structural_engineering: `ENGINEERING (Structural): Sliders: Load Weight (100-10000 kg), Beam Length (1-20m), Material Strength (100-1000 MPa), Safety Factor (1-5). Outputs: Stress (MPa), Deflection (mm), Factor of Safety, Collapse Risk %. Show tension vs compression.`,
+
+  // ── Universal fallback ──
+  generic: `UNIVERSAL: Sliders: Variable A (0-100), Variable B (0-100), Variable C (0-100). Outputs: Effectiveness, Risk Level, Overall Score. The key is that each slider must have domain-specific names from the actual topic being taught. NEVER use generic names.`,
+};
+
+function selectDomainTemplate(topic: string, moduleTitle: string, lessonContent: string): string {
+  const combined = `${topic} ${moduleTitle} ${lessonContent}`.toLowerCase();
+  
+  const matchMap: [string[], string][] = [
+    [["trigonometr", "sine", "cosine", "unit circle", "radian"], "trigonometry"],
+    [["statistic", "distribution", "standard deviation", "z-score", "histogram", "probability"], "statistics"],
+    [["supply and demand", "elasticity", "equilibrium", "surplus", "deadweight", "gdp", "fiscal", "monetary policy"], "economics"],
+    [["projectile", "kinematics", "newton", "friction", "momentum", "velocity", "acceleration"], "physics"],
+    [["reaction rate", "catalyst", "activation energy", "le chatelier", "molarity", "titration", "chemical reaction"], "chemistry"],
+    [["population", "ecosystem", "predator", "prey", "carrying capacity", "birth rate", "food chain", "natural selection"], "biology"],
+    [["pharmacokinetic", "drug", "dosage", "half-life", "plasma concentration", "bioavailability", "therapeutic"], "medicine"],
+    [["trial", "verdict", "prosecution", "evidence strength", "jury", "burden of proof", "witness credibility"], "law"],
+    [["carbon cycle", "emission", "climate", "deforestation", "renewable energy", "greenhouse", "carbon neutral"], "environmental"],
+    [["cognitive bias", "confirmation bias", "anchoring", "heuristic", "decision quality", "behavioral"], "psychology"],
+    [["orbital", "kepler", "eccentricity", "semi-major axis", "escape velocity", "celestial"], "astronomy"],
+    [["genotype", "phenotype", "punnett", "allele", "mendelian", "heredity", "inheritance"], "genetics"],
+    [["phishing", "password", "social engineering", "mfa", "two-factor"], "phishing"],
+    [["server hardening", "patch", "vulnerability scan", "cia triad", "access control list"], "server_hardening"],
+    [["packet", "firewall", "intrusion detection", "man-in-the-middle", "tcp/ip", "network security"], "network_security"],
+    [["wireless", "wpa", "rogue access point", "handshake", "wifi", "signal strength"], "wireless_security"],
+    [["forensic", "evidence handling", "chain of custody", "data recovery", "digital evidence"], "forensics"],
+    [["encryption", "cipher", "steganography", "cryptograph", "frequency analysis", "decryption"], "cryptography"],
+    [["prompt engineering", "llm", "few-shot", "chain-of-thought", "temperature"], "prompt_engineering"],
+    [["neural network", "deep learning", "backpropagation", "hidden layer", "activation function"], "neural_network"],
+    [["financial model", "dcf", "ebitda", "revenue growth", "valuation", "capital structure"], "financial_modeling"],
+    [["project management", "critical path", "gantt", "scope creep", "agile", "waterfall"], "project_management"],
+    [["marketing funnel", "conversion rate", "ltv", "cac", "churn", "viral"], "marketing_funnel"],
+    [["negotiation", "batna", "zopa", "anchoring", "concession", "integrative bargaining"], "negotiation"],
+    [["structural", "stress", "load", "beam", "tensile", "compression", "bridge", "material"], "structural_engineering"],
+  ];
+  
+  let bestMatch = "generic";
+  let bestScore = 0;
+  
+  for (const [keywords, templateKey] of matchMap) {
+    let score = 0;
+    for (const kw of keywords) {
+      if (combined.includes(kw)) score++;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      bestMatch = templateKey;
+    }
+  }
+  
+  // Return the best match + generic as fallback guidance
+  const template = DOMAIN_TEMPLATES[bestMatch] || DOMAIN_TEMPLATES.generic;
+  // Also include 2 random other templates for variety awareness
+  const otherKeys = Object.keys(DOMAIN_TEMPLATES).filter(k => k !== bestMatch && k !== "generic");
+  const shuffled = otherKeys.sort(() => Math.random() - 0.5).slice(0, 2);
+  const extras = shuffled.map(k => DOMAIN_TEMPLATES[k]).join("\n\n");
+  
+  return `PRIMARY MATCH:\n${template}\n\nOTHER EXAMPLES (for variety reference):\n${extras}`;
+}
+
 // ─── ADAPTIVE LAB TYPE SELECTION ───
 // Weighted scoring: picks the best-matching lab type per module independently.
 
@@ -672,6 +789,10 @@ Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include 
       // Default: simulation (universal slider lab)
       toolSchema = simulationToolSchema;
       toolName = "create_simulation_lab";
+
+      // ─── DOMAIN-SPECIFIC EXAMPLE TEMPLATES (from blueprints) ───
+      const domainTemplates = selectDomainTemplate(topic, moduleTitle, lessonContent);
+
       systemPrompt = `You are a SIMULATION SYSTEM DESIGNER creating SLIDER-BASED interactive labs. Students adjust sliders and see live outputs change.
 
 === CRITICAL: EVERY LAB MUST HAVE ===
@@ -694,7 +815,12 @@ Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include 
 - NO step_task blocks
 
 === LESSON ALIGNMENT ===
-ONLY use concepts from the lesson content provided.`;
+ONLY use concepts from the lesson content provided.
+
+=== DOMAIN-SPECIFIC REFERENCE TEMPLATES ===
+Use these as inspiration for the variable names, units, ranges, and outputs. Pick the best match for the topic:
+
+${domainTemplates}`;
 
       userPrompt = `Design an interactive SLIDER SIMULATION for: "${moduleTitle}"
 Topic: ${topic}
@@ -704,7 +830,7 @@ Concept: ${labConcept}
 ${lessonSummary}
 
 REQUIREMENTS:
-1. 3-5 domain-specific slider variables
+1. 3-5 domain-specific slider variables (see templates above for examples)
 2. At least 2 control_panel blocks
 3. At least 1 output_display block with live values
 4. 3-5 rules creating cause→effect relationships
