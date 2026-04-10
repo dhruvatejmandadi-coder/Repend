@@ -31,8 +31,17 @@ const PHASE_CONFIG: Record<GenerationPhase, { icon: any; label: string; baseWeig
 
 const PHASE_ORDER: GenerationPhase[] = ["outline", "lessons", "quizzes", "labs", "finalizing", "complete"];
 
+// Psychology-based easing: progress bar starts fast, slows at end
+function psychProgress(raw: number): number {
+  // Apply ease-out cubic: fast at start, slow near completion
+  const t = raw / 100;
+  const eased = 1 - Math.pow(1 - t, 3);
+  return Math.round(eased * 100);
+}
+
 export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete }: CourseGeneratingScreenProps) {
-  const [progress, setProgress] = useState(0);
+  const [rawProgress, setRawProgress] = useState(0);
+  const [displayProgress, setDisplayProgress] = useState(0);
   const [currentPhase, setCurrentPhase] = useState<GenerationPhase>("outline");
   const [statusText, setStatusText] = useState("Analyzing your topic...");
   const [moduleStatuses, setModuleStatuses] = useState<ModuleStatus[]>([]);
