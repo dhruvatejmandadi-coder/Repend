@@ -119,7 +119,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
         setModuleStatuses(statuses);
 
         const { pct, phase, text } = computeProgress(statuses);
-        setProgress(pct);
+        setRawProgress(pct);
         setCurrentPhase(phase);
         setStatusText(text);
 
@@ -129,7 +129,7 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           statuses.every(m => m.labStatus === "ready" || m.labStatus === "done" || m.labStatus === "failed");
 
         if (allDone) {
-          setProgress(100);
+          setRawProgress(100);
           setCurrentPhase("complete");
           setStatusText("Course ready!");
           setTimeout(() => {
@@ -183,12 +183,12 @@ export function CourseGeneratingScreen({ topic, isVisible, courseId, onComplete 
           </p>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar - psychological easing */}
         <div className="space-y-2">
-          <Progress value={progress} className="h-3" />
+          <Progress value={displayProgress} className="h-3" />
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span className="font-medium transition-all duration-300">{statusText}</span>
-            <span className="tabular-nums font-semibold text-foreground">{progress}%</span>
+            <span className="tabular-nums font-semibold text-foreground">{displayProgress}%</span>
           </div>
         </div>
 
