@@ -63,7 +63,7 @@ const simulationToolSchema = {
   type: "function" as const,
   function: {
     name: "create_simulation_lab",
-    description: "Create an interactive SIMULATION lab with sliders, live outputs, rules, and decisions.",
+    description: "Create an interactive SLIDER-BASED SIMULATION lab. Students adjust 2-5 sliders and see live outputs change. Every slider MUST affect at least one output.",
     parameters: {
       type: "object",
       properties: {
@@ -102,7 +102,7 @@ const simulationToolSchema = {
           items: {
             type: "object",
             properties: {
-              type: { type: "string", enum: ["text", "choice_set", "slider", "control_panel", "output_display", "table", "step_task", "chart", "insight", "image", "diagram"] },
+              type: { type: "string", enum: ["text", "choice_set", "slider", "control_panel", "output_display", "table", "chart", "insight", "image", "diagram"] },
               content: { type: "string" },
               question: { type: "string" },
               emoji: { type: "string" },
@@ -125,22 +125,6 @@ const simulationToolSchema = {
               title: { type: "string" },
               headers: { type: "array", items: { type: "string" } },
               rows: { type: "array", items: { type: "array", items: { type: "string" } } },
-              tasks: {
-                type: "array",
-                items: {
-                  type: "object",
-                  properties: {
-                    id: { type: "string" },
-                    prompt: { type: "string" },
-                    type: { type: "string", enum: ["input", "choice"] },
-                    correct_answer: { type: "string" },
-                    hint: { type: "string" },
-                    explanation: { type: "string" },
-                    options: { type: "array", items: { type: "string" } },
-                  },
-                  required: ["id", "prompt", "type", "correct_answer"],
-                },
-              },
               diagram_type: { type: "string" },
               diagram_nodes: { type: "array", items: { type: "object", properties: { id: { type: "string" }, text: { type: "string" } }, required: ["id", "text"] } },
               diagram_edges: { type: "array", items: { type: "object", properties: { from: { type: "string" }, to: { type: "string" }, label: { type: "string" } }, required: ["from", "to"] } },
@@ -194,7 +178,7 @@ const flowchartToolSchema = {
   type: "function" as const,
   function: {
     name: "create_flowchart_lab",
-    description: "Create a FLOWCHART lab where students fill in the correct process steps via dropdowns. Use for topics involving ordered processes, workflows, or decision trees.",
+    description: "Create a FLOWCHART lab where students fill in the correct process steps via dropdowns.",
     parameters: {
       type: "object",
       properties: {
@@ -205,14 +189,13 @@ const flowchartToolSchema = {
         key_insight: { type: "string" },
         drop_zones: {
           type: "array",
-          description: "Ordered steps in the flowchart. Each has a label prompt, the correct value, and shuffled options (including the correct one + distractors).",
           items: {
             type: "object",
             properties: {
               id: { type: "string" },
-              label: { type: "string", description: "The prompt/description for this step" },
-              correct_value: { type: "string", description: "The correct answer for this dropdown" },
-              options: { type: "array", items: { type: "string" }, description: "3-5 options including the correct one, shuffled" },
+              label: { type: "string" },
+              correct_value: { type: "string" },
+              options: { type: "array", items: { type: "string" } },
             },
             required: ["id", "label", "correct_value", "options"],
           },
@@ -227,18 +210,18 @@ const codeDebuggerToolSchema = {
   type: "function" as const,
   function: {
     name: "create_code_debugger_lab",
-    description: "Create a CODE DEBUGGER lab where students find and fix bugs in code. Use for programming, logic, and computational topics.",
+    description: "Create a CODE DEBUGGER lab where students find and fix bugs in code.",
     parameters: {
       type: "object",
       properties: {
         lab_type: { type: "string", const: "code_debugger" },
         title: { type: "string" },
-        goal: { type: "string", description: "What the code should do when fixed" },
-        language: { type: "string", description: "Programming language (python, javascript, etc.)" },
-        starter_code: { type: "string", description: "The BROKEN code with 1-3 bugs" },
-        expected_output: { type: "string", description: "The exact output the fixed code should produce" },
-        initial_error: { type: "string", description: "The error or wrong output the broken code currently produces" },
-        hints: { type: "array", items: { type: "string" }, description: "Progressive hints, from vague to specific" },
+        goal: { type: "string" },
+        language: { type: "string" },
+        starter_code: { type: "string" },
+        expected_output: { type: "string" },
+        initial_error: { type: "string" },
+        hints: { type: "array", items: { type: "string" } },
         key_insight: { type: "string" },
       },
       required: ["lab_type", "title", "goal", "language", "starter_code", "expected_output", "initial_error"],
@@ -250,7 +233,7 @@ const graphToolSchema = {
   type: "function" as const,
   function: {
     name: "create_graph_lab",
-    description: "Create a GRAPH lab where students manipulate mathematical functions via sliders and see the graph update in real-time. Use for math topics involving functions, equations, and graphing.",
+    description: "Create a GRAPH lab where students manipulate mathematical functions via sliders and see the graph update in real-time.",
     parameters: {
       type: "object",
       properties: {
@@ -258,14 +241,14 @@ const graphToolSchema = {
         title: { type: "string" },
         goal: { type: "string" },
         graph_type: { type: "string", enum: ["linear", "quadratic", "exponential", "trig", "custom"] },
-        equation: { type: "string", description: "Math expression using variable names from sliders + x. E.g. 'A * (x - H)^2 + K' or 'M * x + B'" },
-        display_equation: { type: "string", description: "Human-readable equation form. E.g. 'f(x) = A(x - H)² + K'" },
+        equation: { type: "string" },
+        display_equation: { type: "string" },
         sliders: {
           type: "array",
           items: {
             type: "object",
             properties: {
-              name: { type: "string", description: "Variable name used in equation" },
+              name: { type: "string" },
               label: { type: "string" },
               min: { type: "number" },
               max: { type: "number" },
@@ -278,16 +261,15 @@ const graphToolSchema = {
         },
         target: {
           type: "object",
-          description: "Target parameter values the student must match",
           properties: {
             description: { type: "string" },
-            params: { type: "object", description: "Maps slider name to target value" },
-            tolerance: { type: "number", description: "How close the student needs to be (default 0.3)" },
+            params: { type: "object" },
+            tolerance: { type: "number" },
           },
           required: ["description", "params"],
         },
-        x_range: { type: "array", items: { type: "number" }, description: "[min, max] for x-axis" },
-        y_range: { type: "array", items: { type: "number" }, description: "[min, max] for y-axis" },
+        x_range: { type: "array", items: { type: "number" } },
+        y_range: { type: "array", items: { type: "number" } },
         key_insight: { type: "string" },
       },
       required: ["lab_type", "title", "goal", "graph_type", "equation", "sliders"],
@@ -296,7 +278,7 @@ const graphToolSchema = {
 };
 
 // ─── ADAPTIVE LAB TYPE SELECTION ───
-// Weighted scoring: picks the best-matching lab type per module, not a global default.
+// Weighted scoring: picks the best-matching lab type per module independently.
 
 type LabCandidate = { type: string; score: number };
 
@@ -306,7 +288,7 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
   const labProfiles: Record<string, { keywords: [string, number][] }> = {
     graph: {
       keywords: [
-        // Math graphing — strong
+        // Math graphing
         ["graph", 3], ["plot", 3], ["equation", 2], ["parabola", 4], ["quadratic", 4],
         ["polynomial", 3], ["slope", 3], ["intercept", 3], ["vertex", 3],
         ["exponential", 3], ["logarithm", 3], ["asymptote", 3],
@@ -315,18 +297,24 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["amplitude", 5], ["period", 4], ["phase shift", 5], ["frequency", 3],
         ["polar", 5], ["polar coordinate", 6], ["unit circle", 5],
         ["radian", 4], ["parametric", 4], ["sinusoidal", 5],
-        // General
         ["y = ", 3], ["f(x)", 3], ["transformation", 2],
         ["linear equation", 3], ["linear function", 3],
         ["domain and range", 2], ["curve", 2],
-        // Data visualization
+        // Statistics / data viz
         ["histogram", 4], ["scatter plot", 4], ["box plot", 4],
         ["distribution", 3], ["regression", 3], ["correlation", 3],
         ["normal distribution", 4], ["standard deviation", 3],
         ["statistics", 2], ["probability distribution", 4],
-        // Science graphing
+        ["z-score", 4], ["confidence interval", 3], ["chi-square", 4],
+        // Physics graphing
         ["ohm's law", 4], ["voltage", 3], ["resistance", 3],
         ["wave", 3], ["wavelength", 3], ["harmonic", 3],
+        // Astronomy / orbital
+        ["orbital", 4], ["eccentricity", 4], ["semi-major axis", 5],
+        ["kepler", 5], ["escape velocity", 4], ["celestial", 3],
+        // Pharmacokinetics curves
+        ["pharmacokinetic", 4], ["half-life", 3], ["plasma concentration", 5],
+        ["dosage", 2], ["clearance rate", 4],
       ],
     },
     code_debugger: {
@@ -337,13 +325,15 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["algorithm", 2], ["data structure", 3], ["compile", 3],
         ["runtime", 3], ["loop", 2], ["array", 2], ["recursion", 3],
         ["object-oriented", 3], ["oop", 3], ["api", 2],
-        // Cyber / tech debugging
-        ["cybersecurity", 4], ["vulnerability", 4], ["exploit", 4],
-        ["injection", 4], ["xss", 5], ["sql injection", 5],
-        ["firewall", 3], ["encryption", 3], ["hash", 3],
+        // Cybersecurity code
+        ["sql injection", 5], ["xss", 5], ["cross-site", 4],
+        ["injection", 4], ["exploit", 4], ["vulnerability", 3],
         ["penetration test", 4], ["malware", 3],
         // Data queries
         ["query", 3], ["database", 2], ["join", 2], ["select", 2],
+        // Web dev
+        ["web development", 3], ["front-end", 3], ["back-end", 3],
+        ["react", 3], ["node", 2], ["typescript", 3],
       ],
     },
     flowchart: {
@@ -368,6 +358,14 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["argument structure", 4], ["syllogism", 4],
         // Engineering
         ["circuit", 3], ["logic gate", 4], ["boolean", 3],
+        // Cybersecurity processes
+        ["incident response", 5], ["forensic", 4], ["chain of custody", 5],
+        ["evidence handling", 4], ["authentication", 3],
+        ["handshake", 4], ["tcp/ip", 4], ["osi model", 5],
+        ["network protocol", 4], ["dns resolution", 4],
+        // Legal / medical processes
+        ["trial process", 4], ["legal procedure", 4], ["diagnosis", 3],
+        ["triage", 4], ["clinical pathway", 4],
       ],
     },
     simulation: {
@@ -377,23 +375,31 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["acceleration", 3], ["momentum", 3], ["energy", 2], ["gravity", 3],
         ["thermodynamic", 3], ["heat transfer", 3], ["pressure", 2],
         ["chemical reaction", 3], ["equilibrium", 2], ["concentration", 2],
+        ["velocity", 3], ["kinematics", 4], ["newton", 3],
         // Biology
         ["population", 3], ["ecosystem", 4], ["predator", 4], ["prey", 4],
         ["evolution", 2], ["natural selection", 3], ["food chain", 3],
         ["genetics", 3], ["punnett", 4], ["heredity", 3], ["allele", 4],
         ["phenotype", 3], ["genotype", 3], ["mutation", 3],
+        ["carrying capacity", 4], ["birth rate", 3], ["death rate", 3],
         // Economics / Business
         ["supply and demand", 4], ["inflation", 4], ["interest rate", 4],
         ["market", 2], ["profit", 3], ["revenue", 3], ["investment", 3],
         ["budget", 3], ["pricing", 3], ["elasticity", 3],
         ["gdp", 3], ["monetary policy", 4], ["fiscal", 3],
+        ["consumer surplus", 4], ["producer surplus", 4], ["deadweight loss", 4],
         // Finance
         ["portfolio", 3], ["stock", 2], ["bond", 2], ["compound interest", 4],
         ["amortization", 4], ["depreciation", 3], ["cash flow", 3],
         ["valuation", 3], ["dcf", 4], ["roi", 3],
-        // Health / nutrition
+        // Health / medicine
         ["nutrition", 3], ["metabolism", 3], ["calorie", 3], ["bmi", 3],
-        ["dosage", 3], ["drug", 2], ["pharmacology", 4],
+        ["drug", 2], ["pharmacology", 4], ["dose", 3],
+        ["bioavailability", 4], ["therapeutic", 3], ["toxicity", 3],
+        // Psychology / behavior
+        ["cognitive bias", 5], ["confirmation bias", 4], ["anchoring", 4],
+        ["heuristic", 3], ["decision quality", 4], ["psychology", 3],
+        ["behavioral", 3], ["perception", 2],
         // Negotiation / soft skills
         ["negotiation", 4], ["conflict resolution", 3], ["persuasion", 3],
         ["leadership", 2], ["emotional intelligence", 3],
@@ -402,10 +408,25 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
         ["material", 2], ["tensile", 3],
         // Environmental
         ["climate", 3], ["carbon", 3], ["emission", 3], ["sustainability", 3],
-        ["renewable", 3], ["pollution", 3],
+        ["renewable", 3], ["pollution", 3], ["carbon cycle", 4],
+        ["deforestation", 3], ["reforestation", 3], ["greenhouse", 3],
+        // Law
+        ["evidence strength", 4], ["verdict", 4], ["prosecution", 3],
+        ["defense", 2], ["jury", 3], ["trial", 2], ["witness", 3],
+        ["burden of proof", 4], ["reasonable doubt", 4],
+        // Cybersecurity (slider-based)
+        ["password strength", 4], ["entropy", 3], ["phishing", 4],
+        ["server hardening", 4], ["access control", 3],
+        ["firewall rule", 4], ["packet", 3], ["network security", 3],
+        ["encryption strength", 4], ["cipher", 3], ["steganography", 4],
+        ["rogue access point", 4], ["signal strength", 3],
+        // Chemistry
+        ["reaction rate", 4], ["activation energy", 4], ["catalyst", 3],
+        ["le chatelier", 4], ["molarity", 3], ["titration", 3],
         // General simulation
         ["optimize", 2], ["tradeoff", 3], ["trade-off", 3],
         ["simulation", 5], ["model", 2], ["system", 1],
+        ["cause and effect", 3], ["what happens when", 3],
       ],
     },
   };
@@ -433,8 +454,57 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
     return candidates[0].type;
   }
 
-  console.log(`[Lab Selection] No strong match, defaulting to simulation`);
+  console.log(`[Lab Selection] No strong match, defaulting to simulation (universal slider fallback)`);
   return "simulation";
+}
+
+// ─── GUARANTEED FALLBACK: deterministic slider lab ───
+// If AI generation fails completely, this creates a working lab from the topic alone.
+function createFallbackSliderLab(topic: string, moduleTitle: string): any {
+  // Extract meaningful words from topic/title to create contextual labels
+  const words = `${topic} ${moduleTitle}`.replace(/[^a-zA-Z\s]/g, "").split(/\s+/).filter(w => w.length > 3);
+  const label1 = words[0] || "Intensity";
+  const label2 = words[1] || "Scale";
+  const label3 = words[2] || "Factor";
+
+  // Randomize defaults ±20%
+  const jitter = (base: number) => Math.round(base * (0.8 + Math.random() * 0.4));
+
+  return {
+    lab_type: "simulation",
+    title: `Explore: ${moduleTitle}`,
+    kind: "exploration",
+    scenario: `Adjust the sliders below to explore how different factors in ${moduleTitle} affect the outcome. Observe the relationships between variables.`,
+    learning_goal: `Understand the key variables and tradeoffs in ${moduleTitle}`,
+    key_insight: `Changing one variable often has cascading effects on the entire system.`,
+    goal: { description: `Explore how each variable affects the output by adjusting all sliders.` },
+    variables: [
+      { name: label1, icon: "📊", unit: "%", min: 0, max: 100, default: jitter(50), description: `Controls the ${label1.toLowerCase()} level` },
+      { name: label2, icon: "📈", unit: "%", min: 0, max: 100, default: jitter(40), description: `Controls the ${label2.toLowerCase()} factor` },
+      { name: label3, icon: "⚡", unit: "%", min: 0, max: 100, default: jitter(60), description: `Controls the ${label3.toLowerCase()} impact` },
+    ],
+    blocks: [
+      { type: "text", content: `🔬 **${moduleTitle}** — Use the sliders to explore how different factors interact. Watch the outputs change in real-time as you adjust each variable.` },
+      { type: "control_panel", prompt: "Adjust the variables to explore their effects:", variables: [label1, label2, label3] },
+      { type: "output_display", prompt: "Observe how the outputs respond:", outputs: ["Effectiveness", "Risk Level", "Overall Score"] },
+      { type: "choice_set", question: `Which factor do you think has the most impact on ${moduleTitle.toLowerCase()}?`, emoji: "🤔", choices: [
+        { text: `High ${label1}`, feedback: `Increasing ${label1.toLowerCase()} boosts effectiveness but may increase risk.`, effects: { [label1]: 80, [label2]: 30 }, is_best: false },
+        { text: `Balanced approach`, feedback: `A balanced approach provides steady results with manageable risk.`, effects: { [label1]: 50, [label2]: 50, [label3]: 50 }, is_best: true },
+        { text: `Focus on ${label3}`, feedback: `Prioritizing ${label3.toLowerCase()} can yield high scores but requires careful management.`, effects: { [label3]: 90, [label1]: 20 }, is_best: false },
+      ]},
+      { type: "insight", content: `The key takeaway: in ${moduleTitle.toLowerCase()}, no single variable works in isolation. Understanding the relationships between factors is essential for making informed decisions.` },
+    ],
+    completion_rule: "all_choices",
+    rules: [
+      { condition: `${label1} > 80`, effects: { [label2]: -10 }, message: `⚠️ High ${label1.toLowerCase()} is putting pressure on ${label2.toLowerCase()}!` },
+      { condition: `${label3} < 20`, effects: {}, message: `💡 Low ${label3.toLowerCase()} may limit your overall effectiveness.` },
+    ],
+    formulas: {
+      "Effectiveness": `(${label1} * 0.4 + ${label2} * 0.3 + ${label3} * 0.3)`,
+      "Risk Level": `Math.max(0, ${label1} - ${label3})`,
+      "Overall Score": `(${label1} + ${label2} + ${label3}) / 3`,
+    },
+  };
 }
 
 serve(async (req) => {
@@ -448,7 +518,6 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
     const isServiceRole = token === serviceRoleKey;
 
-    // Use service role client when called server-to-server (from generate-course)
     const supabase = isServiceRole
       ? createClient(Deno.env.get("SUPABASE_URL")!, serviceRoleKey!)
       : createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, {
@@ -512,19 +581,19 @@ serve(async (req) => {
       systemPrompt = `You are a MATH GRAPH LAB DESIGNER. You create interactive graphing labs where students manipulate equation parameters via sliders and see the graph update in real time.
 
 === RULES ===
-- Each lab focuses on ONE core graph concept (transformations, slope, vertex, etc.)
+- Each lab focuses on ONE core graph concept
 - Sliders MUST directly control equation parameters
 - Graph MUST update in real-time when sliders move
-- Only include sliders relevant to the topic
-- Set appropriate x_range and y_range for the function type
-- Include a target the student must match by adjusting sliders
-- The equation must use the slider variable names (e.g. if slider name is "m", equation uses "m")
+- Set appropriate x_range and y_range
+- Include a target the student must match
+- The equation must use the slider variable names
 
 === GRAPH TYPES ===
-- linear: y = mx + b (sliders: m, b)
-- quadratic: y = A(x-H)²+K (sliders: A (Strech), H (Horizontal shift), K (Vertical shift))
-- exponential: y = a * b^x (sliders: a, b)
-- trig: y = A*sin(B*(x-C))+D (sliders: A, B, C, D)
+- linear: y = mx + b
+- quadratic: y = A(x-H)²+K
+- exponential: y = a * b^x
+- trig: y = A*sin(B*(x-C))+D
+- custom: any equation with slider params
 
 === LESSON ALIGNMENT ===
 Only use concepts from the lesson content provided.`;
@@ -536,28 +605,22 @@ Concept: ${labConcept}
 === LESSON CONTENT ===
 ${lessonSummary}
 
-Create a graph lab with:
-1. The right equation for this topic
-2. 2-4 sliders controlling equation parameters
-3. A target the student must match
-4. Appropriate axis ranges`;
+Create a graph lab with 2-4 sliders, proper equation, target challenge, and axis ranges.`;
 
     } else if (labType === "flowchart") {
       toolSchema = flowchartToolSchema;
       toolName = "create_flowchart_lab";
-      systemPrompt = `You are a PROCESS FLOWCHART LAB DESIGNER. You create interactive flowchart labs where students fill in the correct steps of a process using dropdown menus.
+      systemPrompt = `You are a PROCESS FLOWCHART LAB DESIGNER. Create interactive flowchart labs where students fill in process steps using dropdown menus.
 
 === RULES ===
-- Create 4-8 ordered steps in the process
-- Each step has a descriptive label and a dropdown with 3-5 options
-- One option per step is correct, others are plausible distractors
-- The process must be directly from the lesson content
-- Steps must have a clear logical order
-- Completion requires ALL steps correct (no partial credit)
-- Distractors should be related but wrong (common misconceptions)
+- Create 4-8 ordered steps
+- Each step: descriptive label + dropdown with 3-5 options
+- One correct option per step, others are plausible distractors
+- Process must come from the lesson content
+- Steps must have clear logical order
 
 === LESSON ALIGNMENT ===
-Only use processes and steps explicitly taught in the lesson.`;
+Only use processes explicitly taught in the lesson.`;
 
       userPrompt = `Create a FLOWCHART LAB for: "${moduleTitle}"
 Topic: ${topic}
@@ -566,25 +629,20 @@ Concept: ${labConcept}
 === LESSON CONTENT ===
 ${lessonSummary}
 
-Create a flowchart with 4-8 steps. Each step needs:
-- A clear label describing what this step involves
-- The correct answer for the dropdown
-- 3-5 shuffled options including the correct one and plausible distractors`;
+Create a flowchart with 4-8 steps, each with label, correct answer, and 3-5 shuffled options.`;
 
     } else if (labType === "code_debugger") {
       toolSchema = codeDebuggerToolSchema;
       toolName = "create_code_debugger_lab";
-      systemPrompt = `You are a CODE DEBUGGING LAB DESIGNER. You create interactive labs where students find and fix bugs in code.
+      systemPrompt = `You are a CODE DEBUGGING LAB DESIGNER. Create labs where students find and fix bugs in code.
 
 === RULES ===
-- The starter code must have 1-3 clear bugs
-- Bugs should relate to the lesson concepts (not random typos)
-- The expected output must be simple and verifiable (a number, string, or short text)
-- Include 2-3 progressive hints (vague → specific)
-- Keep code SHORT (10-20 lines max)
-- Use Python by default unless the lesson is about another language
-- The initial_error shows what the broken code currently outputs
-- Use print() for Python, console.log() for JavaScript
+- 1-3 clear bugs in starter code
+- Bugs relate to lesson concepts
+- Short code (10-20 lines)
+- Python by default unless lesson specifies another language
+- Include 2-3 progressive hints
+- Expected output must be simple and verifiable
 
 === LESSON ALIGNMENT ===
 Bugs must test understanding of concepts from the lesson.`;
@@ -596,51 +654,37 @@ Concept: ${labConcept}
 === LESSON CONTENT ===
 ${lessonSummary}
 
-Create broken code (10-20 lines) with 1-3 bugs that test understanding of the lesson concepts. Include the expected output and progressive hints.`;
+Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include expected output and hints.`;
 
     } else {
-      // Default: simulation
+      // Default: simulation (universal slider lab)
       toolSchema = simulationToolSchema;
       toolName = "create_simulation_lab";
-      systemPrompt = `You are a SIMULATION SYSTEM DESIGNER. Return ONLY valid structured data. Be concise.
+      systemPrompt = `You are a SIMULATION SYSTEM DESIGNER creating SLIDER-BASED interactive labs. Students adjust sliders and see live outputs change.
 
-You convert topics into INTERACTIVE SYSTEMS with sliders, live outputs, and decisions.
-- Students adjust variables via sliders
-- The system reacts in REAL TIME (rules fire, derived outputs update)
-- Different inputs lead to different outcomes
-
-=== CLARITY REQUIREMENTS ===
-Every variable MUST have a description explaining what it controls in plain language.
-Every control_panel block MUST have a prompt explaining what to adjust.
-Every output_display block MUST have a prompt explaining what the outputs represent.
-Every choice_set feedback MUST describe CONSEQUENCES, not "correct/incorrect".
-
-=== REQUIRED BLOCKS (8-10) ===
-1. text — Scene setting
-2. diagram — System architecture
-3. control_panel — Interactive sliders
-4. output_display — Live computed values
-5. table — Reference data
-6. choice_set — Strategic decision with tradeoffs
-7. control_panel — Second round adjustments
-8. choice_set — Higher-stakes decision
-9. step_task — Analysis tasks
-10. insight — Key takeaway
+=== CRITICAL: EVERY LAB MUST HAVE ===
+1. 3-5 domain-specific slider variables with realistic units/ranges
+2. At least 2 control_panel blocks for slider interaction
+3. At least 1 output_display block with computed values
+4. 1-2 choice_set blocks for strategic decisions
+5. Formulas connecting slider values to outputs
+6. Rules creating cause→effect relationships
 
 === VARIABLE DESIGN ===
-- 4-6 DOMAIN-SPECIFIC variables (NEVER generic like "quality")
+- DOMAIN-SPECIFIC names (NEVER "quality", "efficiency" generically)
 - Variables MUST interconnect via rules
-- Use realistic units and ranges
+- Use realistic units and ranges from the subject matter
 
 === ANTI-PATTERNS ===
 - NO generic variable names
 - NO "correct/incorrect" feedback — describe CONSEQUENCES
 - NO labs where sliders don't affect outputs
+- NO step_task blocks
 
 === LESSON ALIGNMENT ===
 ONLY use concepts from the lesson content provided.`;
 
-      userPrompt = `Design an interactive SIMULATION for: "${moduleTitle}"
+      userPrompt = `Design an interactive SLIDER SIMULATION for: "${moduleTitle}"
 Topic: ${topic}
 Concept: ${labConcept}
 
@@ -648,13 +692,13 @@ Concept: ${labConcept}
 ${lessonSummary}
 
 REQUIREMENTS:
-1. At least 2 control_panel blocks with interactive sliders
-2. At least 1 output_display block with live-computed values
-3. 4-6 domain-specific variables
+1. 3-5 domain-specific slider variables
+2. At least 2 control_panel blocks
+3. At least 1 output_display block with live values
 4. 3-5 rules creating cause→effect relationships
 5. 2-4 formulas for derived outputs
-6. Clear measurable goal
-7. Multiple paths — no single correct answer`;
+6. 1-2 choice_set blocks with tradeoff decisions
+7. Clear measurable goal`;
     }
 
     let blueprint: any = null;
@@ -684,9 +728,8 @@ REQUIREMENTS:
         if (labType === "graph" && blueprint.sliders?.length > 0 && blueprint.equation) break;
         if (labType === "flowchart" && blueprint.drop_zones?.length > 0) break;
         if (labType === "code_debugger" && blueprint.starter_code && blueprint.expected_output) break;
-        if (labType === "simulation" && blueprint.blocks?.length > 0) break;
+        if (labType === "simulation" && blueprint.variables?.length > 0 && blueprint.blocks?.length > 0) break;
         
-        // If we got something but not validated, still use it
         if (blueprint && typeof blueprint === "object") break;
       } catch (e: any) {
         lastGenError = e.message || "Unknown generation error";
@@ -695,11 +738,16 @@ REQUIREMENTS:
       }
     }
 
+    // ═══ GUARANTEED FALLBACK: NEVER FAIL TO GENERATE A LAB ═══
     if (!blueprint || typeof blueprint !== "object") {
-      await supabase.from("course_modules").update({ lab_generation_status: "failed", lab_error: lastGenError || "AI returned empty blueprint" }).eq("id", moduleId);
-      return new Response(JSON.stringify({ status: "failed", error: lastGenError || "Empty blueprint" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.log(`[Fallback] AI generation failed for "${moduleTitle}", creating deterministic slider lab`);
+      blueprint = createFallbackSliderLab(topic, moduleTitle);
+    }
+
+    // If simulation but has no variables or blocks, also fallback
+    if (labType === "simulation" && (!blueprint.variables?.length || !blueprint.blocks?.length)) {
+      console.log(`[Fallback] Simulation blueprint empty for "${moduleTitle}", using fallback slider lab`);
+      blueprint = createFallbackSliderLab(topic, moduleTitle);
     }
 
     // Ensure lab_type is set
@@ -707,8 +755,7 @@ REQUIREMENTS:
 
     // ── Post-processing by lab type ──
 
-    if (labType === "simulation") {
-      // Repair simulation-specific data
+    if (blueprint.lab_type === "simulation" || labType === "simulation") {
       if (!Array.isArray(blueprint.blocks)) blueprint.blocks = [];
       if (!Array.isArray(blueprint.variables)) blueprint.variables = [];
 
@@ -718,6 +765,9 @@ REQUIREMENTS:
         v.max = typeof v.max === "number" ? v.max : 100;
         v.default = Math.max(v.min, Math.min(v.max, typeof v.default === "number" ? v.default : 50));
       }
+
+      // Filter out step_task blocks
+      blueprint.blocks = blueprint.blocks.filter((b: any) => b.type !== "step_task");
 
       // Ensure choice effects reference all variables
       const varNames = blueprint.variables.map((v: any) => v.name);
@@ -740,20 +790,9 @@ REQUIREMENTS:
       }
 
       blueprint.completion_rule = blueprint.completion_rule || "all_choices";
-
-      if (blueprint.blocks.length === 0) {
-        await supabase.from("course_modules").update({
-          lab_generation_status: "failed",
-          lab_error: "Blueprint generation produced no blocks after 3 attempts",
-        }).eq("id", moduleId);
-        return new Response(JSON.stringify({ status: "failed", error: "No blocks" }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
     }
 
     if (labType === "flowchart") {
-      // Ensure drop_zones have proper structure
       if (Array.isArray(blueprint.drop_zones)) {
         blueprint.drop_zones = blueprint.drop_zones.map((dz: any, i: number) => ({
           id: dz.id || `step_${i + 1}`,
@@ -765,7 +804,6 @@ REQUIREMENTS:
     }
 
     if (labType === "graph") {
-      // Ensure sliders have proper defaults
       if (Array.isArray(blueprint.sliders)) {
         blueprint.sliders = blueprint.sliders.map((s: any) => ({
           ...s,
@@ -773,7 +811,6 @@ REQUIREMENTS:
           default: typeof s.default === "number" ? s.default : 1,
         }));
       }
-      // Ensure ranges
       if (!blueprint.x_range) blueprint.x_range = [-10, 10];
       if (!blueprint.y_range) blueprint.y_range = [-10, 10];
     }
@@ -790,7 +827,7 @@ REQUIREMENTS:
       lab_error: null,
     }).eq("id", moduleId);
 
-    console.log(`Lab generated for "${moduleTitle}" → type: ${labType}, kind: ${blueprint.kind || labType}`);
+    console.log(`✅ Lab generated for "${moduleTitle}" → type: ${labType}, kind: ${blueprint.kind || labType}`);
 
     return new Response(JSON.stringify({ status: "done", blueprint }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
