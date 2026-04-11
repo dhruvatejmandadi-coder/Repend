@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'sans-serif'],
         display: ['Plus Jakarta Sans', 'sans-serif'],
+        editorial: ['Manrope', 'sans-serif'],
       },
       colors: {
         border: "hsl(var(--border))",
