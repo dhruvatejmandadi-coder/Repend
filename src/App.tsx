@@ -46,13 +46,14 @@ const App = () => (
             <Route path="/signup" element={<Signup />} />
             <Route path="/waitlist" element={<Waitlist />} />
             <Route path="/lab/demo-business" element={<BusinessLabDemo />} />
+            <Route path="/courses/:id" element={<CourseView />} />
 
             {/* Dashboard pages — persistent sidebar */}
             <Route element={<DashboardLayout />}>
               <Route path="/courses" element={<Courses />} />
               <Route path="/courses/create" element={<CourseCreator />} />
               <Route path="/courses/explore" element={<PublicCourses />} />
-              <Route path="/courses/:id" element={<CourseView />} />
+              {/* CourseView moved outside DashboardLayout for custom editorial layout */}
               <Route path="/courses/:id/edit" element={<CourseEditor />} />
               <Route path="/community" element={<Community />} />
               <Route path="/challenges" element={<Challenges />} />

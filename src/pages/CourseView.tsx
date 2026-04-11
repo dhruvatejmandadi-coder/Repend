@@ -1,12 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import {
   CheckCircle2,
   Circle,
@@ -16,13 +9,19 @@ import {
   Beaker,
   ClipboardList,
   Pencil,
-  Crown,
-  User,
-  PanelLeftClose,
-  PanelLeftOpen,
+  Play,
+  Download,
+  MessageCircle,
+  BookOpen,
+  Users,
+  BarChart3,
+  Lock,
+  ChevronRight,
+  Quote,
+  Layers,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,7 +32,8 @@ import LessonSlides from "@/components/courses/LessonSlides";
 import QuizSlides from "@/components/courses/QuizSlides";
 import AiTutor from "@/components/courses/AiTutor";
 import CourseCompletionScreen from "@/components/courses/CourseCompletionScreen";
-import CourseViewSkeleton from "@/components/courses/CourseViewSkeleton";
+import rependLogo from "@/assets/repend-logo.png";
+import { cn } from "@/lib/utils";
 
 type Module = {
   id: string;
@@ -65,6 +65,21 @@ type ContentType = "lesson" | "lab" | "quiz";
 
 const PASS_THRESHOLD = 0.7;
 
+/* ─── Themed wrapper classes ─── */
+const themeClasses = {
+  page: "min-h-screen bg-[#FAFAF9] font-editorial text-[#1a1a2e] antialiased",
+  nav: "fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-white/70 backdrop-blur-xl border-b border-[#e8e8e4]",
+  sidebar: "w-[280px] flex-shrink-0 border-r border-[#e8e8e4] bg-white/60 backdrop-blur-sm flex flex-col",
+  card: "bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04),0_20px_40px_rgba(0,0,0,0.06)] border border-[#f0f0ec]",
+  cardInner: "bg-white rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02),0_1px_3px_rgba(0,0,0,0.04)] border border-[#f0f0ec]",
+  accent: "#6157FF",
+  accentBg: "bg-[#6157FF]",
+  accentText: "text-[#6157FF]",
+  accentHover: "hover:bg-[#5147e5]",
+  muted: "text-[#8a8a8a]",
+  mutedBg: "bg-[#f5f5f2]",
+};
+
 export default function CourseView() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -78,23 +93,22 @@ export default function CourseView() {
   const [activeModule, setActiveModule] = useState(0);
   const [activeContent, setActiveContent] = useState<ContentType>("lesson");
   const [loading, setLoading] = useState(true);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<"overview" | "resources" | "notes" | "discussions">("overview");
 
   useEffect(() => {
     if (id) fetchCourse();
   }, [id]);
 
-  // Poll for modules still generating content + auto-retry failed/pending labs
   useEffect(() => {
     const hasGenerating = modules.some(m => m.lesson_content.startsWith("⏳"));
-    const hasPendingLabs = modules.some(m => 
-      !m.lesson_content.startsWith("⏳") && 
-      (m.lab_generation_status === "pending" || m.lab_generation_status === "generating" || 
-       (m.lab_generation_status === "done" && !m.lab_data))
+    const hasPendingLabs = modules.some(m =>
+      !m.lesson_content.startsWith("⏳") &&
+      (m.lab_generation_status === "pending" || m.lab_generation_status === "generating" ||
+        (m.lab_generation_status === "done" && !m.lab_data))
     );
-    
+
     if (!hasGenerating && !hasPendingLabs || !id) return;
 
     const interval = setInterval(async () => {
@@ -106,14 +120,12 @@ export default function CourseView() {
       if (data) {
         const parsed = data.map((m: any) => ({ ...m, quiz: Array.isArray(m.quiz) ? m.quiz : [] }));
         setModules(parsed);
-
         const stillGenerating = parsed.some((m: any) => m.lesson_content.startsWith("⏳"));
         if (!stillGenerating) {
           await supabase.from("courses").update({ status: "ready" }).eq("id", id);
-          // Trigger lab generation for all modules that need it
           for (const m of parsed) {
             if (m.lab_generation_status === "pending" || m.lab_generation_status === "generating" ||
-                (m.lab_generation_status === "done" && !m.lab_data)) {
+              (m.lab_generation_status === "done" && !m.lab_data)) {
               triggerLabGeneration(m.id);
             }
           }
@@ -139,10 +151,9 @@ export default function CourseView() {
     setModules(parsed);
     setLoading(false);
 
-    // Trigger lab generation for any modules that need it (pending, generating, or done-but-empty)
     for (const m of parsed) {
       if (!m.lesson_content.startsWith("⏳") && (
-        m.lab_generation_status === "pending" || 
+        m.lab_generation_status === "pending" ||
         m.lab_generation_status === "generating" ||
         (m.lab_generation_status === "done" && !m.lab_data)
       )) {
@@ -164,7 +175,6 @@ export default function CourseView() {
         body: JSON.stringify({ moduleId }),
       });
       if (resp.ok) {
-        // Refresh modules to get updated lab data
         const { data } = await supabase
           .from("course_modules")
           .select("*")
@@ -244,9 +254,42 @@ export default function CourseView() {
     setActiveContent(content);
   };
 
+  /* ─── Loading skeleton ─── */
   if (loading) {
-    return <CourseViewSkeleton />;
+    return (
+      <div className={themeClasses.page}>
+        <div className={themeClasses.nav}>
+          <div className="h-5 w-24 rounded bg-[#e8e8e4] animate-pulse" />
+          <div className="h-5 w-32 rounded bg-[#e8e8e4] animate-pulse" />
+        </div>
+        <div className="pt-14 flex h-screen">
+          <div className="w-[280px] border-r border-[#e8e8e4] p-6 space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="h-10 rounded-xl bg-[#f0f0ec] animate-pulse" />
+            ))}
+          </div>
+          <div className="flex-1 p-12">
+            <div className="h-8 w-96 rounded bg-[#e8e8e4] animate-pulse mb-8" />
+            <div className="aspect-video rounded-2xl bg-[#f0f0ec] animate-pulse" />
+          </div>
+        </div>
+      </div>
+    );
   }
+
+  const contentTabs = [
+    { key: "overview" as const, label: "Overview" },
+    { key: "resources" as const, label: "Resources" },
+    { key: "notes" as const, label: "Notes" },
+    { key: "discussions" as const, label: "Discussions" },
+  ];
+
+  const leftNavItems = [
+    { icon: Layers, label: "Course Overview", action: () => setActiveContent("lesson") },
+    { icon: BookOpen, label: "Learning Modules", action: () => {} },
+    { icon: Users, label: "Community", action: () => navigate("/community") },
+    { icon: BarChart3, label: "Progress", action: () => navigate("/progress") },
+  ];
 
   return (
     <>
@@ -263,56 +306,114 @@ export default function CourseView() {
         />
       )}
 
-      <div className="flex h-[calc(100vh-3rem)] relative">
-        {/* Sidebar */}
-        <aside className={`border-r border-border/50 bg-card/30 flex flex-col flex-shrink-0 transition-all duration-300 ${sidebarOpen ? "w-72" : "w-0 overflow-hidden border-r-0"}`}>
-          <div className="p-4 border-b border-border/40">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/courses")} className="-ml-2 mb-2 text-muted-foreground text-[13px]">
-              <ArrowLeft className="w-3.5 h-3.5 mr-1" /> Back
-            </Button>
-            <div className="flex items-center justify-between">
-              <h2 className="font-display font-semibold text-sm line-clamp-2">{course?.title}</h2>
-              {isElite && course?.user_id === user?.id && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary shrink-0" onClick={() => navigate(`/courses/${id}/edit`)} title="Edit Course (Elite)">
-                  <Pencil className="w-3.5 h-3.5" />
-                </Button>
-              )}
-            </div>
-            {course?.is_published && (
-              <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                <User className="w-2.5 h-2.5" /> Published
-              </div>
-            )}
-            <div className="flex items-center gap-2 mt-3">
-              <div className="flex-1 h-1 bg-secondary rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progressPct}%` }} />
-              </div>
-              <span className="text-[11px] text-muted-foreground font-medium tabular-nums">{progressPct}%</span>
-            </div>
+      <div className={themeClasses.page}>
+        {/* ═══ Top Navigation ═══ */}
+        <nav className={themeClasses.nav}>
+          <div className="flex items-center gap-6">
+            <Link to="/courses" className="flex items-center gap-2">
+              <img src={rependLogo} alt="Repend" className="h-6 w-auto brightness-0 opacity-80" />
+            </Link>
+            <div className="h-5 w-px bg-[#e0e0dc]" />
+            <span className="text-xs font-semibold tracking-wider uppercase text-[#8a8a8a]">
+              Lumina Academy
+            </span>
           </div>
+          <div className="flex items-center gap-3">
+            {isElite && course?.user_id === user?.id && (
+              <button
+                onClick={() => navigate(`/courses/${id}/edit`)}
+                className="flex items-center gap-1.5 text-xs font-medium text-[#8a8a8a] hover:text-[#6157FF] transition-colors"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+                Edit
+              </button>
+            )}
+            <div className="flex items-center gap-2 text-xs text-[#8a8a8a]">
+              <div className="w-24 h-1.5 rounded-full bg-[#e8e8e4] overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#6157FF] transition-all duration-700"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <span className="font-semibold tabular-nums">{progressPct}%</span>
+            </div>
+            <button
+              onClick={() => navigate("/courses")}
+              className="ml-2 flex items-center gap-1.5 text-xs font-medium text-[#8a8a8a] hover:text-[#1a1a2e] transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              All Courses
+            </button>
+          </div>
+        </nav>
 
-          <div className="flex-1 overflow-y-auto">
-            <Accordion type="multiple" defaultValue={[`module-0`]} className="w-full">
+        {/* ═══ Main Layout ═══ */}
+        <div className="pt-14 flex min-h-screen">
+          {/* ─── Left Sidebar ─── */}
+          <aside className={themeClasses.sidebar}>
+            <div className="p-5 border-b border-[#e8e8e4]">
+              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b0b0a8] mb-1">
+                Batch of 2024
+              </p>
+              <h3 className="text-sm font-bold text-[#1a1a2e] leading-snug line-clamp-2">
+                {course?.title}
+              </h3>
+            </div>
+
+            {/* Nav items */}
+            <div className="p-3 space-y-0.5">
+              {leftNavItems.map((item) => (
+                <button
+                  key={item.label}
+                  onClick={item.action}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#6b6b6b] hover:bg-[#f5f5f2] hover:text-[#1a1a2e] transition-all"
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mx-5 my-2 h-px bg-[#e8e8e4]" />
+
+            {/* Module list */}
+            <div className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-hide">
+              <p className="px-3 pt-3 pb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-[#b0b0a8]">
+                Modules
+              </p>
               {modules.map((m, i) => {
+                const isActive = activeModule === i;
                 const isModuleDone = progress.completedLessons.includes(m.id);
                 const lessonDone = getSectionDone(m.id, "lesson");
                 const labDone = getSectionDone(m.id, "lab");
                 const quizDone = getSectionDone(m.id, "quiz");
 
                 return (
-                  <AccordionItem key={m.id} value={`module-${i}`} className="border-b border-border/30">
-                    <AccordionTrigger className="px-4 py-2.5 text-[13px] hover:no-underline hover:bg-secondary/20">
-                      <div className="flex items-center gap-2 text-left">
-                        {isModuleDone ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-                        ) : (
-                          <Circle className="w-3.5 h-3.5 text-muted-foreground/40 flex-shrink-0" />
-                        )}
-                        <span className="line-clamp-1 font-medium">{m.title}</span>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pb-1">
-                      <div className="flex flex-col">
+                  <div key={m.id} className="mb-1">
+                    <button
+                      onClick={() => selectItem(i, "lesson")}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
+                        isActive
+                          ? "bg-[#6157FF]/[0.06] text-[#6157FF] font-semibold"
+                          : "text-[#6b6b6b] hover:bg-[#f5f5f2]"
+                      )}
+                    >
+                      {isModuleDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      ) : isActive ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-[#6157FF] flex items-center justify-center flex-shrink-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-[#6157FF]" />
+                        </div>
+                      ) : (
+                        <Circle className="w-4 h-4 text-[#d0d0cc] flex-shrink-0" />
+                      )}
+                      <span className="text-[13px] line-clamp-1">{m.title}</span>
+                    </button>
+
+                    {/* Sub-items when active */}
+                    {isActive && (
+                      <div className="ml-6 mt-0.5 space-y-0.5 animate-fade-in">
                         {[
                           { key: "lesson" as ContentType, icon: FileText, label: "Lesson", done: lessonDone },
                           { key: "lab" as ContentType, icon: Beaker, label: "Lab", done: labDone },
@@ -321,14 +422,15 @@ export default function CourseView() {
                           <button
                             key={key}
                             onClick={() => selectItem(i, key)}
-                            className={`flex items-center gap-2 pl-9 pr-4 py-1.5 text-[13px] transition-all duration-150 ${
-                              activeModule === i && activeContent === key
-                                ? "bg-primary/[0.08] text-primary border-l-2 border-primary font-medium"
-                                : "text-muted-foreground hover:text-foreground hover:bg-secondary/20"
-                            }`}
+                            className={cn(
+                              "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12px] transition-all",
+                              activeContent === key
+                                ? "text-[#6157FF] font-semibold bg-[#6157FF]/[0.04]"
+                                : "text-[#8a8a8a] hover:text-[#1a1a2e]"
+                            )}
                           >
                             {done ? (
-                              <CheckCircle2 className="w-3 h-3 text-green-500" />
+                              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
                             ) : (
                               <Icon className="w-3 h-3" />
                             )}
@@ -336,104 +438,209 @@ export default function CourseView() {
                           </button>
                         ))}
                       </div>
-                    </AccordionContent>
-                  </AccordionItem>
+                    )}
+                  </div>
                 );
               })}
-            </Accordion>
-          </div>
-        </aside>
+            </div>
+          </aside>
 
-        {/* Sidebar toggle */}
-        <button
-          onClick={() => setSidebarOpen(prev => !prev)}
-          className="absolute top-3 z-10 h-8 w-8 flex items-center justify-center rounded-md border border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-accent transition-all"
-          style={{ left: sidebarOpen ? "17.25rem" : "0.5rem" }}
-          title={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          {sidebarOpen ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-        </button>
-
-        {/* Main Content */}
-        {mod && (
-          <main className="flex-1 overflow-y-auto p-8">
-            <div className="max-w-3xl mx-auto">
-              {/* Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-widest mb-1.5">Module {mod.module_order}</p>
-                  <h1 className="font-display text-xl font-bold">{mod.title}</h1>
+          {/* ─── Center Content ─── */}
+          {mod && (
+            <main className="flex-1 overflow-y-auto">
+              <div className="max-w-[780px] mx-auto px-8 py-10">
+                {/* Hero title */}
+                <div className="mb-8">
+                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#b0b0a8] mb-3">
+                    Module {mod.module_order}
+                  </p>
+                  <h1 className="text-3xl md:text-[2.5rem] font-extrabold leading-[1.1] tracking-tight text-[#1a1a2e]">
+                    The Architecture of{" "}
+                    <em className="not-italic bg-gradient-to-r from-[#6157FF] to-[#8B7CFF] bg-clip-text text-transparent">
+                      {mod.title}
+                    </em>
+                  </h1>
+                  {progress.completedLessons.includes(mod.id) && (
+                    <Badge className="mt-3 bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-semibold shadow-none">
+                      <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
+                    </Badge>
+                  )}
                 </div>
-                {progress.completedLessons.includes(mod.id) && (
-                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20 text-[11px]">
-                    <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
-                  </Badge>
+
+                {/* Module still generating */}
+                {mod.lesson_content.startsWith("⏳") ? (
+                  <div className={cn(themeClasses.card, "flex flex-col items-center justify-center py-20 text-center")}>
+                    <Loader2 className="w-8 h-8 animate-spin text-[#6157FF] mb-4" />
+                    <h3 className="text-lg font-bold mb-2">Generating Module Content</h3>
+                    <p className="text-sm text-[#8a8a8a] max-w-md">
+                      Creating your lesson, quiz, and lab for "{mod.title}". This usually takes about 30 seconds.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    {/* Video / Content area */}
+                    {activeContent === "lesson" && mod.youtube_url && (
+                      <div className={cn(themeClasses.card, "aspect-video mb-8 overflow-hidden relative group")}>
+                        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] to-[#2a2a4e] flex items-center justify-center">
+                          <button className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-all group-hover:scale-105">
+                            <Play className="w-8 h-8 text-white ml-1" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Tabs */}
+                    <div className="flex items-center gap-1 mb-8 border-b border-[#e8e8e4]">
+                      {contentTabs.map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setActiveTab(tab.key)}
+                          className={cn(
+                            "px-4 py-3 text-[13px] font-semibold transition-all relative",
+                            activeTab === tab.key
+                              ? "text-[#6157FF]"
+                              : "text-[#8a8a8a] hover:text-[#1a1a2e]"
+                          )}
+                        >
+                          {tab.label}
+                          {activeTab === tab.key && (
+                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6157FF] rounded-full" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Content */}
+                    <div className={cn(themeClasses.card, "p-8")}>
+                      {activeContent === "lesson" && (
+                        <LessonSlides
+                          content={mod.lesson_content}
+                          youtubeUrl={mod.youtube_url}
+                          youtubeTitle={mod.youtube_title}
+                          onComplete={handleLessonComplete}
+                          isCompleted={getSectionDone(mod.id, "lesson")}
+                          onSlideChange={(idx) => setCurrentSlideIndex(idx)}
+                        />
+                      )}
+
+                      {activeContent === "lab" && (
+                        <InteractiveLab
+                          labType={mod.lab_type}
+                          labData={mod.lab_data}
+                          labTitle={mod.lab_title}
+                          labDescription={mod.lab_description}
+                          labGenerationStatus={mod.lab_generation_status}
+                          labError={mod.lab_error}
+                          onComplete={handleLabComplete}
+                          isCompleted={getSectionDone(mod.id, "lab")}
+                          onRetryGeneration={() => triggerLabGeneration(mod.id)}
+                          onReplay={handleLabReplay}
+                        />
+                      )}
+
+                      {activeContent === "quiz" && (
+                        <QuizSlides
+                          questions={mod.quiz as any[]}
+                          onSubmit={handleQuizSubmit}
+                          isCompleted={getSectionDone(mod.id, "quiz")}
+                        />
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
+            </main>
+          )}
 
-              {/* Module still generating */}
-              {mod.lesson_content.startsWith("⏳") ? (
-                <div className="flex flex-col items-center justify-center py-20 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
-                  <h3 className="font-display text-lg font-semibold mb-2">Generating Module Content</h3>
-                  <p className="text-sm text-muted-foreground max-w-md">
-                    Our AI is creating your lesson, quiz, and lab for "{mod.title}". This usually takes about 30 seconds.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Lesson */}
-                  {activeContent === "lesson" && (
-                    <LessonSlides
-                      content={mod.lesson_content}
-                      youtubeUrl={mod.youtube_url}
-                      youtubeTitle={mod.youtube_title}
-                      onComplete={handleLessonComplete}
-                      isCompleted={getSectionDone(mod.id, "lesson")}
-                      onSlideChange={(idx) => setCurrentSlideIndex(idx)}
-                    />
-                  )}
+          {/* ─── Right Sidebar ─── */}
+          <aside className="w-[300px] flex-shrink-0 border-l border-[#e8e8e4] bg-white/40 backdrop-blur-sm p-5 space-y-5 overflow-y-auto hidden xl:block">
+            {/* Course Content Card */}
+            <div className={themeClasses.card}>
+              <div className="p-4 border-b border-[#f0f0ec]">
+                <h4 className="text-xs font-bold tracking-wider uppercase text-[#8a8a8a]">
+                  Course Content
+                </h4>
+              </div>
+              <div className="p-2 max-h-[280px] overflow-y-auto scrollbar-hide">
+                {modules.map((m, i) => {
+                  const isDone = progress.completedLessons.includes(m.id);
+                  const isCurrent = activeModule === i;
+                  const isLocked = i > 0 && !progress.completedLessons.includes(modules[i - 1]?.id) && !isCurrent;
 
-                  {/* Lab */}
-                  {activeContent === "lab" && (
-                    <InteractiveLab
-                      labType={mod.lab_type}
-                      labData={mod.lab_data}
-                      labTitle={mod.lab_title}
-                      labDescription={mod.lab_description}
-                      labGenerationStatus={mod.lab_generation_status}
-                      labError={mod.lab_error}
-                      onComplete={handleLabComplete}
-                      isCompleted={getSectionDone(mod.id, "lab")}
-                      onRetryGeneration={() => triggerLabGeneration(mod.id)}
-                      onReplay={handleLabReplay}
-                    />
-                  )}
-
-                  {/* Quiz */}
-                  {activeContent === "quiz" && (
-                    <QuizSlides
-                      questions={mod.quiz as any[]}
-                      onSubmit={handleQuizSubmit}
-                      isCompleted={getSectionDone(mod.id, "quiz")}
-                    />
-                  )}
-                </>
-              )}
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => selectItem(i, "lesson")}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-[12px]",
+                        isCurrent && "bg-[#6157FF]/[0.06] font-semibold",
+                        isLocked && "opacity-40"
+                      )}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                      ) : isCurrent ? (
+                        <Play className="w-4 h-4 text-[#6157FF] flex-shrink-0" />
+                      ) : isLocked ? (
+                        <Lock className="w-4 h-4 text-[#c0c0bc] flex-shrink-0" />
+                      ) : (
+                        <Circle className="w-4 h-4 text-[#d0d0cc] flex-shrink-0" />
+                      )}
+                      <span className="line-clamp-1 flex-1">{m.title}</span>
+                      <ChevronRight className="w-3 h-3 text-[#c0c0bc] flex-shrink-0" />
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
-            {/* AI Tutor — available across lesson, lab, quiz */}
-            {course && (
-              <AiTutor
-                moduleTitle={mod.title}
-                courseTitle={course.title}
-                currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[currentSlideIndex] || "") : undefined}
-                slideIndex={currentSlideIndex}
-                totalSlides={mod.lesson_content.split(/\n---\n/).length}
-                activeSection={activeContent}
-              />
-            )}
-          </main>
+            {/* Download Assets Card */}
+            <div className={cn(themeClasses.card, "p-5")}>
+              <h4 className="text-xs font-bold tracking-wider uppercase text-[#8a8a8a] mb-3">
+                Download Assets
+              </h4>
+              <p className="text-[12px] text-[#8a8a8a] mb-4 leading-relaxed">
+                Get the complete course workbook with exercises, notes, and reference materials.
+              </p>
+              <button className={cn(
+                "w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[13px] font-semibold text-white transition-all",
+                themeClasses.accentBg, themeClasses.accentHover,
+                "shadow-[0_4px_12px_rgba(97,87,255,0.3)]"
+              )}>
+                <Download className="w-4 h-4" />
+                PDF Workbook
+              </button>
+            </div>
+
+            {/* Instructor Quote Card */}
+            <div className={cn(themeClasses.card, "p-5 relative overflow-hidden")}>
+              <Quote className="absolute top-3 right-3 w-8 h-8 text-[#6157FF]/10" />
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6157FF] to-[#8B7CFF] flex items-center justify-center text-white text-sm font-bold shadow-[0_4px_12px_rgba(97,87,255,0.25)]">
+                  R
+                </div>
+                <div>
+                  <p className="text-[13px] font-semibold text-[#1a1a2e]">Repend AI</p>
+                  <p className="text-[11px] text-[#8a8a8a]">Course Instructor</p>
+                </div>
+              </div>
+              <p className="text-[12px] text-[#6b6b6b] leading-relaxed italic">
+                "Every concept becomes clearer when you experience the tradeoffs firsthand. Engage with the labs — they're where real understanding happens."
+              </p>
+            </div>
+          </aside>
+        </div>
+
+        {/* ═══ Floating Module Chat Button ═══ */}
+        {course && mod && (
+          <AiTutor
+            moduleTitle={mod.title}
+            courseTitle={course.title}
+            currentSlideContent={activeContent === "lesson" ? (mod.lesson_content.split(/\n---\n/)[currentSlideIndex] || "") : undefined}
+            slideIndex={currentSlideIndex}
+            totalSlides={mod.lesson_content.split(/\n---\n/).length}
+            activeSection={activeContent}
+          />
         )}
       </div>
     </>
