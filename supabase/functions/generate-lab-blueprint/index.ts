@@ -396,154 +396,177 @@ function selectDomainTemplate(topic: string, moduleTitle: string, lessonContent:
 
 // ─── ADAPTIVE LAB TYPE SELECTION ───
 // Weighted scoring: picks the best-matching lab type per module independently.
+// KEY RULE: graph is ONLY for math/science with actual equations.
+// Simulation is the universal fallback and preferred for most topics.
 
 type LabCandidate = { type: string; score: number };
 
+// Topics that should NEVER get graph labs (they don't have plottable equations)
+const GRAPH_BLOCKLIST_DOMAINS = [
+  "cybersecurity", "cyber", "security", "hacking", "phishing", "malware",
+  "law", "legal", "trial", "court",
+  "business", "marketing", "management", "negotiation", "leadership",
+  "cooking", "culinary", "recipe",
+  "history", "geography", "politics", "sociology",
+  "art", "music", "writing", "literature", "philosophy",
+  "fitness", "sports", "health",
+];
+
+// Topics that should NEVER get code_debugger labs (they're not about programming)
+const CODE_BLOCKLIST_DOMAINS = [
+  "law", "legal", "trial", "court",
+  "cooking", "culinary", "recipe",
+  "history", "geography", "politics", "sociology",
+  "art", "music", "writing", "literature", "philosophy",
+  "fitness", "sports", "health",
+  "economics", "finance", "marketing", "business",
+  "biology", "ecology", "anatomy",
+  "psychology", "negotiation",
+];
+
 function classifyLabType(topic: string, moduleTitle: string, lessonContent: string): string {
   const combined = `${topic} ${moduleTitle} ${lessonContent}`.toLowerCase();
+  const topicLower = topic.toLowerCase();
+  const titleLower = moduleTitle.toLowerCase();
+
+  // ── DOMAIN GUARDS: block inappropriate lab types ──
+  const isGraphBlocked = GRAPH_BLOCKLIST_DOMAINS.some(d => topicLower.includes(d) || titleLower.includes(d));
+  const isCodeBlocked = CODE_BLOCKLIST_DOMAINS.some(d => topicLower.includes(d) || titleLower.includes(d));
 
   const labProfiles: Record<string, { keywords: [string, number][] }> = {
     graph: {
       keywords: [
-        // Math graphing
-        ["graph", 3], ["plot", 3], ["equation", 2], ["parabola", 4], ["quadratic", 4],
-        ["polynomial", 3], ["slope", 3], ["intercept", 3], ["vertex", 3],
-        ["exponential", 3], ["logarithm", 3], ["asymptote", 3],
-        // Trig / polar
-        ["trigonometr", 5], ["sine", 5], ["cosine", 5], ["tangent", 4],
-        ["amplitude", 5], ["period", 4], ["phase shift", 5], ["frequency", 3],
-        ["polar", 5], ["polar coordinate", 6], ["unit circle", 5],
-        ["radian", 4], ["parametric", 4], ["sinusoidal", 5],
-        ["y = ", 3], ["f(x)", 3], ["transformation", 2],
-        ["linear equation", 3], ["linear function", 3],
-        ["domain and range", 2], ["curve", 2],
-        // Statistics / data viz
-        ["histogram", 4], ["scatter plot", 4], ["box plot", 4],
-        ["distribution", 3], ["regression", 3], ["correlation", 3],
-        ["normal distribution", 4], ["standard deviation", 3],
-        ["statistics", 2], ["probability distribution", 4],
-        ["z-score", 4], ["confidence interval", 3], ["chi-square", 4],
-        // Physics graphing
-        ["ohm's law", 4], ["voltage", 3], ["resistance", 3],
-        ["wave", 3], ["wavelength", 3], ["harmonic", 3],
-        // Astronomy / orbital
-        ["orbital", 4], ["eccentricity", 4], ["semi-major axis", 5],
-        ["kepler", 5], ["escape velocity", 4], ["celestial", 3],
+        // ONLY pure math/science graphing — no generic terms
+        ["parabola", 5], ["quadratic", 5], ["polynomial", 4],
+        ["slope", 4], ["intercept", 4], ["vertex", 4],
+        ["exponential growth", 4], ["exponential decay", 4], ["logarithm", 4], ["asymptote", 4],
+        // Trig / polar — strong signals
+        ["trigonometr", 6], ["sine", 6], ["cosine", 6], ["tangent", 5],
+        ["amplitude", 6], ["phase shift", 6], ["sinusoidal", 6],
+        ["polar", 6], ["polar coordinate", 7], ["unit circle", 6],
+        ["radian", 5], ["parametric", 5],
+        ["y = ", 4], ["f(x)", 4],
+        ["linear equation", 4], ["linear function", 4],
+        // Statistics with actual plots
+        ["histogram", 5], ["scatter plot", 5], ["box plot", 5],
+        ["normal distribution", 5], ["probability distribution", 5],
+        ["regression", 4], ["correlation", 4],
+        // Physics with plottable equations
+        ["ohm's law", 5], ["harmonic", 4], ["wavelength", 4],
+        // Orbital mechanics
+        ["orbital", 5], ["kepler", 6], ["eccentricity", 5], ["semi-major axis", 6],
         // Pharmacokinetics curves
-        ["pharmacokinetic", 4], ["half-life", 3], ["plasma concentration", 5],
-        ["dosage", 2], ["clearance rate", 4],
+        ["pharmacokinetic", 5], ["plasma concentration", 6],
       ],
     },
     code_debugger: {
       keywords: [
-        ["debug", 5], ["syntax error", 5], ["code", 3], ["coding", 3],
-        ["program", 3], ["python", 4], ["javascript", 4], ["java ", 3],
-        ["c++", 3], ["html", 3], ["css", 3], ["sql", 4],
-        ["algorithm", 2], ["data structure", 3], ["compile", 3],
-        ["runtime", 3], ["loop", 2], ["array", 2], ["recursion", 3],
-        ["object-oriented", 3], ["oop", 3], ["api", 2],
-        // Cybersecurity code
-        ["sql injection", 5], ["xss", 5], ["cross-site", 4],
-        ["injection", 4], ["exploit", 4], ["vulnerability", 3],
-        ["penetration test", 4], ["malware", 3],
-        // Data queries
-        ["query", 3], ["database", 2], ["join", 2], ["select", 2],
+        // ONLY actual programming/coding tasks
+        ["debug", 6], ["syntax error", 6], ["bug", 4],
+        ["python", 5], ["javascript", 5], ["java ", 4],
+        ["c++", 4], ["html", 4], ["css", 4],
+        ["compile", 4], ["runtime error", 5],
+        ["loop", 3], ["array", 3], ["recursion", 4],
+        ["object-oriented", 4], ["oop", 4],
+        // ONLY code-specific cyber (actual code exploitation)
+        ["sql injection", 6], ["xss", 6], ["cross-site scripting", 6],
+        ["code review", 5], ["source code", 5],
         // Web dev
-        ["web development", 3], ["front-end", 3], ["back-end", 3],
-        ["react", 3], ["node", 2], ["typescript", 3],
+        ["web development", 4], ["front-end", 4], ["back-end", 4],
+        ["react", 4], ["typescript", 4],
+        ["algorithm", 3], ["data structure", 4],
       ],
     },
     flowchart: {
       keywords: [
-        ["process", 2], ["workflow", 4], ["procedure", 3], ["step-by-step", 3],
-        ["pipeline", 4], ["lifecycle", 4], ["methodology", 3],
-        ["framework", 2], ["protocol", 3], ["sequence of steps", 4],
-        ["phases", 3], ["stages", 3], ["design process", 4],
-        ["scientific method", 4], ["sdlc", 5], ["agile", 3],
-        ["waterfall", 4], ["project management", 3],
-        ["decision tree", 4], ["flow chart", 5], ["flowchart", 5],
+        ["workflow", 5], ["procedure", 4], ["step-by-step", 4],
+        ["pipeline", 5], ["lifecycle", 5], ["methodology", 4],
+        ["protocol", 4], ["sequence of steps", 5],
+        ["design process", 5], ["scientific method", 5],
+        ["sdlc", 6], ["agile", 4], ["waterfall", 5],
+        ["decision tree", 5], ["flow chart", 6], ["flowchart", 6],
         // Biology processes
-        ["cell division", 3], ["mitosis", 3], ["meiosis", 3],
-        ["digestive system", 3], ["respiration", 2],
-        ["photosynthesis", 3], ["krebs cycle", 4], ["dna replication", 4],
+        ["cell division", 4], ["mitosis", 4], ["meiosis", 4],
+        ["photosynthesis", 4], ["krebs cycle", 5], ["dna replication", 5],
         // Business processes
-        ["supply chain", 4], ["logistics", 3], ["onboarding", 3],
-        ["hiring process", 4], ["marketing funnel", 4],
-        ["customer journey", 4], ["sales pipeline", 4],
-        // Critical thinking / logic
-        ["logical fallac", 4], ["deductive", 3], ["inductive", 3],
-        ["argument structure", 4], ["syllogism", 4],
-        // Engineering
-        ["circuit", 3], ["logic gate", 4], ["boolean", 3],
-        // Cybersecurity processes
-        ["incident response", 5], ["forensic", 4], ["chain of custody", 5],
-        ["evidence handling", 4], ["authentication", 3],
-        ["handshake", 4], ["tcp/ip", 4], ["osi model", 5],
-        ["network protocol", 4], ["dns resolution", 4],
+        ["supply chain", 5], ["onboarding", 4],
+        ["hiring process", 5], ["customer journey", 5], ["sales pipeline", 5],
+        // Cybersecurity processes — ONLY process-oriented ones
+        ["incident response", 6], ["chain of custody", 6],
+        ["evidence handling", 5], ["forensic process", 5],
+        ["osi model", 6], ["tcp/ip", 5], ["dns resolution", 5],
+        ["authentication flow", 5], ["handshake", 5],
         // Legal / medical processes
-        ["trial process", 4], ["legal procedure", 4], ["diagnosis", 3],
-        ["triage", 4], ["clinical pathway", 4],
+        ["trial process", 5], ["legal procedure", 5],
+        ["triage", 5], ["clinical pathway", 5],
+        // Logic
+        ["logical fallac", 5], ["argument structure", 5],
+        ["circuit", 4], ["logic gate", 5], ["boolean", 4],
       ],
     },
     simulation: {
       keywords: [
         // Physics
-        ["physics", 2], ["projectile", 4], ["friction", 3], ["force", 2],
-        ["acceleration", 3], ["momentum", 3], ["energy", 2], ["gravity", 3],
-        ["thermodynamic", 3], ["heat transfer", 3], ["pressure", 2],
-        ["chemical reaction", 3], ["equilibrium", 2], ["concentration", 2],
-        ["velocity", 3], ["kinematics", 4], ["newton", 3],
-        // Biology
-        ["population", 3], ["ecosystem", 4], ["predator", 4], ["prey", 4],
-        ["evolution", 2], ["natural selection", 3], ["food chain", 3],
-        ["genetics", 3], ["punnett", 4], ["heredity", 3], ["allele", 4],
-        ["phenotype", 3], ["genotype", 3], ["mutation", 3],
-        ["carrying capacity", 4], ["birth rate", 3], ["death rate", 3],
-        // Economics / Business
-        ["supply and demand", 4], ["inflation", 4], ["interest rate", 4],
-        ["market", 2], ["profit", 3], ["revenue", 3], ["investment", 3],
-        ["budget", 3], ["pricing", 3], ["elasticity", 3],
-        ["gdp", 3], ["monetary policy", 4], ["fiscal", 3],
-        ["consumer surplus", 4], ["producer surplus", 4], ["deadweight loss", 4],
-        // Finance
-        ["portfolio", 3], ["stock", 2], ["bond", 2], ["compound interest", 4],
-        ["amortization", 4], ["depreciation", 3], ["cash flow", 3],
-        ["valuation", 3], ["dcf", 4], ["roi", 3],
-        // Health / medicine
-        ["nutrition", 3], ["metabolism", 3], ["calorie", 3], ["bmi", 3],
-        ["drug", 2], ["pharmacology", 4], ["dose", 3],
-        ["bioavailability", 4], ["therapeutic", 3], ["toxicity", 3],
-        // Psychology / behavior
-        ["cognitive bias", 5], ["confirmation bias", 4], ["anchoring", 4],
-        ["heuristic", 3], ["decision quality", 4], ["psychology", 3],
-        ["behavioral", 3], ["perception", 2],
-        // Negotiation / soft skills
-        ["negotiation", 4], ["conflict resolution", 3], ["persuasion", 3],
-        ["leadership", 2], ["emotional intelligence", 3],
-        // Engineering
-        ["structural", 3], ["stress", 2], ["load", 2], ["bridge", 3],
-        ["material", 2], ["tensile", 3],
-        // Environmental
-        ["climate", 3], ["carbon", 3], ["emission", 3], ["sustainability", 3],
-        ["renewable", 3], ["pollution", 3], ["carbon cycle", 4],
-        ["deforestation", 3], ["reforestation", 3], ["greenhouse", 3],
-        // Law
-        ["evidence strength", 4], ["verdict", 4], ["prosecution", 3],
-        ["defense", 2], ["jury", 3], ["trial", 2], ["witness", 3],
-        ["burden of proof", 4], ["reasonable doubt", 4],
-        // Cybersecurity (slider-based)
-        ["password strength", 4], ["entropy", 3], ["phishing", 4],
-        ["server hardening", 4], ["access control", 3],
-        ["firewall rule", 4], ["packet", 3], ["network security", 3],
-        ["encryption strength", 4], ["cipher", 3], ["steganography", 4],
-        ["rogue access point", 4], ["signal strength", 3],
+        ["physics", 3], ["projectile", 5], ["friction", 4], ["force", 3],
+        ["acceleration", 4], ["momentum", 4], ["energy", 3], ["gravity", 4],
+        ["thermodynamic", 4], ["heat transfer", 4], ["pressure", 3],
+        ["velocity", 4], ["kinematics", 5], ["newton", 4],
         // Chemistry
-        ["reaction rate", 4], ["activation energy", 4], ["catalyst", 3],
-        ["le chatelier", 4], ["molarity", 3], ["titration", 3],
-        // General simulation
-        ["optimize", 2], ["tradeoff", 3], ["trade-off", 3],
-        ["simulation", 5], ["model", 2], ["system", 1],
-        ["cause and effect", 3], ["what happens when", 3],
+        ["chemical reaction", 4], ["equilibrium", 3], ["concentration", 3],
+        ["reaction rate", 5], ["activation energy", 5], ["catalyst", 4],
+        ["le chatelier", 5], ["molarity", 4], ["titration", 4],
+        // Biology
+        ["population", 4], ["ecosystem", 5], ["predator", 5], ["prey", 5],
+        ["natural selection", 4], ["food chain", 4],
+        ["genetics", 4], ["punnett", 5], ["allele", 5],
+        ["carrying capacity", 5], ["birth rate", 4],
+        // Economics / Business
+        ["supply and demand", 5], ["inflation", 5], ["interest rate", 5],
+        ["market", 3], ["profit", 4], ["revenue", 4], ["investment", 4],
+        ["budget", 4], ["pricing", 4], ["elasticity", 4],
+        ["gdp", 4], ["monetary policy", 5], ["fiscal", 4],
+        ["consumer surplus", 5], ["producer surplus", 5], ["deadweight loss", 5],
+        // Finance
+        ["portfolio", 4], ["compound interest", 5], ["cash flow", 4],
+        ["valuation", 4], ["dcf", 5], ["roi", 4],
+        // Health / medicine
+        ["nutrition", 4], ["metabolism", 4], ["calorie", 4],
+        ["pharmacology", 5], ["dose", 3], ["half-life", 4],
+        ["bioavailability", 5], ["therapeutic", 4], ["toxicity", 4],
+        // Psychology / behavior
+        ["cognitive bias", 6], ["confirmation bias", 5], ["anchoring", 5],
+        ["heuristic", 4], ["psychology", 4], ["behavioral", 4],
+        // Negotiation / soft skills
+        ["negotiation", 5], ["conflict resolution", 4], ["persuasion", 4],
+        ["emotional intelligence", 4],
+        // Engineering
+        ["structural", 4], ["load", 3], ["bridge", 4], ["tensile", 4],
+        // Environmental
+        ["climate", 4], ["carbon", 4], ["emission", 4], ["sustainability", 4],
+        ["renewable", 4], ["carbon cycle", 5], ["greenhouse", 4],
+        // Law
+        ["evidence strength", 5], ["verdict", 5], ["prosecution", 4],
+        ["jury", 4], ["burden of proof", 5], ["reasonable doubt", 5],
+        // ── CYBERSECURITY (STRONG simulation preference) ──
+        ["cybersecurity", 6], ["cyber security", 6], ["cyber", 5],
+        ["security", 4], ["threat", 4], ["attack", 4],
+        ["password", 5], ["password strength", 6], ["entropy", 4],
+        ["phishing", 6], ["social engineering", 5],
+        ["server hardening", 6], ["access control", 5],
+        ["firewall", 5], ["intrusion detection", 5],
+        ["encryption", 5], ["encryption strength", 6],
+        ["cipher", 4], ["steganography", 5], ["cryptography", 5],
+        ["network security", 6], ["wireless security", 5],
+        ["rogue access point", 5], ["signal strength", 4],
+        ["vulnerability", 5], ["malware", 5], ["ransomware", 5],
+        ["data privacy", 5], ["data breach", 5], ["data protection", 5],
+        ["mfa", 5], ["two-factor", 5], ["authentication", 4],
+        ["forensic", 4], ["digital forensic", 5],
+        ["exploit", 4], ["penetration test", 5],
+        // General
+        ["optimize", 3], ["tradeoff", 4], ["trade-off", 4],
+        ["simulation", 6], ["model", 2], ["system", 1],
+        ["cause and effect", 4],
       ],
     },
   };
@@ -551,6 +574,10 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
   const candidates: LabCandidate[] = [];
 
   for (const [labType, profile] of Object.entries(labProfiles)) {
+    // ── Apply domain guards ──
+    if (labType === "graph" && isGraphBlocked) continue;
+    if (labType === "code_debugger" && isCodeBlocked) continue;
+
     let score = 0;
     let matchCount = 0;
     for (const [keyword, weight] of profile.keywords) {
@@ -565,6 +592,32 @@ function classifyLabType(topic: string, moduleTitle: string, lessonContent: stri
   }
 
   candidates.sort((a, b) => b.score - a.score);
+
+  // For graph to win, it needs a MUCH higher score than simulation (graph is specialized)
+  if (candidates.length >= 2 && candidates[0].type === "graph") {
+    const simCandidate = candidates.find(c => c.type === "simulation");
+    if (simCandidate && candidates[0].score < simCandidate.score + 8) {
+      // Graph doesn't have a strong enough lead — prefer simulation
+      console.log(`[Lab Selection] Graph score ${candidates[0].score} not strong enough vs simulation ${simCandidate.score}, preferring simulation`);
+      return "simulation";
+    }
+  }
+
+  // For code_debugger to win, the module title must actually be about code
+  if (candidates.length >= 1 && candidates[0].type === "code_debugger") {
+    const codeSignals = ["code", "coding", "program", "debug", "python", "javascript", "sql injection", "xss", "script"];
+    const titleHasCode = codeSignals.some(s => titleLower.includes(s));
+    if (!titleHasCode) {
+      // Module title isn't about code — fall to next candidate or simulation
+      const alt = candidates.find(c => c.type !== "code_debugger");
+      if (alt) {
+        console.log(`[Lab Selection] code_debugger won but title "${moduleTitle}" isn't about coding, using ${alt.type} instead`);
+        return alt.type;
+      }
+      console.log(`[Lab Selection] code_debugger won but title "${moduleTitle}" isn't about coding, defaulting to simulation`);
+      return "simulation";
+    }
+  }
 
   if (candidates.length > 0 && candidates[0].score >= 4) {
     console.log(`[Lab Selection] Candidates: ${candidates.map(c => `${c.type}(${c.score})`).join(", ")} → picked: ${candidates[0].type}`);
