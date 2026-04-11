@@ -67,17 +67,13 @@ const PASS_THRESHOLD = 0.7;
 
 /* ─── Themed wrapper classes ─── */
 const themeClasses = {
-  page: "min-h-screen bg-[#FAFAF9] font-editorial text-[#1a1a2e] antialiased",
-  nav: "fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-white/70 backdrop-blur-xl border-b border-[#e8e8e4]",
-  sidebar: "w-[280px] flex-shrink-0 border-r border-[#e8e8e4] bg-white/60 backdrop-blur-sm flex flex-col",
-  card: "bg-white rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04),0_20px_40px_rgba(0,0,0,0.06)] border border-[#f0f0ec]",
-  cardInner: "bg-white rounded-xl shadow-[inset_0_2px_4px_rgba(0,0,0,0.02),0_1px_3px_rgba(0,0,0,0.04)] border border-[#f0f0ec]",
-  accent: "#6157FF",
-  accentBg: "bg-[#6157FF]",
-  accentText: "text-[#6157FF]",
-  accentHover: "hover:bg-[#5147e5]",
-  muted: "text-[#8a8a8a]",
-  mutedBg: "bg-[#f5f5f2]",
+  page: "min-h-screen bg-background text-foreground font-editorial antialiased",
+  nav: "fixed top-0 left-0 right-0 z-50 h-14 flex items-center justify-between px-6 bg-background/80 backdrop-blur-xl border-b border-border/60",
+  sidebar: "w-[280px] flex-shrink-0 border-r border-border/60 bg-card/40 backdrop-blur-sm flex flex-col",
+  card: "bg-card text-card-foreground rounded-2xl shadow-[var(--shadow-card)] border border-border/60",
+  cardInner: "bg-card text-card-foreground rounded-xl border border-border/50 shadow-[var(--shadow-soft)]",
+  muted: "text-muted-foreground",
+  mutedBg: "bg-secondary/40",
 };
 
 export default function CourseView() {
@@ -309,29 +305,25 @@ export default function CourseView() {
       <div className={themeClasses.page}>
         {/* ═══ Top Navigation ═══ */}
         <nav className={themeClasses.nav}>
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <Link to="/courses" className="flex items-center gap-2">
-              <img src={rependLogo} alt="Repend" className="h-6 w-auto brightness-0 opacity-80" />
+              <img src={rependLogo} alt="Repend" className="h-6 w-auto" />
             </Link>
-            <div className="h-5 w-px bg-[#e0e0dc]" />
-            <span className="text-xs font-semibold tracking-wider uppercase text-[#8a8a8a]">
-              Lumina Academy
-            </span>
           </div>
           <div className="flex items-center gap-3">
             {isElite && course?.user_id === user?.id && (
               <button
                 onClick={() => navigate(`/courses/${id}/edit`)}
-                className="flex items-center gap-1.5 text-xs font-medium text-[#8a8a8a] hover:text-[#6157FF] transition-colors"
+                className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Pencil className="w-3.5 h-3.5" />
                 Edit
               </button>
             )}
-            <div className="flex items-center gap-2 text-xs text-[#8a8a8a]">
-              <div className="w-24 h-1.5 rounded-full bg-[#e8e8e4] overflow-hidden">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="w-24 h-1.5 rounded-full bg-secondary overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-[#6157FF] transition-all duration-700"
+                  className="h-full rounded-full bg-primary transition-all duration-700"
                   style={{ width: `${progressPct}%` }}
                 />
               </div>
@@ -339,7 +331,7 @@ export default function CourseView() {
             </div>
             <button
               onClick={() => navigate("/courses")}
-              className="ml-2 flex items-center gap-1.5 text-xs font-medium text-[#8a8a8a] hover:text-[#1a1a2e] transition-colors"
+              className="ml-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               All Courses
@@ -347,26 +339,20 @@ export default function CourseView() {
           </div>
         </nav>
 
-        {/* ═══ Main Layout ═══ */}
         <div className="pt-14 flex min-h-screen">
-          {/* ─── Left Sidebar ─── */}
           <aside className={themeClasses.sidebar}>
-            <div className="p-5 border-b border-[#e8e8e4]">
-              <p className="text-[10px] font-bold tracking-[0.2em] uppercase text-[#b0b0a8] mb-1">
-                Batch of 2024
-              </p>
-              <h3 className="text-sm font-bold text-[#1a1a2e] leading-snug line-clamp-2">
+            <div className="p-5 border-b border-border/60">
+              <h3 className="text-sm font-bold text-foreground leading-snug line-clamp-2">
                 {course?.title}
               </h3>
             </div>
 
-            {/* Nav items */}
             <div className="p-3 space-y-0.5">
               {leftNavItems.map((item) => (
                 <button
                   key={item.label}
                   onClick={item.action}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-[#6b6b6b] hover:bg-[#f5f5f2] hover:text-[#1a1a2e] transition-all"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-all"
                 >
                   <item.icon className="w-4 h-4" />
                   {item.label}
@@ -374,11 +360,10 @@ export default function CourseView() {
               ))}
             </div>
 
-            <div className="mx-5 my-2 h-px bg-[#e8e8e4]" />
+            <div className="mx-5 my-2 h-px bg-border/60" />
 
-            {/* Module list */}
             <div className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-hide">
-              <p className="px-3 pt-3 pb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-[#b0b0a8]">
+              <p className="px-3 pt-3 pb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/70">
                 Modules
               </p>
               {modules.map((m, i) => {
@@ -395,23 +380,22 @@ export default function CourseView() {
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
                         isActive
-                          ? "bg-[#6157FF]/[0.06] text-[#6157FF] font-semibold"
-                          : "text-[#6b6b6b] hover:bg-[#f5f5f2]"
+                          ? "bg-secondary text-foreground font-semibold"
+                          : "text-muted-foreground hover:bg-secondary/50"
                       )}
                     >
                       {isModuleDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                       ) : isActive ? (
-                        <div className="w-4 h-4 rounded-full border-2 border-[#6157FF] flex items-center justify-center flex-shrink-0">
-                          <div className="w-1.5 h-1.5 rounded-full bg-[#6157FF]" />
+                        <div className="w-4 h-4 rounded-full border-2 border-primary flex items-center justify-center flex-shrink-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
                         </div>
                       ) : (
-                        <Circle className="w-4 h-4 text-[#d0d0cc] flex-shrink-0" />
+                        <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
                       )}
                       <span className="text-[13px] line-clamp-1">{m.title}</span>
                     </button>
 
-                    {/* Sub-items when active */}
                     {isActive && (
                       <div className="ml-6 mt-0.5 space-y-0.5 animate-fade-in">
                         {[
@@ -425,12 +409,12 @@ export default function CourseView() {
                             className={cn(
                               "w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-[12px] transition-all",
                               activeContent === key
-                                ? "text-[#6157FF] font-semibold bg-[#6157FF]/[0.04]"
-                                : "text-[#8a8a8a] hover:text-[#1a1a2e]"
+                                ? "text-foreground font-semibold bg-secondary/60"
+                                : "text-muted-foreground hover:text-foreground"
                             )}
                           >
                             {done ? (
-                              <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                              <CheckCircle2 className="w-3 h-3 text-green-500" />
                             ) : (
                               <Icon className="w-3 h-3" />
                             )}
@@ -445,52 +429,44 @@ export default function CourseView() {
             </div>
           </aside>
 
-          {/* ─── Center Content ─── */}
           {mod && (
             <main className="flex-1 overflow-y-auto">
               <div className="max-w-[780px] mx-auto px-8 py-10">
-                {/* Hero title */}
                 <div className="mb-8">
-                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-[#b0b0a8] mb-3">
+                  <p className="text-[11px] font-bold tracking-[0.2em] uppercase text-muted-foreground/70 mb-3">
                     Module {mod.module_order}
                   </p>
-                  <h1 className="text-3xl md:text-[2.5rem] font-extrabold leading-[1.1] tracking-tight text-[#1a1a2e]">
-                    The Architecture of{" "}
-                    <em className="not-italic bg-gradient-to-r from-[#6157FF] to-[#8B7CFF] bg-clip-text text-transparent">
-                      {mod.title}
-                    </em>
+                  <h1 className="text-3xl md:text-[2.5rem] font-extrabold leading-[1.1] tracking-tight text-foreground">
+                    {mod.title}
                   </h1>
                   {progress.completedLessons.includes(mod.id) && (
-                    <Badge className="mt-3 bg-emerald-50 text-emerald-600 border-emerald-200 text-[11px] font-semibold shadow-none">
+                    <Badge className="mt-3 bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20 text-[11px] font-semibold shadow-none">
                       <CheckCircle2 className="w-3 h-3 mr-1" /> Complete
                     </Badge>
                   )}
                 </div>
 
-                {/* Module still generating */}
                 {mod.lesson_content.startsWith("⏳") ? (
                   <div className={cn(themeClasses.card, "flex flex-col items-center justify-center py-20 text-center")}>
-                    <Loader2 className="w-8 h-8 animate-spin text-[#6157FF] mb-4" />
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-4" />
                     <h3 className="text-lg font-bold mb-2">Generating Module Content</h3>
-                    <p className="text-sm text-[#8a8a8a] max-w-md">
+                    <p className="text-sm text-muted-foreground max-w-md">
                       Creating your lesson, quiz, and lab for "{mod.title}". This usually takes about 30 seconds.
                     </p>
                   </div>
                 ) : (
                   <>
-                    {/* Video / Content area */}
                     {activeContent === "lesson" && mod.youtube_url && (
-                      <div className={cn(themeClasses.card, "aspect-video mb-8 overflow-hidden relative group")}>
-                        <div className="absolute inset-0 bg-gradient-to-b from-[#1a1a2e] to-[#2a2a4e] flex items-center justify-center">
-                          <button className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center group-hover:bg-white/20 transition-all group-hover:scale-105">
-                            <Play className="w-8 h-8 text-white ml-1" />
+                      <div className={cn(themeClasses.card, "aspect-video mb-8 overflow-hidden relative group") }>
+                        <div className="absolute inset-0 bg-gradient-to-b from-foreground/90 to-foreground/70 flex items-center justify-center">
+                          <button className="w-20 h-20 rounded-full bg-background/15 backdrop-blur-sm border border-background/20 flex items-center justify-center group-hover:bg-background/25 transition-all group-hover:scale-105">
+                            <Play className="w-8 h-8 text-background ml-1" />
                           </button>
                         </div>
                       </div>
                     )}
 
-                    {/* Tabs */}
-                    <div className="flex items-center gap-1 mb-8 border-b border-[#e8e8e4]">
+                    <div className="flex items-center gap-1 mb-8 border-b border-border/60">
                       {contentTabs.map((tab) => (
                         <button
                           key={tab.key}
@@ -498,19 +474,18 @@ export default function CourseView() {
                           className={cn(
                             "px-4 py-3 text-[13px] font-semibold transition-all relative",
                             activeTab === tab.key
-                              ? "text-[#6157FF]"
-                              : "text-[#8a8a8a] hover:text-[#1a1a2e]"
+                              ? "text-foreground"
+                              : "text-muted-foreground hover:text-foreground"
                           )}
                         >
                           {tab.label}
                           {activeTab === tab.key && (
-                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#6157FF] rounded-full" />
+                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />
                           )}
                         </button>
                       ))}
                     </div>
 
-                    {/* Content */}
                     <div className={cn(themeClasses.card, "p-8")}>
                       {activeContent === "lesson" && (
                         <LessonSlides
@@ -552,12 +527,10 @@ export default function CourseView() {
             </main>
           )}
 
-          {/* ─── Right Sidebar ─── */}
-          <aside className="w-[300px] flex-shrink-0 border-l border-[#e8e8e4] bg-white/40 backdrop-blur-sm p-5 space-y-5 overflow-y-auto hidden xl:block">
-            {/* Course Content Card */}
+          <aside className="w-[300px] flex-shrink-0 border-l border-border/60 bg-card/30 backdrop-blur-sm p-5 space-y-5 overflow-y-auto hidden xl:block">
             <div className={themeClasses.card}>
-              <div className="p-4 border-b border-[#f0f0ec]">
-                <h4 className="text-xs font-bold tracking-wider uppercase text-[#8a8a8a]">
+              <div className="p-4 border-b border-border/50">
+                <h4 className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
                   Course Content
                 </h4>
               </div>
@@ -573,58 +546,52 @@ export default function CourseView() {
                       onClick={() => selectItem(i, "lesson")}
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-[12px]",
-                        isCurrent && "bg-[#6157FF]/[0.06] font-semibold",
+                        isCurrent && "bg-secondary text-foreground font-semibold",
                         isLocked && "opacity-40"
                       )}
                     >
                       {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
                       ) : isCurrent ? (
-                        <Play className="w-4 h-4 text-[#6157FF] flex-shrink-0" />
+                        <Play className="w-4 h-4 text-primary flex-shrink-0" />
                       ) : isLocked ? (
-                        <Lock className="w-4 h-4 text-[#c0c0bc] flex-shrink-0" />
+                        <Lock className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
                       ) : (
-                        <Circle className="w-4 h-4 text-[#d0d0cc] flex-shrink-0" />
+                        <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
                       )}
                       <span className="line-clamp-1 flex-1">{m.title}</span>
-                      <ChevronRight className="w-3 h-3 text-[#c0c0bc] flex-shrink-0" />
+                      <ChevronRight className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* Download Assets Card */}
             <div className={cn(themeClasses.card, "p-5")}>
-              <h4 className="text-xs font-bold tracking-wider uppercase text-[#8a8a8a] mb-3">
+              <h4 className="text-xs font-bold tracking-wider uppercase text-muted-foreground mb-3">
                 Download Assets
               </h4>
-              <p className="text-[12px] text-[#8a8a8a] mb-4 leading-relaxed">
-                Get the complete course workbook with exercises, notes, and reference materials.
+              <p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
+                Get the course workbook with exercises, notes, and reference materials.
               </p>
-              <button className={cn(
-                "w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[13px] font-semibold text-white transition-all",
-                themeClasses.accentBg, themeClasses.accentHover,
-                "shadow-[0_4px_12px_rgba(97,87,255,0.3)]"
-              )}>
+              <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[13px] font-semibold bg-primary text-primary-foreground transition-all hover:bg-primary/90">
                 <Download className="w-4 h-4" />
                 PDF Workbook
               </button>
             </div>
 
-            {/* Instructor Quote Card */}
             <div className={cn(themeClasses.card, "p-5 relative overflow-hidden")}>
-              <Quote className="absolute top-3 right-3 w-8 h-8 text-[#6157FF]/10" />
+              <Quote className="absolute top-3 right-3 w-8 h-8 text-primary/10" />
               <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#6157FF] to-[#8B7CFF] flex items-center justify-center text-white text-sm font-bold shadow-[0_4px_12px_rgba(97,87,255,0.25)]">
+                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
                   R
                 </div>
                 <div>
-                  <p className="text-[13px] font-semibold text-[#1a1a2e]">Repend AI</p>
-                  <p className="text-[11px] text-[#8a8a8a]">Course Instructor</p>
+                  <p className="text-[13px] font-semibold text-foreground">Repend AI</p>
+                  <p className="text-[11px] text-muted-foreground">Course Instructor</p>
                 </div>
               </div>
-              <p className="text-[12px] text-[#6b6b6b] leading-relaxed italic">
+              <p className="text-[12px] text-muted-foreground leading-relaxed italic">
                 "Every concept becomes clearer when you experience the tradeoffs firsthand. Engage with the labs — they're where real understanding happens."
               </p>
             </div>

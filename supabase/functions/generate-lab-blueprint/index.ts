@@ -699,7 +699,7 @@ serve(async (req) => {
       if (authError || !user) throw new Error("Unauthorized");
     }
 
-    const { moduleId } = await req.json();
+    const { moduleId, force } = await req.json();
     if (!moduleId) throw new Error("moduleId is required");
 
     const { data: mod, error: modError } = await supabase
@@ -718,9 +718,8 @@ serve(async (req) => {
 
     if (!course) throw new Error("Course not found");
 
-    // Skip only if already done AND has actual lab data
-    if (mod.lab_generation_status === "done") {
-      // Check if lab_data actually exists
+    // Skip only if already done AND has actual lab data, unless force=true
+    if (mod.lab_generation_status === "done" && !force) {
       const { data: fullMod } = await supabase
         .from("course_modules")
         .select("lab_data")
@@ -732,7 +731,6 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      // Otherwise, regenerate — lab was marked done but has no data
       console.log(`[Lab Gen] Module "${moduleId}" was marked done but has no lab_data — regenerating`);
     }
 
@@ -850,11 +848,21 @@ Create broken code (10-20 lines) with 1-3 bugs testing lesson concepts. Include 
 
 === CRITICAL: EVERY LAB MUST HAVE ===
 1. 3-5 domain-specific slider variables with realistic units/ranges
-2. At least 2 control_panel blocks for slider interaction
+2. At least 1 control_panel block for slider interaction
 3. At least 1 output_display block with computed values
 4. 1-2 choice_set blocks for strategic decisions
 5. Formulas connecting slider values to outputs
 6. Rules creating cause→effect relationships
+
+=== STRICT JSON VALIDITY RULES ===
+- ALL formula keys and output labels must be plain readable names
+- EVERY output_display output MUST have a matching formula with the exact same label
+- EVERY rule condition MUST be a valid mathjs expression
+- Only use comparisons like: variable_name > 50, variable_name <= 80, a + b > 100
+- DO NOT use percent signs in conditions
+- DO NOT use words like "with low", "and high", or natural language in conditions
+- Choice effects must use realistic values within each variable's own min/max range
+- Do NOT set every variable to the same number
 
 === VARIABLE DESIGN ===
 - DOMAIN-SPECIFIC names (NEVER "quality", "efficiency" generically)
@@ -884,12 +892,14 @@ ${lessonSummary}
 
 REQUIREMENTS:
 1. 3-5 domain-specific slider variables (see templates above for examples)
-2. At least 2 control_panel blocks
+2. At least 1 control_panel block listing the variables it controls
 3. At least 1 output_display block with live values
-4. 3-5 rules creating cause→effect relationships
-5. 2-4 formulas for derived outputs
-6. 1-2 choice_set blocks with tradeoff decisions
-7. Clear measurable goal`;
+4. 3-5 rules using VALID math expressions only
+5. 2-4 formulas for derived outputs, one for each output label
+6. 1-2 choice_set blocks with realistic tradeoff decisions
+7. Clear measurable goal
+8. Return formulas and rules that can actually run`;
+
     }
 
     let blueprint: any = null;
