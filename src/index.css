@@ -1,0 +1,243 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Manrope:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* Repend Design System - Deep Blue, Calm, Night-time Productivity */
+
+@layer base {
+  :root {
+    --background: 222 35% 8%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 32% 12%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 32% 12%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 214 80% 56%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 222 28% 16%;
+    --secondary-foreground: 210 40% 90%;
+
+    --muted: 222 22% 18%;
+    --muted-foreground: 215 18% 55%;
+
+    --accent: 200 85% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 222 20% 16%;
+    --input: 222 22% 18%;
+    --ring: 214 80% 56%;
+
+    --radius: 0.625rem;
+
+    /* Custom tokens */
+    --gradient-primary: linear-gradient(135deg, hsl(214, 80%, 56%) 0%, hsl(200, 85%, 60%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(200, 85%, 60%) 0%, hsl(214, 80%, 56%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(222, 40%, 6%) 0%, hsl(222, 35%, 10%) 50%, hsl(222, 35%, 8%) 100%);
+    --gradient-section: linear-gradient(180deg, hsl(222, 32%, 12%) 0%, hsl(222, 35%, 8%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(214, 80%, 56% / 0.08) 0%, hsl(200, 85%, 60% / 0.04) 100%);
+    
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.2);
+    --shadow-elevated: 0 4px 12px -2px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.2);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.35);
+    --shadow-glow: 0 0 32px hsl(214 80% 56% / 0.2);
+    --shadow-glow-accent: 0 0 32px hsl(200 85% 60% / 0.2);
+
+    --sidebar-background: 222 35% 10%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 214 80% 56%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 28% 16%;
+    --sidebar-accent-foreground: 210 40% 90%;
+    --sidebar-border: 222 20% 14%;
+    --sidebar-ring: 214 80% 56%;
+  }
+
+  .light {
+    --background: 210 20% 98%;
+    --foreground: 222 35% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 35% 12%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 35% 12%;
+
+    --primary: 214 80% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 214 20% 94%;
+    --secondary-foreground: 222 28% 20%;
+
+    --muted: 210 15% 93%;
+    --muted-foreground: 215 16% 42%;
+
+    --accent: 200 85% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 18% 88%;
+    --input: 214 18% 88%;
+    --ring: 214 80% 50%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(214, 80%, 50%) 0%, hsl(200, 85%, 48%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(200, 85%, 48%) 0%, hsl(214, 80%, 50%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(210, 20%, 98%) 0%, hsl(214, 20%, 96%) 50%, hsl(210, 20%, 98%) 100%);
+    --gradient-section: linear-gradient(180deg, hsl(0, 0%, 100%) 0%, hsl(210, 20%, 98%) 100%);
+    --gradient-subtle: linear-gradient(135deg, hsl(214, 80%, 50% / 0.06) 0%, hsl(200, 85%, 48% / 0.03) 100%);
+
+    --shadow-soft: 0 1px 2px hsl(0 0% 0% / 0.05);
+    --shadow-elevated: 0 4px 12px -2px hsl(0 0% 0% / 0.08), 0 2px 4px -2px hsl(0 0% 0% / 0.04);
+    --shadow-card: 0 8px 32px -8px hsl(0 0% 0% / 0.1);
+    --shadow-glow: 0 0 32px hsl(214 80% 50% / 0.1);
+    --shadow-glow-accent: 0 0 32px hsl(200 85% 48% / 0.1);
+
+    --sidebar-background: 210 20% 97%;
+    --sidebar-foreground: 222 35% 12%;
+    --sidebar-primary: 214 80% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 214 20% 94%;
+    --sidebar-accent-foreground: 222 28% 20%;
+    --sidebar-border: 214 18% 90%;
+    --sidebar-ring: 214 80% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(222 20% 20%);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(222 20% 28%);
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+
+  .gradient-accent {
+    background: var(--gradient-accent);
+  }
+
+  .gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .gradient-subtle {
+    background: var(--gradient-subtle);
+  }
+
+  .glow-primary {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .glow-accent {
+    box-shadow: var(--shadow-glow-accent);
+  }
+
+  .glass {
+    backdrop-filter: blur(24px);
+    background: hsl(222 32% 10% / 0.75);
+    border: 1px solid hsl(222 20% 20% / 0.6);
+  }
+
+  .card-elevated {
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+  }
+
+  .card-elevated:hover {
+    box-shadow: 0 16px 48px -12px hsl(0 0% 0% / 0.45);
+    transform: translateY(-2px);
+  }
+
+  /* Professional page container */
+  .page-container {
+    @apply max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8;
+  }
+
+  /* Section divider */
+  .section-divider {
+    @apply border-t border-border/50;
+  }
+
+  /* Slide entrance animation — re-triggers on key change */
+  .slide-enter {
+    animation: slideEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  @keyframes slideEnter {
+    from {
+      opacity: 0;
+      transform: translateY(18px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  /* Hide scrollbar but keep scroll */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Skeleton shimmer */
+  .animate-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+}

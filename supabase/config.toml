@@ -1,0 +1,13 @@
+project_id = "upropcmmwapkgdhnkodd"
+
+[functions.generate-challenge]
+verify_jwt = false
+
+[functions.ai-tutor]
+verify_jwt = false
+
+[functions.generate-lab-blueprint]
+verify_jwt = false
+
+[functions.generate-lab-image]
+verify_jwt = false

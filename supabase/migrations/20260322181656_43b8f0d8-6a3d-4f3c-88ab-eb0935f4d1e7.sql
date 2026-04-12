@@ -1,0 +1,6 @@
+
+ALTER TABLE public.courses 
+ADD COLUMN IF NOT EXISTS is_published boolean NOT NULL DEFAULT false,
+ADD COLUMN IF NOT EXISTS published_by uuid DEFAULT NULL,
+ADD COLUMN IF NOT EXISTS version integer NOT NULL DEFAULT 1,
+ADD COLUMN IF NOT EXISTS parent_course_id uuid DEFAULT NULL REFERENCES public.courses(id) ON DELETE SET NULL;

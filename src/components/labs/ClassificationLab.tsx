@@ -1,0 +1,233 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, XCircle, RotateCcw, ArrowRight, Lightbulb } from "lucide-react";
+import LabIntro from "./LabIntro";
+import type { LabIntroData } from "./LabIntro";
+
+type RawItem = {
+  name?: string;
+  content?: string;
+  correct_category?: string;
+  correctCategory?: string;
+  hint?: string;
+  explanation?: string;
+};
+
+type Item = {
+  name: string;
+  correct_category: string;
+  hint?: string;
+};
+
+type RawCategory = {
+  name: string;
+  emoji?: string;
+  description?: string;
+  color?: string;
+};
+
+type Category = {
+  name: string;
+  emoji: string;
+  description: string;
+};
+
+type ClassificationData = {
+  title: string;
+  description: string;
+  repend_intro?: LabIntroData;
+  key_insight?: string;
+  categories: Category[];
+  items: Item[];
+};
+
+export default function ClassificationLab({ data, onComplete, isCompleted }: { data: ClassificationData; onComplete?: () => void; isCompleted?: boolean }) {
+  const items: Item[] = (data?.items ?? []).map((raw: RawItem) => ({
+    name: raw.name || raw.content || "Unknown item",
+    correct_category: raw.correct_category || raw.correctCategory || "",
+    hint: raw.hint || raw.explanation,
+  }));
+  const categories: Category[] = (data?.categories ?? []).map((raw: RawCategory) => ({
+    name: raw.name,
+    emoji: raw.emoji || "📂",
+    description: raw.description || "",
+  }));
+
+  const [showIntro, setShowIntro] = useState(true);
+  const [assignments, setAssignments] = useState<Record<string, string>>({});
+  const [currentItem, setCurrentItem] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [completionFired, setCompletionFired] = useState(false);
+
+  const item = items[currentItem];
+  const allAssigned = Object.keys(assignments).length === items.length;
+
+  const assignToCategory = (category: string) => {
+    setAssignments((prev) => ({ ...prev, [item.name]: category }));
+    if (currentItem + 1 < items.length) {
+      setCurrentItem(currentItem + 1);
+    }
+  };
+
+  const score = submitted
+    ? items.filter((it) => assignments[it.name] === it.correct_category).length
+    : 0;
+
+  useEffect(() => {
+    if (submitted && !completionFired && onComplete && !isCompleted) {
+      onComplete();
+      setCompletionFired(true);
+    }
+  }, [submitted, completionFired, onComplete, isCompleted]);
+
+  const reset = () => {
+    setAssignments({});
+    setCurrentItem(0);
+    setSubmitted(false);
+    setCompletionFired(false);
+    setShowIntro(true);
+  };
+
+  if (!items.length || !categories.length) {
+    return <Card><CardContent className="p-6 text-muted-foreground text-sm">No classification data available.</CardContent></Card>;
+  }
+
+  if (isCompleted && !submitted) {
+    return (
+      <Card className="border-green-500/20 bg-green-500/[0.04]">
+        <CardContent className="p-6 text-center space-y-3">
+          <CheckCircle2 className="w-10 h-10 text-green-500 mx-auto" />
+          <h3 className="font-bold text-lg">Classification Lab Complete</h3>
+          <p className="text-sm text-muted-foreground">You've already completed this classification exercise.</p>
+          <Button variant="outline" onClick={reset}>
+            <RotateCcw className="w-4 h-4 mr-1" /> Try Again
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Repend intro
+  if (showIntro && data.repend_intro) {
+    return (
+      <LabIntro
+        title={data.title || "Classification"}
+        intro={data.repend_intro}
+        labType="classification"
+        onStart={() => setShowIntro(false)}
+      />
+    );
+  }
+
+  if (showIntro && !data.repend_intro) {
+    setShowIntro(false);
+  }
+
+  if (submitted) {
+    return (
+      <div className="space-y-4">
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
+            <h3 className="font-display font-bold text-lg mb-2">
+              Results: {score}/{items.length} correct
+            </h3>
+            <div className="w-full bg-secondary rounded-full h-3 mb-4">
+              <div
+                className="bg-primary h-3 rounded-full transition-all"
+                style={{ width: `${(score / items.length) * 100}%` }}
+              />
+            </div>
+            <div className="space-y-2">
+              {items.map((it) => {
+                const isCorrect = assignments[it.name] === it.correct_category;
+                return (
+                  <div key={it.name} className={`flex items-center justify-between p-3 rounded-lg text-sm ${isCorrect ? "bg-green-500/10" : "bg-destructive/10"}`}>
+                    <div className="flex items-center gap-2">
+                      {isCorrect ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <XCircle className="w-4 h-4 text-destructive" />}
+                      <span className="font-medium">{it.name}</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {!isCorrect && (
+                        <span>Your answer: {assignments[it.name]} → </span>
+                      )}
+                      <span className="font-medium text-foreground">{it.correct_category}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Key Insight */}
+        {data.key_insight && (
+          <Card className="border-primary/20 bg-primary/5">
+            <CardContent className="p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <Lightbulb className="w-5 h-5 text-primary" />
+                <h3 className="font-bold">✅ Key Insight</h3>
+              </div>
+              <p className="text-sm leading-relaxed">{data.key_insight}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <Button variant="outline" onClick={reset}><RotateCcw className="w-4 h-4 mr-1" /> Try Again</Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">{data?.description}</p>
+
+      <div className="flex items-center justify-between">
+        <Badge variant="secondary">Item {Math.min(currentItem + 1, items.length)} of {items.length}</Badge>
+        <span className="text-xs text-muted-foreground">{Object.keys(assignments).length} classified</span>
+      </div>
+
+      {!allAssigned && (
+        <Card className="border-primary/20">
+          <CardContent className="p-6 text-center">
+            <p className="text-xs text-muted-foreground mb-1">Classify this item:</p>
+            <h3 className="font-display font-bold text-xl mb-1">{item.name}</h3>
+            {item.hint && <p className="text-xs text-muted-foreground italic">{item.hint}</p>}
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-2 gap-3">
+        {categories.map((cat) => {
+          const count = Object.values(assignments).filter((a) => a === cat.name).length;
+          return (
+            <button
+              key={cat.name}
+              onClick={() => !allAssigned && assignToCategory(cat.name)}
+              disabled={allAssigned}
+              className={`p-4 rounded-lg border text-left transition-all ${
+                allAssigned
+                  ? "border-border opacity-70"
+                  : "border-border hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-lg">{cat.emoji}</span>
+                <span className="font-medium text-sm">{cat.name}</span>
+                {count > 0 && <Badge variant="secondary" className="text-[10px] ml-auto">{count}</Badge>}
+              </div>
+              <p className="text-xs text-muted-foreground">{cat.description}</p>
+            </button>
+          );
+        })}
+      </div>
+
+      {allAssigned && (
+        <Button variant="hero" onClick={() => setSubmitted(true)}>
+          <ArrowRight className="w-4 h-4 mr-1" /> Check Answers
+        </Button>
+      )}
+    </div>
+  );
+}
