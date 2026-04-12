@@ -53,6 +53,11 @@ export function useSubscription() {
     }
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData?.session?.access_token) {
+        setState({ plan: "starter", subscribed: false, subscriptionEnd: null, loading: false });
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("check-subscription");
       if (error) throw error;
 
