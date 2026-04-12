@@ -8,6 +8,9 @@ import GraphLab from "./GraphLab";
 import MatchingLab from "./MatchingLab";
 import OrderingLab from "./OrderingLab";
 import ScenarioBuilderLab from "./ScenarioBuilderLab";
+import HighlightSelectLab from "./HighlightSelectLab";
+import DebateBuilderLab from "./DebateBuilderLab";
+import BudgetAllocatorLab from "./BudgetAllocatorLab";
 
 type Props = {
   labType?: string | null;
@@ -106,6 +109,15 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
   }
   if (labData.lab_type === "scenario_builder") {
     return <ScenarioBuilderLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "highlight_select") {
+    return <HighlightSelectLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "debate_builder") {
+    return <DebateBuilderLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "budget_allocator") {
+    return <BudgetAllocatorLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
   // Everything goes through DynamicLab — it handles all block types

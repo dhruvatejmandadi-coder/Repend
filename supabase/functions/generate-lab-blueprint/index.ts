@@ -9,6 +9,7 @@ const corsHeaders = {
 // ─── CLAUDE API CALLER ───
 // Returns the tool input JSON directly after one round-trip.
 
+// callClaude: force a specific tool (used as fallback)
 async function callClaude(
   apiKey: string,
   system: string,
@@ -68,6 +69,53 @@ async function callClaude(
     }
   }
   throw new Error(lastError || "Claude call failed after retries.");
+}
+
+// callClaudeAuto: Claude picks the best tool from ALL available tools.
+// This is the primary entry point — no keyword matching, Claude decides pedagogically.
+async function callClaudeAuto(
+  apiKey: string,
+  system: string,
+  userMsg: string,
+  tools: any[],
+  retries = 2,
+): Promise<{ toolName: string; input: any }> {
+  let lastError = "";
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, attempt * 3000));
+    }
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-6",
+          max_tokens: 4096,
+          system,
+          tools,
+          tool_choice: { type: "any" }, // Claude picks the most appropriate activity
+          messages: [{ role: "user", content: userMsg }],
+        }),
+      });
+
+      if (response.status === 429) { lastError = "Rate limit."; continue; }
+      const text = await response.text();
+      if (!response.ok) { lastError = `Claude error (${response.status}): ${text.slice(0, 300)}`; continue; }
+      let parsed: any;
+      try { parsed = JSON.parse(text); } catch { lastError = "Invalid JSON."; continue; }
+      const toolUseBlock = parsed.content?.find((c: any) => c.type === "tool_use");
+      if (!toolUseBlock) { lastError = "No tool_use block."; continue; }
+      return { toolName: toolUseBlock.name, input: toolUseBlock.input };
+    } catch (e: any) {
+      lastError = e.message || "Network error.";
+    }
+  }
+  throw new Error(lastError || "Claude auto-select failed after retries.");
 }
 
 // ─── TOOL SCHEMAS (Claude input_schema format) ───
@@ -416,6 +464,112 @@ const scenarioBuilderTool = {
   },
 };
 
+const highlightSelectTool = {
+  name: "create_highlight_select_lab",
+  description:
+    "Create a HIGHLIGHT & SELECT lab where students tap/click ALL items that match a given criterion. There are multiple correct answers. Best for identifying examples vs non-examples, spotting exceptions, recognizing valid statements, or filtering a set.",
+  input_schema: {
+    type: "object",
+    properties: {
+      lab_type: { type: "string", const: "highlight_select" },
+      title: { type: "string" },
+      instruction: {
+        type: "string",
+        description: "Clear directive: 'Select ALL items that are examples of X' or 'Click every statement that is TRUE about Y'",
+      },
+      items: {
+        type: "array",
+        minItems: 5,
+        maxItems: 10,
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            text: { type: "string", description: "Short item text (max 20 words)" },
+            is_correct: { type: "boolean" },
+            explanation: { type: "string", description: "Why this item is correct or incorrect" },
+          },
+          required: ["id", "text", "is_correct", "explanation"],
+        },
+      },
+      key_insight: { type: "string" },
+    },
+    required: ["lab_type", "title", "instruction", "items", "key_insight"],
+  },
+};
+
+const debateBuilderTool = {
+  name: "create_debate_builder_lab",
+  description:
+    "Create a DEBATE BUILDER lab where students sort statements into 'For' or 'Against' a given position. Best for ethics, policy debates, historical analysis, persuasive writing, pros/cons evaluation, and critical thinking.",
+  input_schema: {
+    type: "object",
+    properties: {
+      lab_type: { type: "string", const: "debate_builder" },
+      title: { type: "string" },
+      topic: { type: "string", description: "The debate proposition, e.g. 'Should X?' or 'X is beneficial'" },
+      for_label: { type: "string", description: "Label for the FOR side (default: 'For')" },
+      against_label: { type: "string", description: "Label for the AGAINST side (default: 'Against')" },
+      statements: {
+        type: "array",
+        minItems: 4,
+        maxItems: 8,
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            text: { type: "string", description: "A clear argument statement (1-2 sentences)" },
+            side: { type: "string", enum: ["for", "against"] },
+            explanation: { type: "string", description: "Why this statement belongs to that side" },
+          },
+          required: ["id", "text", "side", "explanation"],
+        },
+      },
+      key_insight: { type: "string" },
+    },
+    required: ["lab_type", "title", "topic", "statements", "key_insight"],
+  },
+};
+
+const budgetAllocatorTool = {
+  name: "create_budget_allocator_lab",
+  description:
+    "Create a BUDGET ALLOCATOR lab where students distribute a fixed total (100%) across categories using sliders. Best for resource allocation decisions: government budgets, personal finance, policy tradeoffs, energy portfolios, time management, ecosystem resources.",
+  input_schema: {
+    type: "object",
+    properties: {
+      lab_type: { type: "string", const: "budget_allocator" },
+      title: { type: "string" },
+      scenario: {
+        type: "string",
+        description: "2-3 sentence context placing the student in the decision-maker role",
+      },
+      unit: { type: "string", description: "Always '%' for percentage-based allocation" },
+      categories: {
+        type: "array",
+        minItems: 3,
+        maxItems: 7,
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            name: { type: "string" },
+            icon: { type: "string", description: "Single emoji icon" },
+            description: { type: "string", description: "1 sentence about what this category funds" },
+            recommended_min: { type: "number", description: "Minimum % to avoid 'underfunded' warning" },
+            recommended_max: { type: "number", description: "Maximum % before 'overfunded' warning" },
+            explanation: { type: "string", description: "Feedback shown after submission" },
+          },
+          required: ["id", "name", "icon", "description", "recommended_min", "recommended_max", "explanation"],
+        },
+      },
+      reflection: { type: "string", description: "Open-ended reflection question shown after submitting" },
+      key_insight: { type: "string" },
+    },
+    required: ["lab_type", "title", "scenario", "categories", "key_insight"],
+  },
+};
+
 // ─── DOMAIN-SPECIFIC SIMULATION TEMPLATES ───
 
 const DOMAIN_TEMPLATES: Record<string, string> = {
@@ -756,186 +910,105 @@ serve(async (req) => {
     const lessonContent = mod.lesson_content || "";
     const lessonSummary = lessonContent.replace(/\n---\n/g, "\n").replace(/#{1,3}\s/g, "").slice(0, 3000);
 
-    const labType = classifyLabType(topic, moduleTitle, lessonContent);
-    console.log(`[Lab Gen] "${moduleTitle}" → type: ${labType}`);
+    // ── All 10 activity tools — Claude picks the most pedagogically appropriate one ──
+    const ALL_TOOLS = [
+      simulationTool, graphTool, flowchartTool, codeDebuggerTool,
+      matchingTool, orderingTool, scenarioBuilderTool,
+      highlightSelectTool, debateBuilderTool, budgetAllocatorTool,
+    ];
 
-    // ── Build system prompt + user prompt + tool selection ──
-    let system: string;
-    let userMsg: string;
-    let tool: any;
+    const domainTemplates = selectDomainTemplate(topic, moduleTitle, lessonContent);
 
-    if (labType === "graph") {
-      tool = graphTool;
-      system = `You are a MATH GRAPH LAB DESIGNER. Create interactive graphing labs where students manipulate equation parameters via sliders.
-RULES:
-- Each lab focuses on ONE core graph concept
-- Sliders MUST directly control equation parameters (use their variable names in the equation)
-- Set appropriate x_range and y_range for the equation
-- Include a target the student must match
-- Graph types: linear (y=mx+b), quadratic (y=A(x-H)²+K), exponential (y=a*b^x), trig (y=A*sin(B*(x-C))+D)
-- Only use concepts from the lesson.`;
+    const system = `You are an expert educational lab designer for high school and lifelong learners. Your job is to create ONE interactive activity that best teaches a specific lesson concept.
 
-      userMsg = `Create a GRAPH LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
+You have 10 activity formats to choose from. Pick the ONE that will be most engaging and pedagogically effective for THIS specific topic:
 
-LESSON CONTENT:
-${lessonSummary}
+1. create_simulation_lab — Adjust sliders, see live outputs change. Best for: physics, chemistry, economics, systems thinking, anything with variables that interact.
+2. create_graph_lab — Manipulate equation parameters via sliders, see graph update. ONLY for pure math/science with actual plotable equations.
+3. create_flowchart_lab — Fill in blank process steps via dropdowns. Best for: procedures, biological cycles, algorithms, workflows.
+4. create_code_debugger_lab — Find and fix bugs in real code. ONLY when the lesson is literally about programming.
+5. create_matching_lab — Connect terms to definitions or causes to effects. Best for: vocabulary-heavy lessons, relationship mapping, compare/contrast.
+6. create_ordering_lab — Arrange scrambled items in correct sequence. Best for: timelines, historical events, step-by-step processes, chronological analysis.
+7. create_scenario_builder_lab — Fill blanks in a real-world narrative. Best for: applied reasoning, business/legal/medical scenarios, reading comprehension with inference.
+8. create_highlight_select_lab — Select ALL items that match a criterion. Best for: identifying examples vs non-examples, fact-checking, classifying a set.
+9. create_debate_builder_lab — Sort statements into For/Against. Best for: ethics, policy debates, persuasive reasoning, pros/cons analysis, history perspectives.
+10. create_budget_allocator_lab — Distribute 100% across categories with sliders. Best for: resource allocation, government/personal finance, tradeoff decisions, policy design.
 
-Create a graph lab with 2-4 sliders, proper equation using slider names as variables, target challenge, and axis ranges.`;
+SELECTION GUIDELINES:
+- Choose the format that makes the lesson concept come alive as an activity
+- A lesson about "causes of WWI" → ordering or debate_builder
+- A lesson about "DNA replication steps" → flowchart or ordering
+- A lesson about "supply and demand" → simulation or budget_allocator
+- A lesson about "logical fallacies" → highlight_select or matching
+- A lesson about "climate policy" → budget_allocator or debate_builder
+- A lesson about "quadratic equations" → graph
+- A lesson about "Python loops" → code_debugger
+- A lesson about vocabulary/terms → matching
+- When uncertain, simulation is the universal fallback
 
-    } else if (labType === "flowchart") {
-      tool = flowchartTool;
-      system = `You are a PROCESS FLOWCHART LAB DESIGNER. Create interactive labs where students fill in process steps using dropdowns.
-RULES:
-- 4-8 ordered steps
-- Each step: descriptive label + dropdown with 3-5 options (one correct, others plausible)
-- Steps must be derived directly from the lesson content
-- Logical order must be clear`;
+QUALITY RULES:
+- All content must come directly from the lesson provided
+- Activity must be completable in 3-7 minutes
+- Every item/pair/blank must be unambiguous
+- Use real numbers, realistic scenarios, domain-specific language
 
-      userMsg = `Create a FLOWCHART LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT:
-${lessonSummary}
-
-Create a process flowchart with 4-8 steps. Each step needs a label, correct answer, and 3-5 shuffled options.`;
-
-    } else if (labType === "code_debugger") {
-      tool = codeDebuggerTool;
-      system = `You are a CODE DEBUGGING LAB DESIGNER. Create labs where students find and fix bugs.
-RULES:
-- 1-3 clear bugs in starter code (10-20 lines)
-- Bugs test understanding of lesson concepts
-- Python by default; match lesson language if specified
-- Include 2-3 progressive hints
-- Expected output must be simple and exact`;
-
-      userMsg = `Create a CODE DEBUGGER LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT:
-${lessonSummary}
-
-Create broken code (10-20 lines) with 1-3 bugs. Include expected output, initial error description, and hints.`;
-
-    } else if (labType === "matching") {
-      tool = matchingTool;
-      system = `You are a MATCHING LAB DESIGNER for education. Create labs where students connect related pairs.
-RULES:
-- 4-8 pairs, each with a SHORT left-side term (max 6 words) and a CLEAR right-side definition or effect (1-2 sentences)
-- Pairs must come directly from lesson content
-- Left column = terms/concepts/causes; Right column = definitions/effects/examples
-- All pairs must be clearly distinguishable (no overlapping definitions)
-- instructions must specify exactly what type of relationship is being matched`;
-
-      userMsg = `Create a MATCHING LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT:
-${lessonSummary}
-
-Create 4-7 matching pairs drawn directly from the lesson. Left side = key terms or causes. Right side = definitions or effects. Make the right-side options distinct so there's no ambiguity.`;
-
-    } else if (labType === "ordering") {
-      tool = orderingTool;
-      system = `You are an ORDERING LAB DESIGNER for education. Create labs where students arrange scrambled items into the correct sequence.
-RULES:
-- 4-8 items with clear correct_position values (1-indexed, no gaps, no duplicates)
-- Each item text is concise (max 15 words)
-- Sequence must come directly from the lesson
-- context paragraph sets up WHY order matters
-- The correct order must be unambiguous`;
-
-      userMsg = `Create an ORDERING LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT:
-${lessonSummary}
-
-Create 4-7 items from the lesson that have a clear natural sequence. Assign correct_position 1 through N with no duplicates or gaps.`;
-
-    } else if (labType === "scenario_builder") {
-      tool = scenarioBuilderTool;
-      system = `You are a SCENARIO BUILDER LAB DESIGNER for education. Create narrative labs where students fill in critical blanks.
-RULES:
-- 3-6 sentence narrative with [BLANK_0], [BLANK_1] etc. placeholders (0-indexed, consecutive)
-- Each blank tests a KEY concept from the lesson
-- options must include 1 correct + 2-3 plausible distractors
-- explanation for each blank explains WHY the correct answer is right
-- narrative should read naturally with any option inserted (all options must be grammatically valid)
-- The correct answers must all come from the lesson content`;
-
-      userMsg = `Create a SCENARIO BUILDER LAB for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT:
-${lessonSummary}
-
-Create a 4-6 sentence real-world scenario with 3-5 blanks testing key concepts from the lesson. Each blank should have 3-4 options (1 correct, 2-3 plausible distractors). Write [BLANK_0], [BLANK_1], etc. sequentially.`;
-
-    } else {
-      // simulation (universal fallback)
-      tool = simulationTool;
-      const domainTemplates = selectDomainTemplate(topic, moduleTitle, lessonContent);
-
-      system = `You are a SIMULATION LAB DESIGNER creating SLIDER-BASED interactive labs. Students adjust sliders and see live outputs change.
-
-EVERY LAB MUST HAVE:
-1. 3-5 domain-specific slider variables with realistic units/ranges
-2. At least 1 control_panel block listing the variables it controls
-3. At least 1 output_display block with computed values
-4. 1-2 choice_set blocks for strategic decisions
-5. formulas connecting slider values to outputs (plain math expressions using variable names)
-6. rules creating cause→effect relationships
-
-STRICT JSON VALIDITY RULES:
-- ALL formula keys and output labels must be plain readable names (no special chars)
+SIMULATION-SPECIFIC RULES (if you pick simulation):
+- ALL formula keys must be plain readable names (no special chars)
 - EVERY output_display output MUST have a matching formula with the exact same label
-- EVERY rule condition MUST be a valid mathjs expression (variable_name > 50, etc.)
-- NO percent signs, natural language, or boolean logic in conditions
-- Choice effects must use realistic values within each variable's min/max range
+- EVERY rule condition MUST be a valid mathjs expression (variable_name > 50)
+- NO percent signs or natural language in conditions
 - NO step_task blocks
+- Domain reference templates: ${domainTemplates}`;
 
-VARIABLE DESIGN:
-- DOMAIN-SPECIFIC names (never "quality", "efficiency" generically)
-- Variables MUST interconnect via rules
+    const userMsg = `Design an interactive lab activity for this lesson:
 
-DOMAIN-SPECIFIC REFERENCE TEMPLATES:
-${domainTemplates}`;
+MODULE: "${moduleTitle}"
+COURSE TOPIC: ${topic}
+LAB CONCEPT: ${labConcept}
 
-      userMsg = `Design an interactive SLIDER SIMULATION for: "${moduleTitle}"
-Topic: ${topic} | Concept: ${labConcept}
-
-LESSON CONTENT (use ONLY these concepts):
+LESSON CONTENT:
 ${lessonSummary}
 
-REQUIREMENTS:
-1. 3-5 domain-specific slider variables (see templates above)
-2. 1 control_panel block listing all variable names
-3. 1 output_display block with 2-4 computed output labels
-4. 3-5 rules using VALID mathjs expressions only
-5. formulas for each output label (one formula per label)
-6. 1-2 choice_set blocks with realistic tradeoff decisions
-7. Clear measurable goal`;
-    }
+Choose the activity type that will best help a high school student truly understand and apply this concept. Then generate the full activity content.`;
 
     let blueprint: any = null;
+    let labType = "simulation"; // will be set from Claude's tool choice
     let lastGenError = "";
 
     for (let attempt = 0; attempt < 3; attempt++) {
       if (attempt > 0) {
-        console.log(`[Retry ${attempt}] "${moduleTitle}" (${labType})`);
+        console.log(`[Retry ${attempt}] "${moduleTitle}"`);
         await new Promise((r) => setTimeout(r, attempt * 2000));
       }
       try {
-        blueprint = await callClaude(ANTHROPIC_API_KEY, system, userMsg, [tool], tool.name);
-        // Validate minimally
+        const result = await callClaudeAuto(ANTHROPIC_API_KEY, system, userMsg, ALL_TOOLS);
+        blueprint = result.input;
+        // Derive labType from the tool Claude chose
+        const toolToType: Record<string, string> = {
+          create_simulation_lab: "simulation",
+          create_graph_lab: "graph",
+          create_flowchart_lab: "flowchart",
+          create_code_debugger_lab: "code_debugger",
+          create_matching_lab: "matching",
+          create_ordering_lab: "ordering",
+          create_scenario_builder_lab: "scenario_builder",
+          create_highlight_select_lab: "highlight_select",
+          create_debate_builder_lab: "debate_builder",
+          create_budget_allocator_lab: "budget_allocator",
+        };
+        labType = toolToType[result.toolName] || "simulation";
+        console.log(`[Lab Gen] "${moduleTitle}" → Claude chose: ${result.toolName} (${labType})`);
+
+        // Minimal validity check
         if (labType === "graph" && blueprint.sliders?.length > 0 && blueprint.equation) break;
         if (labType === "flowchart" && blueprint.drop_zones?.length > 0) break;
         if (labType === "code_debugger" && blueprint.starter_code && blueprint.expected_output) break;
         if (labType === "matching" && blueprint.pairs?.length >= 4) break;
         if (labType === "ordering" && blueprint.items?.length >= 4) break;
         if (labType === "scenario_builder" && blueprint.narrative && blueprint.blanks?.length >= 3) break;
+        if (labType === "highlight_select" && blueprint.items?.length >= 4) break;
+        if (labType === "debate_builder" && blueprint.statements?.length >= 4) break;
+        if (labType === "budget_allocator" && blueprint.categories?.length >= 3) break;
         if (labType === "simulation" && blueprint.variables?.length > 0 && blueprint.blocks?.length > 0) break;
         if (blueprint && typeof blueprint === "object") break;
       } catch (e: any) {
@@ -1101,19 +1174,56 @@ REQUIREMENTS:
     }
 
     if (labType === "scenario_builder" && Array.isArray(blueprint.blanks)) {
-      // Verify all blank IDs exist in the narrative
       const narrative = blueprint.narrative || "";
       blueprint.blanks = blueprint.blanks.filter((b: any) => {
         const exists = narrative.includes(`[${b.id}]`);
         if (!exists) console.warn(`[Scenario] Blank "${b.id}" not found in narrative, dropping`);
         return exists;
       });
-      // Ensure options include correct answer
       for (const b of blueprint.blanks) {
-        if (!b.options?.includes(b.correct)) {
-          b.options = [b.correct, ...(b.options || [])];
-        }
+        if (!b.options?.includes(b.correct)) b.options = [b.correct, ...(b.options || [])];
       }
+    }
+
+    if (labType === "highlight_select" && Array.isArray(blueprint.items)) {
+      blueprint.items = blueprint.items.map((item: any, i: number) => ({
+        id: item.id || String(i + 1),
+        text: String(item.text || "Item"),
+        is_correct: Boolean(item.is_correct),
+        explanation: item.explanation || "",
+      }));
+      // Ensure at least one correct and one incorrect
+      const hasCorrect = blueprint.items.some((i: any) => i.is_correct);
+      const hasWrong = blueprint.items.some((i: any) => !i.is_correct);
+      if (!hasCorrect) blueprint.items[0].is_correct = true;
+      if (!hasWrong && blueprint.items.length > 1) blueprint.items[blueprint.items.length - 1].is_correct = false;
+    }
+
+    if (labType === "debate_builder" && Array.isArray(blueprint.statements)) {
+      blueprint.statements = blueprint.statements.map((s: any, i: number) => ({
+        id: s.id || String(i + 1),
+        text: String(s.text || "Statement"),
+        side: s.side === "against" ? "against" : "for",
+        explanation: s.explanation || "",
+      }));
+      // Ensure both sides represented
+      const hasFor = blueprint.statements.some((s: any) => s.side === "for");
+      const hasAgainst = blueprint.statements.some((s: any) => s.side === "against");
+      if (!hasFor && blueprint.statements.length > 0) blueprint.statements[0].side = "for";
+      if (!hasAgainst && blueprint.statements.length > 1) blueprint.statements[1].side = "against";
+    }
+
+    if (labType === "budget_allocator" && Array.isArray(blueprint.categories)) {
+      blueprint.unit = blueprint.unit || "%";
+      blueprint.categories = blueprint.categories.map((c: any, i: number) => ({
+        id: c.id || String(i + 1),
+        name: String(c.name || `Category ${i + 1}`),
+        icon: c.icon || "📊",
+        description: c.description || "",
+        recommended_min: typeof c.recommended_min === "number" ? c.recommended_min : 10,
+        recommended_max: typeof c.recommended_max === "number" ? c.recommended_max : 40,
+        explanation: c.explanation || "",
+      }));
     }
 
     if (_warnings.length > 0) {
