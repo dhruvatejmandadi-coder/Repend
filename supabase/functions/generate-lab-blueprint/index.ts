@@ -14,7 +14,7 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
       await new Promise(r => setTimeout(r, delay));
     }
     try {
-      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -736,8 +736,8 @@ serve(async (req) => {
 
     await supabase.from("course_modules").update({ lab_generation_status: "generating" }).eq("id", moduleId);
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
 
     const topic = course.topic;
     const moduleTitle = mod.title;
@@ -911,8 +911,8 @@ REQUIREMENTS:
         await new Promise(r => setTimeout(r, genAttempt * 2000));
       }
       try {
-        const aiData = await callAI(LOVABLE_API_KEY, {
-          model: "google/gemini-2.5-flash",
+        const aiData = await callAI(OPENAI_API_KEY, {
+          model: "gpt-4o-mini",
           max_completion_tokens: 6000,
           messages: [
             { role: "system", content: systemPrompt },
