@@ -9,16 +9,6 @@ import {
   Beaker,
   ClipboardList,
   Pencil,
-  Play,
-  Download,
-  MessageCircle,
-  BookOpen,
-  Users,
-  BarChart3,
-  Lock,
-  ChevronRight,
-  Quote,
-  Layers,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
@@ -91,7 +81,7 @@ export default function CourseView() {
   const [loading, setLoading] = useState(true);
   const [generatingLabs, setGeneratingLabs] = useState<Set<string>>(new Set());
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<"overview" | "resources" | "notes" | "discussions">("overview");
+  
 
   useEffect(() => {
     if (id) fetchCourse();
@@ -273,19 +263,6 @@ export default function CourseView() {
     );
   }
 
-  const contentTabs = [
-    { key: "overview" as const, label: "Overview" },
-    { key: "resources" as const, label: "Resources" },
-    { key: "notes" as const, label: "Notes" },
-    { key: "discussions" as const, label: "Discussions" },
-  ];
-
-  const leftNavItems = [
-    { icon: Layers, label: "Course Overview", action: () => setActiveContent("lesson") },
-    { icon: BookOpen, label: "Learning Modules", action: () => {} },
-    { icon: Users, label: "Community", action: () => navigate("/community") },
-    { icon: BarChart3, label: "Progress", action: () => navigate("/progress") },
-  ];
 
   return (
     <>
@@ -347,22 +324,7 @@ export default function CourseView() {
               </h3>
             </div>
 
-            <div className="p-3 space-y-0.5">
-              {leftNavItems.map((item) => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-secondary/50 hover:text-foreground transition-all"
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="mx-5 my-2 h-px bg-border/60" />
-
-            <div className="flex-1 overflow-y-auto px-3 pb-4 scrollbar-hide">
+            <div className="flex-1 overflow-y-auto px-3 pb-4 pt-2 scrollbar-hide">
               <p className="px-3 pt-3 pb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-muted-foreground/70">
                 Modules
               </p>
@@ -456,36 +418,6 @@ export default function CourseView() {
                   </div>
                 ) : (
                   <>
-                    {activeContent === "lesson" && mod.youtube_url && (
-                      <div className={cn(themeClasses.card, "aspect-video mb-8 overflow-hidden relative group") }>
-                        <div className="absolute inset-0 bg-gradient-to-b from-foreground/90 to-foreground/70 flex items-center justify-center">
-                          <button className="w-20 h-20 rounded-full bg-background/15 backdrop-blur-sm border border-background/20 flex items-center justify-center group-hover:bg-background/25 transition-all group-hover:scale-105">
-                            <Play className="w-8 h-8 text-background ml-1" />
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex items-center gap-1 mb-8 border-b border-border/60">
-                      {contentTabs.map((tab) => (
-                        <button
-                          key={tab.key}
-                          onClick={() => setActiveTab(tab.key)}
-                          className={cn(
-                            "px-4 py-3 text-[13px] font-semibold transition-all relative",
-                            activeTab === tab.key
-                              ? "text-foreground"
-                              : "text-muted-foreground hover:text-foreground"
-                          )}
-                        >
-                          {tab.label}
-                          {activeTab === tab.key && (
-                            <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-primary rounded-full" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
                     <div className={cn(themeClasses.card, "p-8")}>
                       {activeContent === "lesson" && (
                         <LessonSlides
@@ -527,75 +459,6 @@ export default function CourseView() {
             </main>
           )}
 
-          <aside className="w-[300px] flex-shrink-0 border-l border-border/60 bg-card/30 backdrop-blur-sm p-5 space-y-5 overflow-y-auto hidden xl:block">
-            <div className={themeClasses.card}>
-              <div className="p-4 border-b border-border/50">
-                <h4 className="text-xs font-bold tracking-wider uppercase text-muted-foreground">
-                  Course Content
-                </h4>
-              </div>
-              <div className="p-2 max-h-[280px] overflow-y-auto scrollbar-hide">
-                {modules.map((m, i) => {
-                  const isDone = progress.completedLessons.includes(m.id);
-                  const isCurrent = activeModule === i;
-                  const isLocked = i > 0 && !progress.completedLessons.includes(modules[i - 1]?.id) && !isCurrent;
-
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => selectItem(i, "lesson")}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all text-[12px]",
-                        isCurrent && "bg-secondary text-foreground font-semibold",
-                        isLocked && "opacity-40"
-                      )}
-                    >
-                      {isDone ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />
-                      ) : isCurrent ? (
-                        <Play className="w-4 h-4 text-primary flex-shrink-0" />
-                      ) : isLocked ? (
-                        <Lock className="w-4 h-4 text-muted-foreground/50 flex-shrink-0" />
-                      ) : (
-                        <Circle className="w-4 h-4 text-muted-foreground/40 flex-shrink-0" />
-                      )}
-                      <span className="line-clamp-1 flex-1">{m.title}</span>
-                      <ChevronRight className="w-3 h-3 text-muted-foreground/50 flex-shrink-0" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className={cn(themeClasses.card, "p-5")}>
-              <h4 className="text-xs font-bold tracking-wider uppercase text-muted-foreground mb-3">
-                Download Assets
-              </h4>
-              <p className="text-[12px] text-muted-foreground mb-4 leading-relaxed">
-                Get the course workbook with exercises, notes, and reference materials.
-              </p>
-              <button className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-[13px] font-semibold bg-primary text-primary-foreground transition-all hover:bg-primary/90">
-                <Download className="w-4 h-4" />
-                PDF Workbook
-              </button>
-            </div>
-
-            <div className={cn(themeClasses.card, "p-5 relative overflow-hidden")}>
-              <Quote className="absolute top-3 right-3 w-8 h-8 text-primary/10" />
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-bold">
-                  R
-                </div>
-                <div>
-                  <p className="text-[13px] font-semibold text-foreground">Repend AI</p>
-                  <p className="text-[11px] text-muted-foreground">Course Instructor</p>
-                </div>
-              </div>
-              <p className="text-[12px] text-muted-foreground leading-relaxed italic">
-                "Every concept becomes clearer when you experience the tradeoffs firsthand. Engage with the labs — they're where real understanding happens."
-              </p>
-            </div>
-          </aside>
         </div>
 
         {/* ═══ Floating Module Chat Button ═══ */}

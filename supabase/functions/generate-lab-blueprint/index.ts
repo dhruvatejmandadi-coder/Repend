@@ -14,7 +14,7 @@ async function callAI(apiKey: string, body: any, retries = 2): Promise<any> {
       await new Promise(r => setTimeout(r, delay));
     }
     try {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
         body: JSON.stringify(body),
@@ -736,8 +736,8 @@ serve(async (req) => {
 
     await supabase.from("course_modules").update({ lab_generation_status: "generating" }).eq("id", moduleId);
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY missing");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY missing");
 
     const topic = course.topic;
     const moduleTitle = mod.title;
@@ -911,8 +911,8 @@ REQUIREMENTS:
         await new Promise(r => setTimeout(r, genAttempt * 2000));
       }
       try {
-        const aiData = await callAI(OPENAI_API_KEY, {
-          model: "gpt-4o-mini",
+        const aiData = await callAI(LOVABLE_API_KEY, {
+          model: "google/gemini-2.5-flash",
           max_completion_tokens: 6000,
           messages: [
             { role: "system", content: systemPrompt },
@@ -954,34 +954,133 @@ REQUIREMENTS:
     // Ensure lab_type is set
     blueprint.lab_type = blueprint.lab_type || labType;
 
-    // ── Post-processing by lab type ──
+    // ═══ VALIDATION + NORMALIZATION LAYER ═══
+    const _validation_warnings: string[] = [];
+    let criticalErrors = 0;
 
     if (blueprint.lab_type === "simulation" || labType === "simulation") {
       if (!Array.isArray(blueprint.blocks)) blueprint.blocks = [];
       if (!Array.isArray(blueprint.variables)) blueprint.variables = [];
+      if (!blueprint.formulas || typeof blueprint.formulas !== "object") blueprint.formulas = {};
+      if (!Array.isArray(blueprint.rules)) blueprint.rules = [];
 
-      // Repair variables
+      // ── 1. Variable range validation ──
       for (const v of blueprint.variables) {
+        // Sanitize variable name: no special chars
+        const origName = v.name;
+        v.name = String(v.name || "Variable").replace(/[^a-zA-Z0-9_ ]/g, "").trim() || "Variable";
+        if (origName !== v.name) _validation_warnings.push(`Renamed var "${origName}" → "${v.name}"`);
+
         v.min = typeof v.min === "number" ? v.min : 0;
         v.max = typeof v.max === "number" ? v.max : 100;
-        v.default = Math.max(v.min, Math.min(v.max, typeof v.default === "number" ? v.default : 50));
+        if (v.min >= v.max) { v.min = 0; v.max = 100; _validation_warnings.push(`Fixed inverted range for "${v.name}"`); criticalErrors++; }
+        v.default = Math.max(v.min, Math.min(v.max, typeof v.default === "number" ? v.default : (v.min + v.max) / 2));
+        if (!v.unit) v.unit = "%";
+        if (!v.icon) v.icon = "📊";
+        if (!v.description) v.description = `Controls the ${v.name.toLowerCase()} level`;
       }
 
+      const varNames = blueprint.variables.map((v: any) => v.name);
+
+      // ── 2. Formula validation ──
+      const newFormulas: Record<string, string> = {};
+      for (const [key, formula] of Object.entries(blueprint.formulas)) {
+        const cleanKey = String(key).replace(/[^a-zA-Z0-9_ ]/g, "").trim();
+        if (!cleanKey) { _validation_warnings.push(`Dropped formula with invalid key "${key}"`); criticalErrors++; continue; }
+        const formulaStr = String(formula);
+        // Reject formulas with natural language / percent signs / comparison operators used as logic
+        if (/[%]/.test(formulaStr) || /\b(with|and|or|the|is|has|if|then)\b/i.test(formulaStr)) {
+          _validation_warnings.push(`Replaced invalid formula "${cleanKey}": "${formulaStr}"`);
+          criticalErrors++;
+          // Replace with simple average of all variables
+          newFormulas[cleanKey] = varNames.length > 0
+            ? `(${varNames.map(n => `\`${n}\``).join(" + ")}) / ${varNames.length}`
+            : "50";
+        } else {
+          newFormulas[cleanKey] = formulaStr;
+        }
+      }
+      blueprint.formulas = newFormulas;
+
+      // ── 3. Block validation: ensure control_panel and output_display exist ──
+      const hasControlPanel = blueprint.blocks.some((b: any) => b.type === "control_panel");
+      const hasOutputDisplay = blueprint.blocks.some((b: any) => b.type === "output_display");
+
+      if (!hasControlPanel && varNames.length > 0) {
+        blueprint.blocks.unshift({ type: "control_panel", prompt: "Adjust the variables:", variables: varNames });
+        _validation_warnings.push("Added missing control_panel block");
+      }
+
+      if (!hasOutputDisplay) {
+        const outputNames = Object.keys(blueprint.formulas);
+        if (outputNames.length === 0) {
+          // Add default formulas
+          blueprint.formulas["Effectiveness"] = varNames.length > 0
+            ? `(${varNames.map(n => `\`${n}\``).join(" + ")}) / ${varNames.length}` : "50";
+          blueprint.formulas["Impact Score"] = varNames.length >= 2
+            ? `\`${varNames[0]}\` * 0.6 + \`${varNames[1]}\` * 0.4` : "50";
+          _validation_warnings.push("Added default formulas (none provided)");
+        }
+        blueprint.blocks.push({ type: "output_display", prompt: "Observe the results:", outputs: Object.keys(blueprint.formulas) });
+        _validation_warnings.push("Added missing output_display block");
+      } else {
+        // Ensure every output has a matching formula
+        for (const block of blueprint.blocks) {
+          if (block.type === "output_display" && Array.isArray(block.outputs)) {
+            for (const output of block.outputs) {
+              if (!blueprint.formulas[output]) {
+                blueprint.formulas[output] = varNames.length > 0
+                  ? `(${varNames.map(n => `\`${n}\``).join(" + ")}) / ${varNames.length}` : "50";
+                _validation_warnings.push(`Added missing formula for output "${output}"`);
+              }
+            }
+          }
+        }
+      }
+
+      // ── 4. Rule condition validation ──
+      blueprint.rules = blueprint.rules.filter((r: any) => {
+        if (!r.condition || typeof r.condition !== "string") return false;
+        const cond = r.condition;
+        // Allow only: variable names, numbers, operators, spaces, backticks
+        if (/[%$#@!?]/.test(cond) || /\b(with|and|or|the|is|has|if|then|high|low|very)\b/i.test(cond)) {
+          _validation_warnings.push(`Stripped invalid rule condition: "${cond}"`);
+          criticalErrors++;
+          return false;
+        }
+        if (!r.effects || typeof r.effects !== "object") r.effects = {};
+        if (!r.message) r.message = "⚠️ Threshold reached!";
+        return true;
+      });
+
+      // ── 5. Choice effects validation ──
       // Filter out step_task blocks
       blueprint.blocks = blueprint.blocks.filter((b: any) => b.type !== "step_task");
 
-      // Ensure choice effects reference all variables
-      const varNames = blueprint.variables.map((v: any) => v.name);
       for (const block of blueprint.blocks) {
         if (block.type === "choice_set" && Array.isArray(block.choices)) {
           for (const choice of block.choices) {
             if (!choice.effects || typeof choice.effects !== "object") choice.effects = {};
             for (const vn of varNames) {
-              if (typeof choice.effects[vn] !== "number") choice.effects[vn] = 50;
-              else choice.effects[vn] = Math.max(0, Math.min(100, choice.effects[vn]));
+              if (typeof choice.effects[vn] === "number") {
+                const v = blueprint.variables.find((x: any) => x.name === vn);
+                if (v) choice.effects[vn] = Math.max(v.min, Math.min(v.max, choice.effects[vn]));
+              } else {
+                // Set a reasonable default
+                const v = blueprint.variables.find((x: any) => x.name === vn);
+                choice.effects[vn] = v ? Math.round((v.min + v.max) / 2) : 50;
+              }
             }
           }
         }
+      }
+
+      // ── 6. If too many critical errors, use fallback ──
+      if (criticalErrors > 3) {
+        console.log(`[Validation] ${criticalErrors} critical errors for "${moduleTitle}", switching to fallback`);
+        _validation_warnings.push(`FALLBACK TRIGGERED: ${criticalErrors} critical errors`);
+        blueprint = createFallbackSliderLab(topic, moduleTitle);
+        blueprint.lab_type = "simulation";
       }
 
       // Add insight if missing
@@ -991,6 +1090,12 @@ REQUIREMENTS:
       }
 
       blueprint.completion_rule = blueprint.completion_rule || "all_choices";
+    }
+
+    // Store validation warnings for debugging
+    if (_validation_warnings.length > 0) {
+      blueprint._validation_warnings = _validation_warnings;
+      console.log(`[Validation] ${_validation_warnings.length} warnings for "${moduleTitle}":`, _validation_warnings);
     }
 
     if (labType === "flowchart") {
