@@ -12,11 +12,14 @@ dist
 dist-ssr
 *.local
 
+<<<<<<< HEAD
 # Environment variables — never commit
 .env
 .env.*
 !.env.example
 
+=======
+>>>>>>> 2c4834056308c1fed91ba00fab33a71f9dcc9a14
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
