@@ -11,6 +11,7 @@ import ScenarioBuilderLab from "./ScenarioBuilderLab";
 import HighlightSelectLab from "./HighlightSelectLab";
 import DebateBuilderLab from "./DebateBuilderLab";
 import BudgetAllocatorLab from "./BudgetAllocatorLab";
+import CohesiveLab from "./CohesiveLab";
 
 type Props = {
   labType?: string | null;
@@ -118,6 +119,9 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
   }
   if (labData.lab_type === "budget_allocator") {
     return <BudgetAllocatorLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
+  }
+  if (labData.lab_type === "cohesive") {
+    return <CohesiveLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
   // Everything goes through DynamicLab — it handles all block types

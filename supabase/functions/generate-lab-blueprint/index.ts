@@ -570,6 +570,149 @@ const budgetAllocatorTool = {
   },
 };
 
+const cohesiveTool = {
+  name: "create_cohesive_lab",
+  description:
+    "Create a COHESIVE multi-activity lab with a narrative spine, persistent metrics, and unlock progression. Choose this for rich, complex topics where a single activity isn't enough — history, ethics, business, science processes, social topics. Contains 4-5 sequential activities of DIFFERENT types (classify_sort, branch_chain, build_order, match_chain, fill_lab). Each activity unlocks after the previous is complete. Ends with a graded final verdict.",
+  input_schema: {
+    type: "object",
+    properties: {
+      lab_type: { type: "string", const: "cohesive" },
+      title: { type: "string" },
+      narrative: { type: "string", description: "2-3 sentence mission statement placing the student in a real-world role connected to the topic" },
+      metrics: {
+        type: "array",
+        minItems: 2,
+        maxItems: 4,
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            label: { type: "string" },
+            icon: { type: "string", description: "Single emoji" },
+            value: { type: "number", description: "Starting value" },
+            max: { type: "number", description: "Maximum value" },
+          },
+          required: ["id", "label", "icon", "value", "max"],
+        },
+      },
+      activities: {
+        type: "array",
+        minItems: 4,
+        maxItems: 5,
+        items: {
+          type: "object",
+          properties: {
+            id: { type: "string" },
+            type: { type: "string", enum: ["classify_sort", "branch_chain", "build_order", "match_chain", "fill_lab"] },
+            title: { type: "string" },
+            context: { type: "string", description: "1-2 sentences connecting this activity to the narrative" },
+            metric_effects: { type: "object", description: "Which metrics change on completion, e.g. {trust: 15, budget: -10}" },
+            categories: { type: "array", items: { type: "string" }, description: "classify_sort only: 2-4 category names" },
+            items: {
+              type: "array",
+              description: "classify_sort only: 8-12 items to classify",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  text: { type: "string" },
+                  category: { type: "string" },
+                  explanation: { type: "string" },
+                },
+                required: ["id", "text", "category", "explanation"],
+              },
+            },
+            decisions: {
+              type: "array",
+              description: "branch_chain only: 3-4 sequential decisions",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  prompt: { type: "string" },
+                  hint: { type: "string" },
+                  options: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        text: { type: "string" },
+                        consequence: { type: "string" },
+                        is_best: { type: "boolean" },
+                      },
+                      required: ["text", "consequence", "is_best"],
+                    },
+                  },
+                },
+                required: ["id", "prompt", "options"],
+              },
+            },
+            steps: {
+              type: "array",
+              description: "build_order only: 6-8 steps to arrange",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  text: { type: "string" },
+                  position: { type: "number" },
+                },
+                required: ["id", "text", "position"],
+              },
+            },
+            par_time: { type: "number", description: "build_order only: seconds allowed (default 90)" },
+            pairs: {
+              type: "array",
+              description: "match_chain only: 5-7 term-definition pairs",
+              items: {
+                type: "object",
+                properties: {
+                  left: { type: "string" },
+                  right: { type: "string" },
+                },
+                required: ["left", "right"],
+              },
+            },
+            template: { type: "string", description: "fill_lab only: passage with [BLANK_1], [BLANK_2] etc." },
+            blanks: {
+              type: "array",
+              description: "fill_lab only",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  options: { type: "array", items: { type: "string" } },
+                  correct: { type: "string" },
+                  explanation: { type: "string" },
+                },
+                required: ["id", "options", "correct"],
+              },
+            },
+          },
+          required: ["id", "type", "title", "context", "metric_effects"],
+        },
+      },
+      verdict_tiers: {
+        type: "array",
+        minItems: 3,
+        maxItems: 5,
+        items: {
+          type: "object",
+          properties: {
+            grade: { type: "string", enum: ["S", "A", "B", "C", "D"] },
+            threshold: { type: "number", description: "Minimum score % (0-100) to reach this grade" },
+            title: { type: "string", description: "Role/title earned, e.g. 'Master Strategist'" },
+            description: { type: "string", description: "2 sentences describing what this outcome means" },
+          },
+          required: ["grade", "threshold", "title", "description"],
+        },
+      },
+    },
+    required: ["lab_type", "title", "narrative", "metrics", "activities", "verdict_tiers"],
+  },
+};
+
 // ─── DOMAIN-SPECIFIC SIMULATION TEMPLATES ───
 
 const DOMAIN_TEMPLATES: Record<string, string> = {
@@ -910,11 +1053,12 @@ serve(async (req) => {
     const lessonContent = mod.lesson_content || "";
     const lessonSummary = lessonContent.replace(/\n---\n/g, "\n").replace(/#{1,3}\s/g, "").slice(0, 3000);
 
-    // ── All 10 activity tools — Claude picks the most pedagogically appropriate one ──
+    // ── All 11 activity tools — Claude picks the most pedagogically appropriate one ──
     const ALL_TOOLS = [
       simulationTool, graphTool, flowchartTool, codeDebuggerTool,
       matchingTool, orderingTool, scenarioBuilderTool,
       highlightSelectTool, debateBuilderTool, budgetAllocatorTool,
+      cohesiveTool,
     ];
 
     const domainTemplates = selectDomainTemplate(topic, moduleTitle, lessonContent);
@@ -933,17 +1077,20 @@ You have 10 activity formats to choose from. Pick the ONE that will be most enga
 8. create_highlight_select_lab — Select ALL items that match a criterion. Best for: identifying examples vs non-examples, fact-checking, classifying a set.
 9. create_debate_builder_lab — Sort statements into For/Against. Best for: ethics, policy debates, persuasive reasoning, pros/cons analysis, history perspectives.
 10. create_budget_allocator_lab — Distribute 100% across categories with sliders. Best for: resource allocation, government/personal finance, tradeoff decisions, policy design.
+11. create_cohesive_lab — Multi-activity narrative lab with 4-5 sequential activities, persistent metrics, unlock progression, and a final grade. Best for: rich complex topics where one activity isn't enough — history, ethics, complex science, business strategy, social issues, any topic that benefits from a story arc.
 
 SELECTION GUIDELINES:
 - Choose the format that makes the lesson concept come alive as an activity
-- A lesson about "causes of WWI" → ordering or debate_builder
+- A lesson about "causes of WWI" → cohesive (narrative spine with ordering + debate + classify)
 - A lesson about "DNA replication steps" → flowchart or ordering
 - A lesson about "supply and demand" → simulation or budget_allocator
 - A lesson about "logical fallacies" → highlight_select or matching
-- A lesson about "climate policy" → budget_allocator or debate_builder
+- A lesson about "climate policy" → cohesive (budget + debate + branch_chain) or budget_allocator
 - A lesson about "quadratic equations" → graph
 - A lesson about "Python loops" → code_debugger
 - A lesson about vocabulary/terms → matching
+- A lesson about ethics, justice, complex history, social topics → cohesive
+- A lesson that covers multiple sub-concepts → cohesive
 - When uncertain, simulation is the universal fallback
 
 QUALITY RULES:
@@ -995,6 +1142,7 @@ Choose the activity type that will best help a high school student truly underst
           create_highlight_select_lab: "highlight_select",
           create_debate_builder_lab: "debate_builder",
           create_budget_allocator_lab: "budget_allocator",
+          create_cohesive_lab: "cohesive",
         };
         labType = toolToType[result.toolName] || "simulation";
         console.log(`[Lab Gen] "${moduleTitle}" → Claude chose: ${result.toolName} (${labType})`);
@@ -1009,6 +1157,7 @@ Choose the activity type that will best help a high school student truly underst
         if (labType === "highlight_select" && blueprint.items?.length >= 4) break;
         if (labType === "debate_builder" && blueprint.statements?.length >= 4) break;
         if (labType === "budget_allocator" && blueprint.categories?.length >= 3) break;
+        if (labType === "cohesive" && blueprint.activities?.length >= 4 && blueprint.metrics?.length >= 2) break;
         if (labType === "simulation" && blueprint.variables?.length > 0 && blueprint.blocks?.length > 0) break;
         if (blueprint && typeof blueprint === "object") break;
       } catch (e: any) {
