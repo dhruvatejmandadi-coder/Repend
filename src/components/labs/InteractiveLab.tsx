@@ -26,15 +26,20 @@ type Props = {
   onReplay?: () => void;
 };
 
-function LabEmptyState({ labType }: { labType?: string | null }) {
+function LabEmptyState({ labType, onRetry }: { labType?: string | null; onRetry?: () => void }) {
   return (
     <Card className="border-dashed border-2 border-muted-foreground/20">
       <CardContent className="p-8 text-center space-y-3">
         <div className="text-4xl">🔬</div>
-        <h3 className="font-bold text-lg">Lab Data Unavailable</h3>
+        <h3 className="font-bold text-lg">Lab Failed to Generate</h3>
         <p className="text-sm text-muted-foreground max-w-md mx-auto">
-          The lab for this module wasn't generated properly. Try regenerating the course to get interactive labs.
+          The interactive lab couldn't be built for this challenge. This usually means the AI returned incomplete data.
         </p>
+        {onRetry && (
+          <Button variant="outline" onClick={onRetry}>
+            <RefreshCw className="w-4 h-4 mr-1" /> Regenerate Lab
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
@@ -84,43 +89,46 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
 
   // No data at all
   if (!labData || (typeof labData === "object" && Object.keys(labData).length === 0)) {
-    return <LabEmptyState labType={labType} />;
+    return <LabEmptyState labType={labType} onRetry={onRetryGeneration} />;
   }
 
   // Check for empty marker from old system
   if (labData.empty === true) {
-    return <LabEmptyState labType={labType} />;
+    return <LabEmptyState labType={labType} onRetry={onRetryGeneration} />;
   }
 
+  // lab_type may live inside lab_data (course labs) or only in the DB column (challenge labs)
+  const effectiveLabType = labData.lab_type || labType;
+
   // Route to specialized lab renderers based on lab_type
-  if (labData.lab_type === "flowchart") {
+  if (effectiveLabType === "flowchart") {
     return <FlowchartLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "code_debugger") {
+  if (effectiveLabType === "code_debugger") {
     return <CodeDebuggerLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "graph") {
+  if (effectiveLabType === "graph") {
     return <GraphLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "matching") {
+  if (effectiveLabType === "matching") {
     return <MatchingLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "ordering") {
+  if (effectiveLabType === "ordering") {
     return <OrderingLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "scenario_builder") {
+  if (effectiveLabType === "scenario_builder") {
     return <ScenarioBuilderLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "highlight_select") {
+  if (effectiveLabType === "highlight_select") {
     return <HighlightSelectLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "debate_builder") {
+  if (effectiveLabType === "debate_builder") {
     return <DebateBuilderLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "budget_allocator") {
+  if (effectiveLabType === "budget_allocator") {
     return <BudgetAllocatorLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
-  if (labData.lab_type === "cohesive") {
+  if (effectiveLabType === "cohesive") {
     return <CohesiveLab data={labData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
@@ -134,7 +142,7 @@ export default function InteractiveLab({ labType, labData, labTitle, labDescript
     return <DynamicLab data={normalizedData} onComplete={onComplete} isCompleted={isCompleted} onReplay={onReplay} />;
   }
 
-  return <LabEmptyState labType={labType} />;
+  return <LabEmptyState labType={effectiveLabType} onRetry={onRetryGeneration} />;
 }
 
 /** Convert old-style lab data into the new blocks format for DynamicLab */

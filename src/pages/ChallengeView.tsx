@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Trophy, CheckCircle2, Target, BookOpen, Lightbulb, FileText, Eye, EyeOff, Send, FlaskConical, UserPlus, Play } from "lucide-react";
+import { ArrowLeft, Loader2, Trophy, CheckCircle2, Target, BookOpen, Lightbulb, FileText, Eye, EyeOff, Send, FlaskConical, UserPlus, Play, RefreshCw } from "lucide-react";
 import InteractiveLab from "@/components/labs/InteractiveLab";
 import { ChallengeComments } from "@/components/challenges/ChallengeComments";
 import { usePoints } from "@/hooks/usePoints";
@@ -24,6 +24,7 @@ export default function ChallengeView() {
   const [userAnswer, setUserAnswer] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [joining, setJoining] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const { completeChallenge: completePoints, completedChallenges: localCompleted } = usePoints();
   const { joinChallenge, completeChallenge: dbComplete, isJoined, isCompleted, getCompletedDate, refetch } = useChallenges();
   const { user } = useAuth();
@@ -47,6 +48,38 @@ export default function ChallengeView() {
     })();
   }, [id]);
 
+  const handleRegenerateLab = async () => {
+    if (!challenge || regenerating) return;
+    setRegenerating(true);
+    try {
+      const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-challenge`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        },
+        body: JSON.stringify({
+          topic: challenge.topic || challenge.title,
+          description: challenge.description || "",
+          difficulty: challenge.difficulty || "medium",
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to regenerate");
+      }
+      const result = await resp.json();
+      const { lab_type, lab_data } = result.challenge_data;
+      await supabase.from("challenges").update({ lab_type, lab_data }).eq("id", challenge.id);
+      setChallenge((prev: any) => ({ ...prev, lab_type, lab_data }));
+      toast({ title: "Lab regenerated!", description: "A fresh interactive lab has been built." });
+    } catch (error) {
+      toast({ title: "Regeneration failed", description: error instanceof Error ? error.message : "Try again.", variant: "destructive" });
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   const handleJoin = async () => {
     if (!user) {
       toast({ title: "Sign in required", description: "Create an account to join challenges.", variant: "destructive" });
@@ -65,7 +98,11 @@ export default function ChallengeView() {
     if (!challenge || !id || completed) return;
     await dbComplete(id);
     completePoints(challenge.id, challenge.is_daily);
-    toast({ title: "Challenge completed! 🎉", description: `+${challenge.is_daily ? 100 : 50} points earned!` });
+    const pts = challenge.is_daily ? 100 : 50;
+    const creatorNote = challenge.user_id && challenge.user_id !== user?.id
+      ? " The creator earns +25 pts too!"
+      : "";
+    toast({ title: "Challenge completed! 🎉", description: `+${pts} points earned!${creatorNote}` });
   };
 
   const handleLabComplete = () => {
@@ -132,7 +169,12 @@ export default function ChallengeView() {
             </p>
           )}
         </div>
-        <div className="flex gap-2 shrink-0">
+        <div className="flex gap-2 shrink-0 flex-wrap justify-end">
+          {challenge.topic && (
+            <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/20">
+              {challenge.topic}
+            </Badge>
+          )}
           {challenge.difficulty && (
             <Badge variant="outline" className={`capitalize text-xs ${
               challenge.difficulty === "easy" ? "text-green-400 border-green-400/30" :
@@ -140,11 +182,6 @@ export default function ChallengeView() {
               "text-yellow-400 border-yellow-400/30"
             }`}>
               {challenge.difficulty}
-            </Badge>
-          )}
-          {challenge.lab_type && (
-            <Badge variant="outline" className="capitalize text-xs">
-              {challenge.lab_type.replace(/_/g, " ")}
             </Badge>
           )}
         </div>
@@ -230,6 +267,18 @@ export default function ChallengeView() {
           <CardHeader className="pb-2">
             <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
               <FlaskConical className="w-4 h-4" /> Interactive Lab
+              {user?.id === challenge.user_id && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto h-7 text-xs"
+                  onClick={handleRegenerateLab}
+                  disabled={regenerating}
+                >
+                  {regenerating ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <RefreshCw className="w-3 h-3 mr-1" />}
+                  Regenerate
+                </Button>
+              )}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -240,6 +289,7 @@ export default function ChallengeView() {
               labDescription={challenge.description}
               onComplete={handleLabComplete}
               isCompleted={completed}
+              onRetryGeneration={user?.id === challenge.user_id ? handleRegenerateLab : undefined}
             />
           </CardContent>
         </Card>

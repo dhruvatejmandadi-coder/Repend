@@ -1,294 +1,380 @@
+// v2 — picks up ANTHROPIC_API_KEY secret, improved error logging
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
 };
 
-/* ── Challenge type → prompt strategy mapping ── */
+// ─── SINGLE CLAUDE CALL: metadata + lab in one shot ───
 
-function isMathTopic(topic: string): boolean {
-  const mathKeywords = [
-    "math", "algebra", "geometry", "calculus", "trigonometry", "statistics",
-    "equation", "function", "graph", "polynomial", "quadratic", "linear",
-    "derivative", "integral", "matrix", "vector", "probability", "fraction",
-    "exponent", "logarithm", "inequality", "triangle", "circle", "angle",
-    "theorem", "arithmetic", "number theory", "combinatorics", "slope",
-    "intercept", "vertex", "parabola", "hyperbola", "sine", "cosine",
-    "tangent", "factoring", "simplif", "expression", "coordinate",
-  ];
-  const lower = topic.toLowerCase();
-  return mathKeywords.some((kw) => lower.includes(kw));
-}
+const challengeTool = {
+  name: "create_challenge",
+  description:
+    "Create a complete interactive learning challenge. Pick the best lab format for the topic — no format is off-limits.",
+  input_schema: {
+    type: "object",
+    properties: {
+      title: { type: "string", description: "Challenge title (max 80 chars)" },
+      description: {
+        type: "string",
+        description: "1-2 sentence summary shown on the challenge card",
+      },
+      topic: {
+        type: "string",
+        description:
+          "Subject area tag (e.g. 'Microeconomics', 'Cybersecurity', 'World History')",
+      },
+      objective: {
+        type: "string",
+        description: "What skill or concept the student will practice (1-2 sentences)",
+      },
+      instructions: {
+        type: "string",
+        description: "Step-by-step instructions for completing the challenge",
+      },
+      problem: {
+        type: "string",
+        description: "The main challenge problem or scenario (detailed)",
+      },
+      hints: {
+        type: "array",
+        items: { type: "string" },
+        minItems: 2,
+        maxItems: 3,
+        description: "2-3 progressive hints",
+      },
+      solution: { type: "string", description: "The expected answer or solution" },
+      solution_explanation: {
+        type: "string",
+        description: "Explanation of why the solution is correct",
+      },
+      difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
+      lab_type: {
+        type: "string",
+        enum: [
+          "simulation",
+          "graph",
+          "flowchart",
+          "code_debugger",
+          "matching",
+          "ordering",
+          "scenario_builder",
+          "highlight_select",
+          "debate_builder",
+          "budget_allocator",
+        ],
+        description: "Pick the format that best teaches this topic",
+      },
+      lab_data: {
+        type: "object",
+        description:
+          "Structured lab content — schema depends on lab_type (see system prompt)",
+      },
+    },
+    required: [
+      "title",
+      "description",
+      "topic",
+      "objective",
+      "instructions",
+      "problem",
+      "hints",
+      "solution",
+      "solution_explanation",
+      "difficulty",
+      "lab_type",
+      "lab_data",
+    ],
+  },
+};
 
-function buildSystemPrompt(challengeType: string, labTypes: string[], isMath: boolean): string {
-  const baseRules = `You are an interactive learning challenge generator for a cognitive simulation platform.
-Given a topic, create an engaging challenge with full structured content.
+const SYSTEM = `You are an expert interactive learning challenge designer. Given a topic and difficulty, you will create a complete challenge that includes both structured content and an interactive lab activity.
 
-You MUST generate ALL of these fields:
-- title: Challenge title (max 80 chars)
-- description: Short summary (max 300 chars)
-- objective: What the learner should practice (1-2 sentences)
-- instructions: Step-by-step instructions for the challenge (use numbered steps)
-- problem: The actual challenge problem statement (detailed, real-world scenario)
-- hints: Array of exactly 2 hint strings
-- solution: The expected answer or solution
-- solution_explanation: Detailed explanation of why this is the solution
-- difficulty: "easy", "medium", or "hard"
-- challenge_type: The type of challenge`;
+## Choosing the Lab Format
 
-  // ── MATH LAB: specialized math generator ──
-  if (isMath) {
-    return `${baseRules}
-- lab_type: MUST be "math_lab"
-- lab_data: A complete math lab with visual representations
+Pick the ONE format that makes the concept come alive. These 10 formats are available:
 
-You are generating a MATH LAB. This is a specialized interactive math experience.
+1. **simulation** — Students adjust 2-5 sliders (variables) and see live numeric outputs change via formulas. Best for: physics, economics, biology, systems with cause-and-effect. NOT for pure math equations.
+2. **graph** — Students manipulate equation parameters via sliders and see a graph update in real-time. Use this for any topic involving a mathematical function: quadratics, linear equations, trig functions, exponential growth, polynomials, etc.
+3. **flowchart** — Students fill blank process steps via dropdowns. Best for: biological cycles, algorithms, procedures, workflows.
+4. **code_debugger** — Students find and fix bugs in real code. ONLY when the topic is literally about programming.
+5. **matching** — Students connect terms ↔ definitions or causes ↔ effects. Best for: vocabulary-heavy topics, relationship mapping.
+6. **ordering** — Students arrange scrambled steps/events in correct sequence. Best for: timelines, historical events, step-by-step processes.
+7. **scenario_builder** — Students fill blanks in a real-world narrative. Best for: applied reasoning, business/legal/medical scenarios.
+8. **highlight_select** — Students click ALL items matching a criterion. Best for: identifying examples vs non-examples, fact-checking.
+9. **debate_builder** — Students sort statements into For/Against. Best for: ethics, policy debates, pros/cons analysis.
+10. **budget_allocator** — Students distribute 100% across categories with sliders. Best for: resource allocation, finance, policy design.
 
-The lab_data MUST contain ALL of these fields:
-- title: Lab title
-- objective: What math skill the student will practice
-- concept_overview: 2-4 sentence explanation of the math concept
-- visual_type: One of "graph", "geometry", "solution_steps", "chart"
-- scenario: A RELEVANT real-world scenario tied to the specific math concept
-- instructions: Step-by-step lab instructions
-- tasks: Array of 3-5 tasks (each with id, description, type, correct_answer)
-- hints: Array of 2 hint strings
-- solution: The correct answer
-- solution_explanation: Step-by-step explanation
+## Format Selection Examples
 
-SCENARIO RULES (CRITICAL):
-The scenario MUST be unique and directly relevant to the math concept:
-- Linear functions → business revenue, distance vs time, phone plan pricing
-- Quadratic functions → projectile motion, maximizing garden area, bridge arches
-- Systems of equations → comparing pricing plans, mixing solutions
-- Geometry/triangles → building structures, measuring land, architecture
-- Statistics → analyzing survey data, sports statistics, weather patterns
-- Trigonometry → measuring heights with angles, wave motion, navigation
-- Exponential/logarithmic → population growth, radioactive decay, compound interest
-- Probability → games of chance, quality control, medical testing
-NEVER reuse the same generic scenario across different topics. Each lab must feel like a unique real-world application.
+- "quadratic equations" or "quadratics" → **graph** (plot y = ax² + bx + c with sliders for a, b, c)
+- "linear functions" or "slope" → **graph**
+- "trigonometry" or "sine/cosine" → **graph**
+- "exponential growth/decay" → **graph**
+- "supply and demand" or "economics" → **simulation**
+- "DNA replication" or "photosynthesis" → **flowchart** or **ordering**
+- "World War causes" or "historical events" → **ordering** or **matching**
+- "climate policy" or "government budget" → **budget_allocator**
+- "ethical dilemma" or "pros and cons" → **debate_builder**
+- "vocabulary" or "terms and definitions" → **matching**
+- "Python loops" or "debugging" → **code_debugger**
+- When uncertain → **simulation**
 
-VISUAL TYPE SELECTION RULES:
-- If the topic involves functions, equations, graphing, slopes, intercepts, transformations → visual_type = "graph"
-- If the topic involves shapes, angles, triangles, circles, polygons → visual_type = "geometry"
-- If the topic involves solving equations step-by-step, simplifying → visual_type = "solution_steps"
-- If the topic involves data, statistics, probability → visual_type = "chart"
+## Lab Data Schemas
 
-FOR visual_type = "graph", lab_data MUST include graph_data AND interactive_params:
-
-graph_data:
+### simulation
+\`\`\`json
 {
-  "type": "function" or "scatter" or "bar",
-  "equation": "a*x^2 + b*x + c" (JavaScript math expression using x and parameter variables a, b, c),
-  "x_label": "x (meaningful label, e.g. 'Time (seconds)')",
-  "y_label": "y (meaningful label, e.g. 'Height (meters)')",
-  "x_range": [-5, 10],
-  "y_range": [-5, 15],
-  "key_points": [{"x": 2, "y": -1, "label": "Vertex (2,-1)"}, {"x": 1, "y": 0, "label": "Root (1,0)"}]
+  "lab_type": "simulation",
+  "title": "...",
+  "scenario": "2-3 sentence context",
+  "kind": "exploration",
+  "learning_goal": "...",
+  "key_insight": "...",
+  "goal": { "description": "What students should discover" },
+  "variables": [
+    { "name": "VarName", "icon": "📊", "unit": "%", "min": 0, "max": 100, "default": 50, "description": "..." }
+  ],
+  "blocks": [
+    { "type": "text", "content": "Intro text" },
+    { "type": "control_panel", "prompt": "Adjust variables:", "variables": ["VarName1", "VarName2"] },
+    { "type": "output_display", "prompt": "Observe:", "outputs": ["Output1", "Output2"] },
+    { "type": "choice_set", "question": "...", "emoji": "🤔", "choices": [
+      { "text": "...", "feedback": "...", "effects": { "VarName": 70 }, "is_best": true }
+    ]},
+    { "type": "insight", "content": "Key takeaway" }
+  ],
+  "formulas": { "Output1": "VarName1 * 0.6 + VarName2 * 0.4" },
+  "rules": [
+    { "condition": "VarName1 > 80", "effects": {}, "message": "Warning message" }
+  ],
+  "completion_rule": "all_choices"
 }
+\`\`\`
+CRITICAL: formula keys must EXACTLY match output_display output names. Variable names in formulas must EXACTLY match variable names. No special characters in variable or formula key names.
 
-interactive_params (REQUIRED for graph topics):
-[
-  {"name": "a", "label": "Coefficient a", "min": -5, "max": 5, "step": 0.5, "default": 1},
-  {"name": "b", "label": "Coefficient b", "min": -10, "max": 10, "step": 1, "default": -4},
-  {"name": "c", "label": "Constant c", "min": -10, "max": 10, "step": 1, "default": 3}
-]
-These allow students to adjust sliders and watch the graph change in real-time.
-Use parameter variables (a, b, c, m, etc.) in the equation so sliders actually affect the graph.
-
-IMPORTANT: The equation must be a valid JavaScript math expression. Use * for multiplication, ^ for exponents. Examples:
-- "a*x^2 + b*x + c" for quadratics with interactive params
-- "m*x + b" for linear with slope/intercept sliders
-- "a*Math.sin(b*x + c)" for trig with amplitude/frequency/phase sliders
-- "a*Math.abs(x - h) + k" for absolute value with transformations
-
-FOR visual_type = "geometry", lab_data MUST include geometry (array of shapes):
-[{
-  "type": "triangle",
-  "points": [{"x": 1, "y": 1, "label": "A"}, {"x": 5, "y": 1, "label": "B"}, {"x": 3, "y": 7, "label": "C"}],
-  "measurements": {"AB": "4 units", "BC": "6.3 units", "angle_B": "45°"}
-}]
-Points must be in range 0-10 for proper rendering.
-
-FOR visual_type = "solution_steps", lab_data MUST include solution_steps:
-[{"step": 1, "expression": "2x + 5 = 15", "explanation": "Start with the original equation"},
- {"step": 2, "expression": "2x = 10", "explanation": "Subtract 5 from both sides"}]
-
-FOR visual_type = "chart", lab_data MUST include graph_data:
-{"type": "bar", "data_labels": ["A", "B", "C"], "data_values": [10, 25, 15], "x_label": "Category", "y_label": "Value"}
-
-TASK FORMAT:
-Each task must have: id (number), description (string), type ("input" | "choice" | "explanation"), correct_answer (string)
-For choice tasks, also include options (array of 3-4 strings).
-Tasks should progress from easier to harder.
-Include at least one task that references the visual (e.g. "Using the graph, identify..." or "From the diagram, calculate...").
-
-Return the result using the create_challenge_full function.`;
-  }
-
-  // ── Lab / Interactive: MUST generate full interactive lab ──
-  if (challengeType === "lab_interactive") {
-    return `${baseRules}
-- lab_type: Choose from ${labTypes.join(", ")}
-- lab_data: Structured lab data matching the lab_type schema
-
-YOU ARE GENERATING A HANDS-ON INTERACTIVE LAB. This is the most important part.
-The lab_data MUST be complete and playable.
-
-Guidelines for lab type selection:
-- "simulation": For causal/systemic topics. Students adjust parameters and see outcomes.
-- "classification": For analytical/sorting topics. Students categorize items correctly.
-- "ethical_dilemma": For moral/ethical topics. Every choice has tradeoffs across dimensions.
-- "policy_optimization": For strategy/constraint topics. Students must hit targets within limits.
-- "decision_lab": For complex reasoning. Students analyze scenarios and make decisions.
-
-CRITICAL RULES FOR LAB DATA:
-
-For "simulation" type:
-- Exactly 3 parameters with name, icon (emoji), unit, min (0), max (100), default (40-60)
-- Exactly 3 thresholds with label, min_percent, message
-- 2-4 decisions, each with a question, emoji, and 2-3 choices
-- EVERY choice MUST have set_state with ALL 3 parameter names as keys and values 0-100
-
-For "classification" type:
-- 5-8 items with name, description
-- 2-4 categories with name, description
-- correct_mapping object mapping every item name to its correct category name
-
-For "ethical_dilemma" type:
-- 3-4 dimensions with name, icon (emoji), description, initial_value (40-60)
-- 2-4 decisions with scenario, emoji, and 2-3 options
-- Each option has label, description, and impacts (dimension name → number change, e.g. +15 or -10)
-
-For "policy_optimization" type:
-- 3-4 parameters with name, icon (emoji), unit, min (0), max (100), default, step (5-10)
-- 2-4 constraints with description
-- 2-3 targets with name, operator (">=", "<="), value, unit
-- max_moves: 3-5
-
-For "decision_lab" type:
-- scenario: detailed scenario text (at least 3 sentences)
-- 3-4 constraints (strings)
-- decision_prompt: what the user must decide
-- considerations: 3-4 key factors to weigh
-
-Return the result using the create_challenge_full function.`;
-  }
-
-  // ── Concept Check: Quick knowledge questions ──
-  if (challengeType === "concept_check") {
-    return `${baseRules}
-- lab_type: "classification"
-- lab_data: A classification lab that tests conceptual understanding
-
-Generate a classification-style lab where students must sort or categorize concepts correctly.
-Use 5-8 items and 2-4 categories. Include correct_mapping for all items.
-The problem should be a quick conceptual check, not a deep problem.
-
-Return the result using the create_challenge_full function.`;
-  }
-
-  // ── Challenge Problem: Deeper thinking, optional lab ──
-  return `${baseRules}
-- lab_type: Choose from ${labTypes.join(", ")}
-- lab_data: Structured lab data matching the lab_type schema
-
-Generate a challenge that requires deeper thinking and problem-solving.
-Include a full interactive lab that reinforces the problem.
-Prefer "simulation" or "ethical_dilemma" lab types for challenge problems.
-
-CRITICAL RULES FOR LAB DATA:
-
-For "simulation" type:
-- Exactly 3 parameters with name, icon (emoji), unit, min (0), max (100), default (40-60)
-- Exactly 3 thresholds with label, min_percent, message
-- 2-4 decisions, each with a question, emoji, and 2-3 choices
-- EVERY choice MUST have set_state with ALL 3 parameter names as keys and values 0-100
-
-For "classification" type:
-- 5-8 items with name, description
-- 2-4 categories with name, description
-- correct_mapping object mapping every item name to its correct category name
-
-For "ethical_dilemma" type:
-- 3-4 dimensions with name, icon (emoji), description, initial_value (40-60)
-- 2-4 decisions with scenario, emoji, and 2-3 options
-- Each option has label, description, and impacts (dimension name → number change)
-
-For "policy_optimization" type:
-- 3-4 parameters with name, icon (emoji), unit, min (0), max (100), default, step (5-10)
-- 2-4 constraints with description
-- 2-3 targets with name, operator (">=", "<="), value, unit
-- max_moves: 3-5
-
-For "decision_lab" type:
-- scenario: detailed scenario text
-- 3-4 constraints (strings)
-- decision_prompt: what the user must decide
-- considerations: 3-4 key factors
-
-Return the result using the create_challenge_full function.`;
+### graph
+\`\`\`json
+{
+  "lab_type": "graph",
+  "title": "...",
+  "goal": "What students discover",
+  "graph_type": "quadratic",
+  "equation": "a*x^2 + b*x + c",
+  "display_equation": "y = ax² + bx + c",
+  "sliders": [
+    { "name": "a", "label": "Coefficient a", "min": -5, "max": 5, "step": 0.5, "default": 1, "description": "..." }
+  ],
+  "target": { "description": "Reach a specific shape", "params": { "a": 1, "b": -2, "c": 3 }, "tolerance": 0.5 },
+  "x_range": [-10, 10],
+  "y_range": [-10, 20],
+  "key_insight": "..."
 }
+\`\`\`
 
-/* ── Repair simulation lab data ── */
+### flowchart
+\`\`\`json
+{
+  "lab_type": "flowchart",
+  "title": "...",
+  "goal": "Complete the process flow",
+  "scenario": "...",
+  "key_insight": "...",
+  "drop_zones": [
+    { "id": "step_1", "label": "Step 1", "correct_value": "DNA Unwinds", "options": ["DNA Unwinds", "Protein Folds", "ATP Produced", "Cell Divides"] }
+  ]
+}
+\`\`\`
 
-function repairSimulationLab(labData: any): any {
-  if (!labData?.parameters) return labData;
-  const params = labData.parameters;
+### code_debugger
+\`\`\`json
+{
+  "lab_type": "code_debugger",
+  "title": "...",
+  "goal": "Find and fix the bugs",
+  "language": "python",
+  "starter_code": "def add(a, b):\\n    return a - b",
+  "expected_output": "5",
+  "initial_error": "Returns wrong value",
+  "hints": ["Check the operator", "Should it be + or -?"],
+  "key_insight": "..."
+}
+\`\`\`
 
-  // Ensure exactly 3 parameters
-  while (params.length < 3) {
-    params.push({ name: `Factor ${params.length + 1}`, icon: "📊", unit: "%", min: 0, max: 100, default: 50 });
-  }
-  if (params.length > 3) labData.parameters = params.slice(0, 3);
+### matching
+\`\`\`json
+{
+  "lab_type": "matching",
+  "title": "...",
+  "instructions": "Match each term to its definition",
+  "pairs": [
+    { "id": "1", "left": "Supply", "right": "The amount of a good producers are willing to sell at a given price" }
+  ],
+  "key_insight": "..."
+}
+\`\`\`
+Include 4-8 pairs.
 
-  // Ensure thresholds
-  if (!labData.thresholds || !Array.isArray(labData.thresholds) || labData.thresholds.length === 0) {
-    labData.thresholds = [
-      { label: "Critical", min_percent: 0, message: "Parameters are at critical levels. Major issues ahead." },
-      { label: "Moderate", min_percent: 40, message: "Some stability, but improvements needed." },
-      { label: "Optimal", min_percent: 75, message: "Strong performance across all parameters." },
-    ];
-  }
+### ordering
+\`\`\`json
+{
+  "lab_type": "ordering",
+  "title": "...",
+  "context": "Brief framing paragraph",
+  "items": [
+    { "id": "1", "text": "Step description (max 15 words)", "correct_position": 1 }
+  ],
+  "key_insight": "..."
+}
+\`\`\`
+Include 4-8 items with correct_position from 1..N with no duplicates.
 
-  // Repair decisions
-  if (labData.decisions) {
-    for (const decision of labData.decisions) {
-      if (!decision.choices) decision.choices = [];
-      for (const choice of decision.choices) {
-        if (!choice.set_state) choice.set_state = {};
-        for (const p of labData.parameters) {
-          if (typeof choice.set_state[p.name] !== "number") {
-            choice.set_state[p.name] = p.default ?? 50;
-          }
-          choice.set_state[p.name] = Math.max(0, Math.min(100, choice.set_state[p.name]));
+### scenario_builder
+\`\`\`json
+{
+  "lab_type": "scenario_builder",
+  "title": "...",
+  "setup": "Optional framing sentence",
+  "narrative": "A 3-6 sentence scenario with [BLANK_0] and [BLANK_1] placeholders.",
+  "blanks": [
+    {
+      "id": "BLANK_0",
+      "correct": "correct answer",
+      "options": ["correct answer", "wrong option 1", "wrong option 2"],
+      "explanation": "Why this answer is correct"
+    }
+  ],
+  "key_insight": "..."
+}
+\`\`\`
+Include 3-6 blanks. Every BLANK_N in narrative MUST have a matching entry in blanks array.
+
+### highlight_select
+\`\`\`json
+{
+  "lab_type": "highlight_select",
+  "title": "...",
+  "instruction": "Select ALL items that are examples of X",
+  "items": [
+    { "id": "1", "text": "Item text (max 20 words)", "is_correct": true, "explanation": "Why correct/incorrect" }
+  ],
+  "key_insight": "..."
+}
+\`\`\`
+Include 5-10 items. At least 2 correct, at least 2 incorrect.
+
+### debate_builder
+\`\`\`json
+{
+  "lab_type": "debate_builder",
+  "title": "...",
+  "topic": "Should X be done?",
+  "for_label": "For",
+  "against_label": "Against",
+  "statements": [
+    { "id": "1", "text": "A clear argument statement", "side": "for", "explanation": "Why this is a FOR argument" }
+  ],
+  "key_insight": "..."
+}
+\`\`\`
+Include 4-8 statements, balanced between for/against.
+
+### budget_allocator
+\`\`\`json
+{
+  "lab_type": "budget_allocator",
+  "title": "...",
+  "scenario": "2-3 sentence context placing student as decision-maker",
+  "unit": "%",
+  "categories": [
+    {
+      "id": "1",
+      "name": "Category Name",
+      "icon": "🏥",
+      "description": "What this funds",
+      "recommended_min": 10,
+      "recommended_max": 35,
+      "explanation": "Feedback shown after submission"
+    }
+  ],
+  "reflection": "Open-ended question shown after submitting",
+  "key_insight": "..."
+}
+\`\`\`
+Include 3-7 categories. recommended_min/max should sum to roughly 100 across all categories.
+
+## Quality Rules
+- All content must be specific to the topic provided
+- Activity should be completable in 3-7 minutes
+- Use real domain language and realistic numbers
+- The lab must genuinely teach the concept through interaction, not just display information`;
+
+async function callClaude(apiKey: string, topic: string, description: string, difficulty: string): Promise<any> {
+  const userMsg = `Create an interactive learning challenge about: "${topic}"
+${description ? `Additional context: ${description}` : ""}
+Difficulty: ${difficulty}
+
+Choose the lab format that will most effectively teach this topic through hands-on interaction. Generate complete, playable content.`;
+
+  let lastError = "";
+  for (let attempt = 0; attempt <= 2; attempt++) {
+    if (attempt > 0) await new Promise((r) => setTimeout(r, attempt * 3000));
+
+    try {
+      const resp = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+          "anthropic-version": "2023-06-01",
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "claude-opus-4-6",
+          max_tokens: 8096,
+          system: SYSTEM,
+          tools: [challengeTool],
+          tool_choice: { type: "tool", name: "create_challenge" },
+          messages: [{ role: "user", content: userMsg }],
+        }),
+      });
+
+      if (resp.status === 429) { lastError = "Rate limit — try again in a moment."; continue; }
+      const text = await resp.text();
+      if (!resp.ok) {
+        if (resp.status === 401) {
+          lastError = "Invalid Anthropic API key. Check ANTHROPIC_API_KEY in Supabase secrets.";
+          console.error(`[generate-challenge] 401 auth error from Claude API. Key may be wrong or missing.`);
+          break; // no point retrying an auth error
         }
+        lastError = `Claude API error (${resp.status}): ${text.slice(0, 300)}`;
+        console.error(`[generate-challenge] Claude error ${resp.status}:`, text.slice(0, 300));
+        continue;
       }
+      const parsed = JSON.parse(text);
+      const toolUse = parsed.content?.find((c: any) => c.type === "tool_use");
+      if (!toolUse) {
+        lastError = "Claude did not return a tool_use block.";
+        console.error(`[generate-challenge] No tool_use in response:`, JSON.stringify(parsed).slice(0, 300));
+        continue;
+      }
+      return toolUse.input;
+    } catch (e: any) {
+      lastError = e.message || "Network error reaching Claude API.";
+      console.error(`[generate-challenge] Attempt ${attempt} threw:`, e.message);
     }
   }
-
-  return labData;
+  throw new Error(lastError || "Claude call failed after retries.");
 }
 
-/* ── Main handler ── */
+// ─── MAIN HANDLER ───
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const body = await req.json();
-    const { topic, skill, difficulty, challenge_type, extra_prompt } = body;
-
-    const mainTopic = topic || body.prompt;
-    if (!mainTopic || typeof mainTopic !== "string" || mainTopic.trim().length < 3) {
-      return new Response(JSON.stringify({ error: "Please provide a topic (at least 3 characters)." }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -311,200 +397,46 @@ serve(async (req) => {
       });
     }
 
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
-
-    const labTypes = ["simulation", "classification", "ethical_dilemma", "policy_optimization", "decision_lab", "math_lab"];
-    const diff = difficulty || "medium";
-    const cType = challenge_type || "lab_interactive";
-    const skillText = skill ? `\nSkill/concept: ${skill}` : "";
-    const extraText = extra_prompt ? `\nAdditional instructions: ${extra_prompt}` : "";
-
-    const isMath = isMathTopic(mainTopic.trim() + " " + (skill || ""));
-
-    const userPrompt = `Create an interactive learning challenge about: ${mainTopic.trim()}
-Difficulty: ${diff}
-Challenge type: ${cType}${skillText}${extraText}
-${isMath ? "\nThis is a MATH topic. You MUST use lab_type = 'math_lab' and include the appropriate visual representation (graph, geometry diagram, solution steps, or chart)." : ""}
-IMPORTANT: Generate a COMPLETE, PLAYABLE interactive lab with all required fields.`;
-
-    const systemPrompt = buildSystemPrompt(cType, labTypes, isMath);
-
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "gpt-4o",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_challenge_full",
-              description: "Create a complete challenge with content and lab data",
-              parameters: {
-                type: "object",
-                properties: {
-                  title: { type: "string" },
-                  description: { type: "string" },
-                  objective: { type: "string" },
-                  instructions: { type: "string" },
-                  problem: { type: "string" },
-                  hints: { type: "array", items: { type: "string" } },
-                  solution: { type: "string" },
-                  solution_explanation: { type: "string" },
-                  difficulty: { type: "string", enum: ["easy", "medium", "hard"] },
-                  challenge_type: { type: "string" },
-                  lab_type: { type: "string", enum: labTypes },
-                  lab_data: { type: "object" },
-                },
-                required: ["title", "description", "objective", "instructions", "problem", "hints", "solution", "solution_explanation", "difficulty", "challenge_type", "lab_type", "lab_data"],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: { type: "function", function: { name: "create_challenge_full" } },
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "AI rate limit reached. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "AI usage limit reached. Please try again later." }), {
-          status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errText = await aiResponse.text();
-      console.error("AI error:", aiResponse.status, errText);
-      throw new Error("Failed to generate challenge");
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    if (!ANTHROPIC_API_KEY) {
+      return new Response(
+        JSON.stringify({ error: "ANTHROPIC_API_KEY is not configured in Supabase secrets." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    const aiData = await aiResponse.json();
+    const body = await req.json();
+    const { topic, description, difficulty } = body;
 
-    let challengeData: any;
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall?.function?.arguments) {
-      challengeData = JSON.parse(toolCall.function.arguments);
-    } else {
-      const content = aiData.choices?.[0]?.message?.content || "";
-      const cleaned = content.replace(/```json\n?/g, "").replace(/```/g, "").trim();
-      challengeData = JSON.parse(cleaned);
+    if (!topic || typeof topic !== "string" || topic.trim().length < 2) {
+      return new Response(JSON.stringify({ error: "Please provide a topic." }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (!challengeData.title || !challengeData.lab_type || !challengeData.lab_data) {
-      throw new Error("AI returned incomplete challenge data");
-    }
+    const challengeData = await callClaude(
+      ANTHROPIC_API_KEY,
+      topic.trim(),
+      (description || "").trim(),
+      difficulty || "medium"
+    );
 
-    // ── Force math_lab for math topics ──
-    if (isMath && challengeData.lab_type !== "math_lab") {
-      challengeData.lab_type = "math_lab";
-    }
-
-    // ── Apply defaults ──
-    if (!labTypes.includes(challengeData.lab_type)) challengeData.lab_type = "simulation";
+    // Normalize
     if (!challengeData.hints || !Array.isArray(challengeData.hints)) {
       challengeData.hints = ["Think about the key concepts.", "Consider the tradeoffs."];
     }
-    if (!challengeData.objective) challengeData.objective = challengeData.description || "";
-    if (!challengeData.instructions) challengeData.instructions = "Complete the interactive lab below.";
-    if (!challengeData.problem) challengeData.problem = challengeData.description || "";
-    if (!challengeData.solution) challengeData.solution = "See the explanation.";
-    if (!challengeData.solution_explanation) challengeData.solution_explanation = "Review the challenge to understand the solution.";
-    challengeData.difficulty = challengeData.difficulty || diff;
-    challengeData.challenge_type = challengeData.challenge_type || cType;
+    if (!challengeData.difficulty) challengeData.difficulty = difficulty || "medium";
+    challengeData.challenge_type = "lab_interactive";
 
-    // ── Repair lab data by type ──
-    if (challengeData.lab_type === "simulation") {
-      challengeData.lab_data = repairSimulationLab(challengeData.lab_data);
-    }
-
-    if (challengeData.lab_type === "classification" && challengeData.lab_data) {
-      if (!challengeData.lab_data.items || challengeData.lab_data.items.length === 0) {
-        challengeData.lab_data.items = [
-          { name: "Item 1", description: "First concept" },
-          { name: "Item 2", description: "Second concept" },
-          { name: "Item 3", description: "Third concept" },
-          { name: "Item 4", description: "Fourth concept" },
-          { name: "Item 5", description: "Fifth concept" },
-        ];
-      }
-      if (!challengeData.lab_data.categories || challengeData.lab_data.categories.length === 0) {
-        challengeData.lab_data.categories = [
-          { name: "Category A", description: "First group" },
-          { name: "Category B", description: "Second group" },
-        ];
-      }
-      if (!challengeData.lab_data.correct_mapping) {
-        challengeData.lab_data.correct_mapping = {};
-        const cats = challengeData.lab_data.categories;
-        challengeData.lab_data.items.forEach((item: any, i: number) => {
-          challengeData.lab_data.correct_mapping[item.name] = cats[i % cats.length].name;
-        });
-      }
-    }
-
-    if (challengeData.lab_type === "ethical_dilemma" && challengeData.lab_data) {
-      if (!challengeData.lab_data.dimensions || challengeData.lab_data.dimensions.length === 0) {
-        challengeData.lab_data.dimensions = [
-          { name: "Ethics", icon: "⚖️", description: "Ethical standing", initial_value: 50 },
-          { name: "Profit", icon: "💰", description: "Financial outcome", initial_value: 50 },
-          { name: "Public Trust", icon: "🤝", description: "Public perception", initial_value: 50 },
-        ];
-      }
-    }
-
-    if (challengeData.lab_type === "policy_optimization" && challengeData.lab_data) {
-      if (!challengeData.lab_data.parameters || challengeData.lab_data.parameters.length === 0) {
-        challengeData.lab_data.parameters = [
-          { name: "Budget", icon: "💰", unit: "%", min: 0, max: 100, default: 50, step: 5 },
-          { name: "Efficiency", icon: "⚡", unit: "%", min: 0, max: 100, default: 50, step: 5 },
-          { name: "Satisfaction", icon: "😊", unit: "%", min: 0, max: 100, default: 50, step: 5 },
-        ];
-      }
-      if (!challengeData.lab_data.max_moves) challengeData.lab_data.max_moves = 4;
-    }
-
-    // ── Repair math_lab data ──
-    if (challengeData.lab_type === "math_lab" && challengeData.lab_data) {
-      const ld = challengeData.lab_data;
-      if (!ld.title) ld.title = challengeData.title;
-      if (!ld.objective) ld.objective = challengeData.objective || "";
-      if (!ld.concept_overview) ld.concept_overview = challengeData.description || "";
-      if (!ld.visual_type) ld.visual_type = "graph";
-      if (!ld.tasks || !Array.isArray(ld.tasks) || ld.tasks.length === 0) {
-        ld.tasks = [
-          { id: 1, description: "Analyze the visual representation.", type: "explanation", correct_answer: "" },
-          { id: 2, description: "Identify the key values.", type: "input", correct_answer: "" },
-          { id: 3, description: "Explain the concept in your own words.", type: "explanation", correct_answer: "" },
-        ];
-      }
-      // Ensure task ids
-      ld.tasks.forEach((t: any, i: number) => { if (!t.id) t.id = i + 1; });
-      if (!ld.hints || !Array.isArray(ld.hints)) ld.hints = challengeData.hints || ["Think step by step.", "Review the visual."];
-      if (!ld.solution) ld.solution = challengeData.solution || "";
-      if (!ld.solution_explanation) ld.solution_explanation = challengeData.solution_explanation || "";
-    }
-
-    console.log("Generated challenge:", challengeData.lab_type, "with", Object.keys(challengeData.lab_data).length, "lab fields");
+    console.log(`✅ Challenge generated: "${challengeData.title}" → lab_type: ${challengeData.lab_type}`);
 
     return new Response(JSON.stringify({ challenge_data: challengeData }), {
-      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (e) {
-    console.error("generate-challenge error:", e);
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+  } catch (e: any) {
+    console.error("generate-challenge error:", e.message);
+    return new Response(JSON.stringify({ error: e.message || "Failed to generate challenge." }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

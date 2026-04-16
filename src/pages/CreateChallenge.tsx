@@ -4,13 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
-  ArrowLeft, Loader2, Sparkles, Save,
-  RefreshCw, PenLine, Target, BookOpen, Lightbulb,
-  CheckCircle2, FileText, Search, FlaskConical, Eye, EyeOff
+  ArrowLeft, Loader2, Sparkles, Save, RefreshCw,
+  CheckCircle2, FlaskConical, Eye, EyeOff,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePoints } from "@/hooks/usePoints";
@@ -21,6 +20,7 @@ import InteractiveLab from "@/components/labs/InteractiveLab";
 interface GeneratedChallenge {
   title: string;
   description: string;
+  topic: string;
   objective: string;
   instructions: string;
   problem: string;
@@ -33,26 +33,11 @@ interface GeneratedChallenge {
   challenge_type: string;
 }
 
-const CHALLENGE_TYPES = [
-  {
-    value: "concept_check",
-    label: "Concept Check",
-    icon: "✅",
-    description: "Quick knowledge verification questions",
-  },
-  {
-    value: "challenge_problem",
-    label: "Challenge Problem",
-    icon: "🧩",
-    description: "Deeper thinking & problem-solving",
-  },
-  {
-    value: "lab_interactive",
-    label: "Lab / Project",
-    icon: "🔬",
-    description: "Hands-on interactive simulation",
-  },
-];
+const DIFFICULTY_STYLES: Record<string, string> = {
+  easy: "text-green-400 border-green-400/30 bg-green-400/10",
+  medium: "text-yellow-400 border-yellow-400/30 bg-yellow-400/10",
+  hard: "text-red-400 border-red-400/30 bg-red-400/10",
+};
 
 const DIFFICULTIES = [
   { value: "easy", label: "Easy", color: "text-green-400" },
@@ -61,17 +46,17 @@ const DIFFICULTIES = [
 ];
 
 const TOPIC_SUGGESTIONS = [
-  "Medical Ethics", "Data Structures", "Climate Change Policy", "Supply Chain Management",
-  "Machine Learning Basics", "Financial Planning", "Public Health Systems", "Cybersecurity",
-  "Constitutional Law", "Microeconomics", "Neuroscience", "Urban Planning",
+  "Medical Ethics", "Supply & Demand", "Climate Policy", "Sorting Algorithms",
+  "DNA Replication", "World War II", "Cybersecurity", "Personal Finance",
+  "Constitutional Law", "Neuroscience", "Urban Planning", "Music Theory",
 ];
 
 const GENERATION_STEPS = [
-  { label: "Analyzing topic & difficulty", duration: 2000 },
-  { label: "Generating scenario & objectives", duration: 3000 },
-  { label: "Building interactive lab", duration: 4000 },
-  { label: "Creating hints & solutions", duration: 2500 },
-  { label: "Finalizing challenge structure", duration: 2000 },
+  "Analyzing topic",
+  "Choosing activity format",
+  "Building interactive lab",
+  "Writing challenge content",
+  "Finalizing",
 ];
 
 export default function CreateChallenge() {
@@ -83,42 +68,26 @@ export default function CreateChallenge() {
   const [step, setStep] = useState<"input" | "generating" | "edit">("input");
   const [generationStep, setGenerationStep] = useState(0);
 
-  // Input form
   const [topic, setTopic] = useState("");
-  const [skill, setSkill] = useState("");
+  const [description, setDescription] = useState("");
   const [difficulty, setDifficulty] = useState("medium");
-  const [challengeType, setChallengeType] = useState("lab_interactive");
-  const [extraPrompt, setExtraPrompt] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
 
-  // Generated challenge
   const [challenge, setChallenge] = useState<GeneratedChallenge | null>(null);
   const [saving, setSaving] = useState(false);
   const [showLabPreview, setShowLabPreview] = useState(true);
 
-  const filteredSuggestions = searchQuery
-    ? TOPIC_SUGGESTIONS.filter((t) => t.toLowerCase().includes(searchQuery.toLowerCase()))
-    : TOPIC_SUGGESTIONS;
-
   const handleGenerate = async () => {
     if (!topic.trim()) return;
     if (!user) {
-      toast({ title: "Sign in required", description: "Create an account to generate challenges.", variant: "destructive" });
+      toast({ title: "Sign in required", description: "Create an account to post challenges.", variant: "destructive" });
       return;
     }
 
     setStep("generating");
     setGenerationStep(0);
 
-    // Animate through generation steps
-    let stepIndex = 0;
     const stepInterval = setInterval(() => {
-      stepIndex++;
-      if (stepIndex < GENERATION_STEPS.length) {
-        setGenerationStep(stepIndex);
-      } else {
-        clearInterval(stepInterval);
-      }
+      setGenerationStep((prev) => Math.min(prev + 1, GENERATION_STEPS.length - 1));
     }, 2500);
 
     try {
@@ -130,10 +99,8 @@ export default function CreateChallenge() {
         },
         body: JSON.stringify({
           topic: topic.trim(),
-          skill: skill.trim(),
+          description: description.trim(),
           difficulty,
-          challenge_type: challengeType,
-          extra_prompt: extraPrompt.trim(),
         }),
       });
 
@@ -158,23 +125,6 @@ export default function CreateChallenge() {
     }
   };
 
-  const handleRegenerate = () => {
-    setChallenge(null);
-    handleGenerate();
-  };
-
-  const updateField = (field: keyof GeneratedChallenge, value: any) => {
-    if (!challenge) return;
-    setChallenge({ ...challenge, [field]: value });
-  };
-
-  const updateHint = (index: number, value: string) => {
-    if (!challenge) return;
-    const hints = [...challenge.hints];
-    hints[index] = value;
-    setChallenge({ ...challenge, hints });
-  };
-
   const handleSave = async () => {
     if (!challenge || !user) return;
     setSaving(true);
@@ -182,6 +132,7 @@ export default function CreateChallenge() {
       const { error } = await supabase.from("challenges").insert({
         title: challenge.title,
         description: challenge.description,
+        topic: challenge.topic,
         objective: challenge.objective,
         instructions: challenge.instructions,
         problem: challenge.problem,
@@ -191,7 +142,7 @@ export default function CreateChallenge() {
         lab_type: challenge.lab_type,
         lab_data: challenge.lab_data,
         difficulty: challenge.difficulty,
-        challenge_type: challenge.challenge_type,
+        challenge_type: challenge.challenge_type || "lab_interactive",
         user_id: user.id,
         is_daily: false,
       });
@@ -199,83 +150,71 @@ export default function CreateChallenge() {
       if (error) throw error;
 
       addPoints(50, "create_challenge");
-      toast({ title: "Challenge saved! 🎯", description: "+50 points earned for creating a challenge!" });
+      toast({ title: "Challenge posted! 🎯", description: "+50 pts — earn more every time someone solves it!" });
       navigate("/challenges");
-    } catch (error) {
+    } catch {
       toast({ title: "Save failed", description: "Could not save the challenge.", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
-  // ─── STEP: INPUT ───
+  // ─── INPUT ───
   if (step === "input") {
     return (
-      <div className="page-container max-w-3xl mx-auto space-y-6 pb-12">
+      <div className="page-container max-w-2xl mx-auto space-y-6 pb-12">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => navigate("/challenges")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-bold">Create a Challenge</h1>
-            <p className="text-muted-foreground text-sm">Describe what you want — AI will generate it for you.</p>
+            <h1 className="font-display text-2xl font-bold">Post a Challenge</h1>
+            <p className="text-muted-foreground text-sm">
+              Describe the topic — Claude builds the interactive lab automatically.
+            </p>
           </div>
         </div>
 
-        {/* Topic search */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Search className="w-4 h-4 text-accent" /> Search Topics
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Input
-              placeholder="Search for a topic..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            <div className="flex flex-wrap gap-2">
-              {filteredSuggestions.map((s) => (
-                <Badge
-                  key={s}
-                  variant="outline"
-                  className="cursor-pointer hover:bg-accent/20 hover:border-accent/40 transition-colors text-xs"
-                  onClick={() => { setTopic(s); setSearchQuery(""); }}
-                >
-                  {s}
-                </Badge>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Main form */}
         <Card>
           <CardContent className="pt-6 space-y-5">
+            {/* Topic suggestions */}
             <div className="space-y-2">
-              <Label htmlFor="topic">Challenge Topic *</Label>
+              <Label>Topic *</Label>
               <Input
-                id="topic"
-                placeholder="e.g. Medical Ethics in Emergency Triage"
+                placeholder="e.g. Supply and Demand, DNA Replication, Sorting Algorithms..."
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
               />
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {TOPIC_SUGGESTIONS.map((s) => (
+                  <Badge
+                    key={s}
+                    variant="outline"
+                    className="cursor-pointer hover:bg-accent/20 hover:border-accent/40 transition-colors text-[11px]"
+                    onClick={() => setTopic(s)}
+                  >
+                    {s}
+                  </Badge>
+                ))}
+              </div>
             </div>
 
+            {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="skill">Skill or Concept Being Tested</Label>
-              <Input
-                id="skill"
-                placeholder="e.g. Decision-making under pressure, ethical reasoning"
-                value={skill}
-                onChange={(e) => setSkill(e.target.value)}
+              <Label htmlFor="desc">Description <span className="text-muted-foreground font-normal">(optional)</span></Label>
+              <Textarea
+                id="desc"
+                placeholder="Give more context to help Claude build a better challenge..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
               />
             </div>
 
+            {/* Difficulty */}
             <div className="space-y-2">
-              <Label>Difficulty Level</Label>
-              <RadioGroup value={difficulty} onValueChange={setDifficulty} className="flex gap-4">
+              <Label>Difficulty</Label>
+              <RadioGroup value={difficulty} onValueChange={setDifficulty} className="flex gap-5">
                 {DIFFICULTIES.map((d) => (
                   <div key={d.value} className="flex items-center gap-2">
                     <RadioGroupItem value={d.value} id={`diff-${d.value}`} />
@@ -285,41 +224,6 @@ export default function CreateChallenge() {
                   </div>
                 ))}
               </RadioGroup>
-            </div>
-
-            <div className="space-y-3">
-              <Label>Challenge Type</Label>
-              <div className="grid gap-3">
-                {CHALLENGE_TYPES.map((ct) => (
-                  <button
-                    key={ct.value}
-                    type="button"
-                    onClick={() => setChallengeType(ct.value)}
-                    className={`flex items-start gap-3 p-4 rounded-xl border text-left transition-all ${
-                      challengeType === ct.value
-                        ? "border-accent bg-accent/10 ring-1 ring-accent/30"
-                        : "border-border hover:border-muted-foreground/30"
-                    }`}
-                  >
-                    <span className="text-2xl mt-0.5">{ct.icon}</span>
-                    <div>
-                      <span className="font-semibold text-sm">{ct.label}</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">{ct.description}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="extra">Additional Instructions (Optional)</Label>
-              <Textarea
-                id="extra"
-                placeholder="e.g. Focus on real-world scenarios, include a case study..."
-                value={extraPrompt}
-                onChange={(e) => setExtraPrompt(e.target.value)}
-                rows={3}
-              />
             </div>
 
             <Button
@@ -333,7 +237,7 @@ export default function CreateChallenge() {
             </Button>
 
             {!user && (
-              <p className="text-xs text-muted-foreground/60 text-center">Sign in to create and save challenges.</p>
+              <p className="text-xs text-muted-foreground/60 text-center">Sign in to post challenges.</p>
             )}
           </CardContent>
         </Card>
@@ -341,27 +245,23 @@ export default function CreateChallenge() {
     );
   }
 
-  // ─── STEP: GENERATING ───
+  // ─── GENERATING ───
   if (step === "generating") {
     return (
       <div className="page-container flex flex-col items-center justify-center h-[60vh] gap-6">
-        {/* Animated orb */}
         <div className="relative">
           <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center animate-pulse">
             <FlaskConical className="w-9 h-9 text-accent" />
           </div>
           <Sparkles className="absolute -top-1 -right-1 w-5 h-5 text-accent animate-bounce" />
         </div>
-
         <div className="text-center space-y-2">
-          <h2 className="font-display text-xl font-bold">Building Your Challenge...</h2>
+          <h2 className="font-display text-xl font-bold">Building your challenge...</h2>
           <p className="text-muted-foreground text-sm max-w-sm">
-            Creating an interactive {challengeType === "lab_interactive" ? "lab" : "challenge"} about{" "}
+            Claude is picking the best interactive format for{" "}
             <span className="text-accent font-medium">{topic}</span>
           </p>
         </div>
-
-        {/* Generation steps */}
         <div className="w-full max-w-sm space-y-2">
           {GENERATION_STEPS.map((s, i) => (
             <div
@@ -381,7 +281,7 @@ export default function CreateChallenge() {
               ) : (
                 <div className="w-4 h-4 rounded-full border border-muted-foreground/20 shrink-0" />
               )}
-              {s.label}
+              {s}
             </div>
           ))}
         </div>
@@ -389,191 +289,53 @@ export default function CreateChallenge() {
     );
   }
 
-  // ─── STEP: EDIT ───
+  // ─── EDIT ───
   if (!challenge) return null;
 
   const hasLab = challenge.lab_type && challenge.lab_data && Object.keys(challenge.lab_data).length > 0;
 
   return (
-    <div className="page-container max-w-4xl mx-auto space-y-6 pb-12">
-      {/* Header */}
+    <div className="page-container max-w-3xl mx-auto space-y-5 pb-12">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" onClick={() => setStep("input")}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="font-display text-2xl font-bold">Edit Challenge</h1>
-            <p className="text-muted-foreground text-sm">Review and customize your AI-generated challenge.</p>
+            <h1 className="font-display text-xl font-bold">Review Challenge</h1>
+            <p className="text-muted-foreground text-sm">
+              Claude built a{" "}
+              <span className="text-accent capitalize">{challenge.lab_type?.replace(/_/g, " ")}</span>
+              {" "}lab for <span className="text-foreground font-medium">{topic}</span>
+            </p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="outline" className="capitalize">{challenge.difficulty}</Badge>
-          <Badge variant="outline" className="capitalize">{challenge.challenge_type.replace(/_/g, " ")}</Badge>
-        </div>
+        <Badge variant="outline" className={`capitalize ${DIFFICULTY_STYLES[challenge.difficulty] ?? ""}`}>
+          {challenge.difficulty}
+        </Badge>
       </div>
 
-      {/* Title & Description */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <PenLine className="w-4 h-4" /> Title & Description
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <Input
-            value={challenge.title}
-            onChange={(e) => updateField("title", e.target.value)}
-            className="text-lg font-semibold"
-            placeholder="Challenge title"
-          />
-          <Textarea
-            value={challenge.description}
-            onChange={(e) => updateField("description", e.target.value)}
-            rows={2}
-            placeholder="Short description"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Objective */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <Target className="w-4 h-4" /> Objective
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={challenge.objective}
-            onChange={(e) => updateField("objective", e.target.value)}
-            rows={2}
-            placeholder="What the learner should practice"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Instructions */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <BookOpen className="w-4 h-4" /> Instructions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={challenge.instructions}
-            onChange={(e) => updateField("instructions", e.target.value)}
-            rows={3}
-            placeholder="Step-by-step instructions"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Problem Statement */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <FileText className="w-4 h-4" /> Problem Statement
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={challenge.problem}
-            onChange={(e) => updateField("problem", e.target.value)}
-            rows={4}
-            placeholder="The actual challenge problem"
-          />
-        </CardContent>
-      </Card>
-
-      {/* Difficulty */}
-      <Card>
-        <CardContent className="pt-6">
-          <Label className="mb-3 block">Difficulty</Label>
-          <RadioGroup value={challenge.difficulty} onValueChange={(v) => updateField("difficulty", v)} className="flex gap-4">
-            {DIFFICULTIES.map((d) => (
-              <div key={d.value} className="flex items-center gap-2">
-                <RadioGroupItem value={d.value} id={`edit-diff-${d.value}`} />
-                <Label htmlFor={`edit-diff-${d.value}`} className={`cursor-pointer ${d.color}`}>{d.label}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      {/* Hints */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <Lightbulb className="w-4 h-4" /> Hints
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          {challenge.hints.map((hint, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <Badge variant="outline" className="mt-2 shrink-0 text-xs">#{i + 1}</Badge>
-              <Textarea
-                value={hint}
-                onChange={(e) => updateHint(i, e.target.value)}
-                rows={1}
-                className="min-h-[40px]"
-              />
-            </div>
-          ))}
-        </CardContent>
-      </Card>
-
-      {/* Solution & Explanation */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm text-muted-foreground flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> Solution & Explanation
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Expected Answer / Solution</Label>
-            <Textarea
-              value={challenge.solution}
-              onChange={(e) => updateField("solution", e.target.value)}
-              rows={3}
-            />
-          </div>
-          <div>
-            <Label className="text-xs text-muted-foreground mb-1 block">Explanation</Label>
-            <Textarea
-              value={challenge.solution_explanation}
-              onChange={(e) => updateField("solution_explanation", e.target.value)}
-              rows={3}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Interactive Lab Preview */}
+      {/* Lab Preview */}
       {hasLab && (
         <Card className="border-accent/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center justify-between">
-              <span className="flex items-center gap-2 text-muted-foreground">
-                <FlaskConical className="w-4 h-4" /> Interactive Lab Preview
-              </span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowLabPreview(!showLabPreview)}
-              >
-                {showLabPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
-                {showLabPreview ? "Hide" : "Show"} Preview
-              </Button>
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              Type: <span className="capitalize text-accent">{challenge.lab_type.replace(/_/g, " ")}</span> — This is how students will interact with the lab.
-            </p>
-          </CardHeader>
+          <div
+            className="flex items-center justify-between px-5 py-3 border-b border-border/40 cursor-pointer"
+            onClick={() => setShowLabPreview(!showLabPreview)}
+          >
+            <span className="flex items-center gap-2 text-sm font-medium">
+              <FlaskConical className="w-4 h-4 text-accent" />
+              Interactive Lab Preview
+              <Badge variant="outline" className="capitalize text-[11px] ml-1">
+                {challenge.lab_type?.replace(/_/g, " ")}
+              </Badge>
+            </span>
+            <Button variant="ghost" size="sm">
+              {showLabPreview ? <EyeOff className="w-4 h-4 mr-1" /> : <Eye className="w-4 h-4 mr-1" />}
+              {showLabPreview ? "Hide" : "Show"}
+            </Button>
+          </div>
           {showLabPreview && (
-            <CardContent className="pt-2">
+            <CardContent className="pt-4">
               <InteractiveLab
                 labType={challenge.lab_type}
                 labData={challenge.lab_data}
@@ -585,13 +347,35 @@ export default function CreateChallenge() {
         </Card>
       )}
 
-      {/* Action Buttons */}
-      <div className="flex flex-col sm:flex-row gap-3 pt-2">
+      {/* Challenge info (read-only summary) */}
+      <Card>
+        <CardContent className="pt-5 space-y-3">
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Title</p>
+            <p className="font-semibold">{challenge.title}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Description</p>
+            <p className="text-sm text-muted-foreground">{challenge.description}</p>
+          </div>
+          {challenge.topic && (
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Topic tag</p>
+              <Badge variant="outline" className="text-accent border-accent/30 bg-accent/10 text-[11px]">
+                {challenge.topic}
+              </Badge>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Action buttons */}
+      <div className="flex flex-col sm:flex-row gap-3">
         <Button variant="hero" className="flex-1" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-          Save Challenge
+          Post Challenge
         </Button>
-        <Button variant="outline" onClick={handleRegenerate}>
+        <Button variant="outline" onClick={() => { setChallenge(null); handleGenerate(); }}>
           <RefreshCw className="w-4 h-4 mr-2" /> Regenerate
         </Button>
       </div>

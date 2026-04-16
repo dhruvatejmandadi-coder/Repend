@@ -1,3 +1,4 @@
+// v2 — picks up ANTHROPIC_API_KEY secret, improved error logging
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
@@ -103,16 +104,30 @@ async function callClaudeAuto(
         }),
       });
 
-      if (response.status === 429) { lastError = "Rate limit."; continue; }
+      if (response.status === 429) { lastError = "Rate limit — try again in a moment."; continue; }
       const text = await response.text();
-      if (!response.ok) { lastError = `Claude error (${response.status}): ${text.slice(0, 300)}`; continue; }
+      if (!response.ok) {
+        if (response.status === 401) {
+          lastError = "Invalid Anthropic API key. Check ANTHROPIC_API_KEY in Supabase secrets.";
+          console.error(`[generate-lab-blueprint] 401 auth error from Claude API.`);
+          break;
+        }
+        lastError = `Claude API error (${response.status}): ${text.slice(0, 300)}`;
+        console.error(`[generate-lab-blueprint] Claude error ${response.status}:`, text.slice(0, 300));
+        continue;
+      }
       let parsed: any;
-      try { parsed = JSON.parse(text); } catch { lastError = "Invalid JSON."; continue; }
+      try { parsed = JSON.parse(text); } catch { lastError = "Invalid JSON from Claude."; continue; }
       const toolUseBlock = parsed.content?.find((c: any) => c.type === "tool_use");
-      if (!toolUseBlock) { lastError = "No tool_use block."; continue; }
+      if (!toolUseBlock) {
+        lastError = "Claude did not return a tool_use block.";
+        console.error(`[generate-lab-blueprint] No tool_use in response:`, JSON.stringify(parsed).slice(0, 200));
+        continue;
+      }
       return { toolName: toolUseBlock.name, input: toolUseBlock.input };
     } catch (e: any) {
-      lastError = e.message || "Network error.";
+      lastError = e.message || "Network error reaching Claude API.";
+      console.error(`[generate-lab-blueprint] Attempt ${attempt} threw:`, e.message);
     }
   }
   throw new Error(lastError || "Claude auto-select failed after retries.");

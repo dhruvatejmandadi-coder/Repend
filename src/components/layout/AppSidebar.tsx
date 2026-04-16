@@ -1,11 +1,10 @@
-import { 
+import {
   LogOut,
   User,
   TrendingUp,
   Trophy,
   BookOpen,
   LogIn,
-  MessageSquare,
   Sparkles,
   Shield,
 } from "lucide-react";
@@ -35,7 +34,6 @@ const guestItems = [
 const authedMainItems = [
   { title: "Courses", url: "/courses", icon: BookOpen },
   { title: "Challenges", url: "/challenges", icon: Trophy },
-  { title: "Community", url: "/community", icon: MessageSquare },
 ];
 
 const authedLearnItems = [
@@ -55,7 +53,7 @@ export function AppSidebar() {
   const effectiveUser = authLoading ? null : user;
   // During auth loading, assume user is logged in if we're on a dashboard route
   // to prevent sidebar flash
-  const isDashboardRoute = ["/courses", "/challenges", "/community", "/progress", "/profile", "/admin", "/pricing"].some(
+  const isDashboardRoute = ["/courses", "/challenges", "/progress", "/profile", "/admin", "/pricing"].some(
     (p) => location.pathname.startsWith(p)
   );
   const showAuthedUI = user || (authLoading && isDashboardRoute);
